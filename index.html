@@ -923,6 +923,7 @@ function impacts(p,c){
   res:clamp((e.db-45)/40*.5+(p.traffic+cm.traffic)/10*.5-(c.road?.1:0)+(isSurv(p)?(.3+p.sizeF*.4)*(1-.5*(c.warrant?1:0)-.2*(c.retain?1:0)-.2*(c.noshare?1:0)):0),0,1),jobs:clamp(p.jobs*cm.jobs/250,0,1),tax:clamp(p.tax*cm.tax/1.5e6,0,1)};
 }
 function score(m,p,c,ctx){
+ const cmB=p.waived?0:(p.commRec==='approve'?.1:p.commRec==='cond'?.04:p.commRec==='deny'?-.14:0)+((S.commStand===undefined?50:S.commStand)-50)/1000;
  const engB=(p.engRec||[]).reduce((a,k)=>a+(c&&c[k]?.07:0),0);
  const I=impacts(p,c);
  let s=-m.w.env*I.env-m.w.res*I.res+m.w.jobs*I.jobs*1.5+m.w.tax*I.tax*1.5+m.w.dev*.3+.25;
@@ -933,7 +934,7 @@ function score(m,p,c,ctx){
  if(p.type.k==='apts'&&housingRatio()<.92)s+=.15;
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
- s+=engB+p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
+ s+=engB+cmB+p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
  return s;
 }
 function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.water)).replace(/\{noise\}/g,Math.round(e.db)).replace(/\{jobs\}/g,num(p.jobs)).replace(/\{tax\}/g,money(p.tax)).replace(/\{name\}/g,p.type.name).replace(/\{site\}/g,p.site).replace(/\{cost\}/g,money(p.cost))}
@@ -1645,6 +1646,59 @@ const ENG_TOPIC={
  land:p=>`The grading plan did not account for the slope. Detention basins and a silt barrier should have been in the permit.`,
  safety:p=>`A site this size needs a safety engineer on staff, not on call. I would make that a condition for the next phase.`
 };
+/* ---------- the Planning Commission: a second body that reviews projects first ---------- */
+const COMM=[
+ {id:'c1',name:'Lorraine Petersen',w:{env:.4,jobs:.4,tax:.3,res:.5,dev:.2},lean:'balanced'},
+ {id:'c2',name:'Dennis Ruhl',w:{env:.1,jobs:.7,tax:.5,res:.1,dev:.6},lean:'pro-growth'},
+ {id:'c3',name:'Carol Jessen',w:{env:.7,jobs:.2,tax:.2,res:.6,dev:-.1},lean:'neighborhood'},
+ {id:'c4',name:'Vern Tjaden',w:{env:.2,jobs:.3,tax:.9,res:.2,dev:.3},lean:'fiscal'},
+ {id:'c5',name:'Marsha Boldt',w:{env:.5,jobs:.5,tax:.2,res:.4,dev:0},lean:'balanced'}
+];
+let _chair=null;
+function commChair(){return _chair||(_chair={...lookPro(),name:'Lorraine Petersen',role:'Chair, Planning Commission',color:'#7a5a8a',cl:'blazer',hs:'bob',suit:'#5a4a7a',shirt:'#f4f1e8',gl:'round',hair:'#7a7a80'})}
+async function chairSays(t){const C=commChair();await showSpeaker(C);await say(C,t);await hideSpeaker()}
+function commNoise(){S.commNoise=S.commNoise||{};COMM.forEach(c=>{if(S.commNoise[c.id]===undefined)S.commNoise[c.id]=rnd(-.08,.08)});return S.commNoise}
+function commVote(p){
+ const I=impacts(p,{}),zl=p.waived?0:p.zl,fl=p.waived?0:p.fl,nz=commNoise(),tally={yes:0,cond:0,no:0},votes={};
+ COMM.forEach(c=>{
+  let sc=-c.w.env*I.env-c.w.res*I.res+c.w.jobs*I.jobs*1.5+c.w.tax*I.tax*1.5+c.w.dev*.3+.25+nz[c.id]-(zl*.1+fl*.12)-(p.engLevel>=2?.08:0);
+  const v=sc>.08?'yes':sc>-.1?'cond':'no';votes[c.id]=v;tally[v]++;
+ });
+ const ayes=tally.yes+tally.cond,nays=tally.no;
+ const rec=ayes>=3?(tally.cond>=2?'cond':'approve'):'deny';
+ return{rec,ayes,nays,tally,votes};
+}
+const COMM_REASON={water:'the water draw',noise:'the noise',traffic:'the truck traffic',power:'the power demand',chem:'the hazardous materials',fiscal:'the fiscal case',jobs:'the job numbers'};
+async function commissionHearing(p,returning){
+ if(p.waived){if(!returning){await say('mayor','The Planning Commission did not review this project, since the review was waived.');await say('wong','Waived? So the commission never saw it?');}p.commRec='none';return}
+ if(p.sizeF<.12&&!returning){p.commRec='none';return}
+ const old=p.commRec,r=commVote(p);p.commRec=r.rec;p.commVotes=r;
+ const nm={approve:'approval',cond:'approval with conditions',deny:'denial'}[r.rec];
+ if(returning&&old&&old!==r.rec&&old!=='none'){await say('mayor','The Planning Commission has reconsidered, in light of the new reports.');await chairSays(`The Commission met again and changed its recommendation. It now votes ${r.ayes} to ${r.nays} for ${nm} of the ${p.type.name}.`)}
+ else if(returning){await say('mayor','The Planning Commission has not changed its position.');await chairSays(`The Commission stands by its vote of ${r.ayes} to ${r.nays} for ${nm}.`)}
+ else{
+  await say('mayor','The Planning Commission has forwarded its recommendation.');
+  await chairSays(`The Commission met Tuesday and voted ${r.ayes} to ${r.nays} to recommend ${nm} of the ${p.type.name}${r.rec==='cond'?', with conditions to address the concerns raised':''}.`);
+ }
+ const top=['water','noise','traffic','power','chem'].sort((a,b)=>severity(p,b)-severity(p,a))[0];
+ if(r.nays>0&&(!returning||Math.random()<.4)&&Math.random()<.7){
+  const d=COMM.filter(c=>r.votes[c.id]==='no')[0];if(d)await say({name:d.name,role:'Planning Commissioner',color:'#7a5a8a',...lookPro(),suit:'#5a4a7a'},`I voted no. I could not get past ${COMM_REASON[top]||'the impact on the neighbors'}.`);
+ }
+ if(r.rec==='deny'&&!returning)await say(pick(['chen','wong']),'The commission has done its homework. The council should not wave that away.');
+ if(r.rec==='approve'&&!returning)await say('bradley','A clean recommendation from the commission. That counts for something.');
+}
+async function commissionAftermath(p,final){
+ const rec=p.commRec;if(!rec||rec==='none')return;
+ S.commStand=S.commStand===undefined?50:S.commStand;
+ if(rec==='deny'&&final){
+  S.commStand=clamp(S.commStand-8);p.riskMult=(p.riskMult||1)*1.12;
+  await chairSays('The Commission recommended denial, and the council has approved the project anyway. We will note that for the record.');
+  if(Math.random()<.5)queueStory({h:'COUNCIL OVERRIDES PLANNING COMMISSION ON '+p.type.name.toUpperCase(),sub:`The commission voted ${p.commVotes?p.commVotes.nays:3} to ${p.commVotes?p.commVotes.ayes:2} against the project. The council approved it anyway. Neighbors say they were not heard.`,who:'mayor',mood:'angry',trust:-1,kind:'scandal',min:'The Courier reported the council overrode the planning commission.'});
+ }else if(rec!=='deny'&&!final){
+  S.commStand=clamp(S.commStand-4);p.commOver=true;
+  await chairSays(`The Commission recommended ${rec==='cond'?'approval with conditions':'approval'}. We are disappointed the council went the other way.`);
+ }else S.commStand=clamp(S.commStand+2);
+}
 async function scandalCheck(){
  if(S.corrupt>=100)return;
  const li=S.leaks.findIndex(l=>l.week<S.week&&Math.random()<l.prob);
@@ -3816,6 +3870,7 @@ async function newProject(){
  await hideSpeaker();
  await staffReports(p,returning);
  await attorneyAdvice(p,returning);
+ await commissionHearing(p,returning);
  // council discussion
  await say('mayor',fresh('disc',['Council members, discussion.','The floor is open for council discussion.','Any comments from the council before we hear from the public?']));
  const askedIds=Object.keys(p.asked||{}),speakers=[...askedIds,...shuffle(COUNCIL.map(m=>m.id).filter(id=>!askedIds.includes(id)))].slice(0,3);
@@ -3885,6 +3940,7 @@ async function newProject(){
   if(k==='veto'){final=false;S.stats.vetoes++;await say('mayor','I am exercising the mayor\'s veto. The project will not proceed.');await say('bradley','Unbelievable.');adj('dev',-12);}
  }
  const pubSign=sup-opp;
+ await commissionAftermath(p,final);
  if(final){
   if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(7-burden(p.conds,p)*1.2,1,8)));
@@ -3894,7 +3950,7 @@ async function newProject(){
   for(const n of bakeConds(p))await say('clerk',n);
  }else{
   S.stats.denied++;histNote(p.company,'denied');adj('trust',pubSign<0?4:-3,pubSign<0?'public opposed':'jobs lost');adj('dev',-10);
-  if(p.sizeF>.35&&Math.random()<(p.findings?0:p.noFindings?.85:.35)){const l=ri(100,500)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs');}
+  if(p.sizeF>.35&&Math.random()<(p.findings?0:p.noFindings?.85:p.commOver?.55:.35)){const l=ri(100,500)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs');}
   minutes(`Denied the ${p.type.name} (${yes}-${no}).`,'b');
  }
  showAgenda(null);
