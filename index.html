@@ -335,7 +335,7 @@ body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;over
  <h1>&#127963;&#65039; Municipality Tycoon</h1>
  <p>You are the mayor of Clifton. Every other week the council meets in chambers: you work through an agenda, hear a development proposal, listen to the public, draft conditions, and put it to a vote. On the off weeks you inspect sites, meet residents, and take private meetings.</p>
  <p>Approved projects move through Permitting, Site Prep, Construction, Commissioning and Operation. Expect wells drilled without permits, contaminated water, wasted water, noise, but also new roads, parks and donations. How you respond decides your term.</p>
- <p class="mut">You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
+ <p class="mut">Your goal: keep the job and grow Clifton to the population target by the end of your term. You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
  <div class="modes"><label><input type="radio" name="mode" value="12" checked> Quick term: 12 weeks (about an hour)</label><label><input type="radio" name="mode" value="52"> Full term: 52 weeks (several hours)</label></div>
  <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button> <button id="slotsBtn" class="alt hidden">Saved slots</button> <button id="licBtn" class="alt hidden">Enter license key</button>
  <p id="saveInfo" class="mut" style="margin-top:12px"></p>
@@ -1959,6 +1959,7 @@ function trafficIdx(){
  return clamp(Math.round(c),0,150);
 }
 /* ---------- sewer and trash ---------- */
+const POPGOAL=()=>S.maxWeeks>20?16500:12500;
 const LFD=()=>S.lf||(S.lf={used:38,cap:100,haul:0,rec:0,fee:0,cd:0,warn:0});
 const workers=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
 const sewOf=(p,c)=>Math.min(22,Math.sqrt(eff(p,c||{}).water)/150+p.jobs/60);
@@ -2040,7 +2041,7 @@ function renderGrowth(){
  const el=$('#growth');if(!el)return;
  const r=housingRatio(),c=trafficIdx(),up=S.pop>S.popPrev,dn=S.pop<S.popPrev;
  const hc=r<.9?'var(--bad)':r<.97?'var(--acc)':'var(--good)',cc=c>=95?'var(--bad)':c>=75?'var(--acc)':'var(--good)';
- el.innerHTML=`<h3>City Growth</h3><table><tr><td>Population</td><td>${num(S.pop)} ${up?'<span style="color:var(--good)">&#9650;</span>':dn?'<span style="color:var(--bad)">&#9660;</span>':''}</td></tr><tr><td>Housing supply</td><td style="color:${hc}">${Math.round(r*100)}% of demand</td></tr><tr><td>Traffic</td><td style="color:${cc}">${c>=95?'Gridlock':c>=75?'Congested':c>=55?'Busy':'Flowing'}</td></tr></table><div class="mut" style="margin-top:6px;font-size:12px">${(S.popWhy&&S.popWhy.length&&S.pop<=S.popPrev)?'Residents are leaving over '+S.popWhy.join(', ')+'.':r<.9?'Housing shortage: rents are rising and residents are angry.':c>=75?'Traffic is hurting trust. Fund Public Works or require roads.':'More jobs bring more residents. Homes keep up with them.'}</div>`;
+ el.innerHTML=`<h3>City Growth</h3><table><tr><td>Population</td><td>${num(S.pop)} ${up?'<span style="color:var(--good)">&#9650;</span>':dn?'<span style="color:var(--bad)">&#9660;</span>':''}</td></tr><tr><td>Goal</td><td style="color:${S.pop>=POPGOAL()?'var(--good)':'var(--acc)'}">${num(POPGOAL())} by wk ${S.maxWeeks}</td></tr><tr><td>Housing supply</td><td style="color:${hc}">${Math.round(r*100)}% of demand</td></tr><tr><td>Traffic</td><td style="color:${cc}">${c>=95?'Gridlock':c>=75?'Congested':c>=55?'Busy':'Flowing'}</td></tr></table><div class="mut" style="margin-top:6px;font-size:12px">${(S.popWhy&&S.popWhy.length&&S.pop<=S.popPrev)?'Residents are leaving over '+S.popWhy.join(', ')+'.':r<.9?'Housing shortage: rents are rising and residents are angry.':c>=75?'Traffic is hurting trust. Fund Public Works or require roads.':'More jobs bring more residents. Homes keep up with them.'}</div>`;
 }
 
 /* ---------- council relationships ---------- */
@@ -2235,7 +2236,7 @@ async function stateOfCity(){
  await say('mayor',fresh('sc-i',['It is time for the quarterly State of the City address.','Before we begin, I would like to give the State of the City.','Every quarter we pause to take stock. Here is where Clifton stands.']));
  const q=Math.floor((S.week-1)/12);
  const r=housingRatio();
- await say('clerk',`Population is ${num(S.pop)}. Housing supply is at ${Math.round(r*100)} percent of demand. The treasury holds ${money(S.budget)}, and ${S.projects.filter(p=>p.stage===OPER).length} approved projects are open for business.`);
+ await say('clerk',`Population is ${num(S.pop)}, against a goal of ${num(POPGOAL())}. Housing supply is at ${Math.round(r*100)} percent of demand. The treasury holds ${money(S.budget)}, and ${S.projects.filter(p=>p.stage===OPER).length} approved projects are open for business.`);
  await say('mayor',fresh('sc-m'+Math.min(q,3),[
   'This quarter has tested us, and I believe we are stronger for it.',
   'We have built, we have argued, and we have kept the lights on. Now let us decide what matters most next.',
@@ -2722,10 +2723,12 @@ function ending(code){
  const [t,msg]=code.split('|');
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  const score=Math.round(S.trust*3+S.env*3+S.dev+Math.min(S.budget/20000,150)+jobs*.4-S.corrupt*2+S.stats.perks*5-S.stats.incidents*3);
- const ok=t==='TERM';
- const grade=!ok?'F':score>520?'A':score>440?'B':score>360?'C':'D';
- $('#overlay').innerHTML=`<div class="box"><h1>${ok?'Term complete':t}</h1><p>${msg}</p>
- <p><b>Grade: ${grade}</b> &middot; Score ${score}</p>
+ const ok=t==='TERM',goal=POPGOAL(),met=ok&&S.pop>=goal;
+ const sc2=score+(met?60:0);
+ const grade=!ok?'F':!met&&sc2>360?'C':!met?'D':sc2>520?'A':sc2>440?'B':sc2>360?'C':'D';
+ $('#overlay').innerHTML=`<div class="box"><h1>${met?'Re-elected: goal reached':ok?'Term complete: goal missed':t}</h1><p>${msg}</p>
+ ${ok?`<p><b>Population goal:</b> ${num(goal)}. Clifton finished at <b>${num(S.pop)}</b>. ${met?'You kept the job and grew the city. That is a win.':'You kept the job, but the city did not grow enough to call it a win.'}</p>`:''}
+ <p><b>Grade: ${grade}</b> &middot; Score ${sc2}</p>
  <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
  <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
  ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Mayor a Coffee</a></p>`:''}
@@ -2866,7 +2869,7 @@ async function runGame(){
     await hallScene();
     const ap=S.agenda||S.pending||genProject();S.pending=null;S.agenda=ap;showAgenda(ap);
     await callToOrder();
-    if(S.week===1)await say('clerk','Welcome, Mayor. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
+    if(S.week===1)await say('clerk','Welcome, Mayor. Your goal is to keep your seat and grow Clifton to '+num(POPGOAL())+' residents by the end of the term. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
     await recallStep();
     e=checkEnd();if(e)return ending(e);
     await scandalCheck();
@@ -2971,7 +2974,7 @@ function openTitleExtras(){
 function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
 const HELP=[
- {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
+ {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p><b>Your goal:</b> keep your seat until the end of the term and grow the city past its <b>population target</b>. Collapse in trust, the environment or a scandal ends your term early.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
  {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. Below 28 a recall petition is filed against you and challengers run for your job. You can campaign in the off weeks. Lose the election and your term ends.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: tax revenue and fines in, department costs out. Every six weeks the quarterly <b>budget hearing</b> lets you set the property tax rate and fund Public Works, Public Safety, Parks and Library, and Inspections. Run a deficit and interest and unpaid bills hurt trust.</li></ul>'},
  {t:'At the meeting',h:'<p>Use the <b>conditions</b> list to win over members: water recycling, noise caps, a park, local hire, a cleanup bond and more. Every condition costs the developer. Push too far and they walk away.</p><p>You can <b>table</b> an item once. Members ask for studies, and next week the reports come back and can change the numbers and the debate. The city attorney gives advice that is sometimes good and sometimes bad. You can pay for a second opinion.</p>'},
  {t:'After approval',h:'<p>Projects move through Permitting, Site Prep, Construction, Commissioning and Operating. Expect incidents: unpermitted wells, contaminated or wasted water, noise, blackouts, main breaks. You can <b>fine</b>, issue a <b>stop-work order</b>, or <b>forgive</b>, and some incidents offer a fix the developer pays for.</p><p>Watch the <b>City Systems</b> panel. Too much power or water demand causes blackouts and main breaks.</p>'},
