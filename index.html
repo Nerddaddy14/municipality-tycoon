@@ -293,9 +293,11 @@ body.mob #hud .brand{grid-column:1/-1;font-size:15px;margin:0}
 body.mob .stat{min-width:0;font-size:11px}
 body.mob .stat b{font-size:14px}
 body.mob .stat .bar{height:5px;margin:2px 0 0}
-body.mob .ctl{grid-column:1/-1;margin-left:0;display:flex;flex-wrap:wrap;gap:6px}
-body.mob .ctl button{flex:1 1 30%;min-height:36px;padding:5px 6px;font-size:12px;text-align:center}
-body.mob .ctl .coffee{order:10;flex:1 1 100%}
+body.mob #hud{position:relative}
+body.mob .ctl{position:absolute;top:5px;right:8px;margin:0;display:flex;gap:6px}
+body.mob .ctl button{display:none}
+body.mob .ctl #menuBtn{display:block;flex:none;min-height:30px;padding:4px 14px;font-size:12px;text-align:center}
+body.mob #mTools button{text-align:center}
 body.mob .ctl input#vol{display:none}
 body.mob #main{display:block}
 body.mob #left{width:100%;overflow:hidden}
@@ -2968,12 +2970,24 @@ function showMenu(){
  <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?' (full version)':''}</option>`).join('')}</select></label>
  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="mFit" ${document.body.classList.contains('fit')?'checked':''}> Fit the game to the window (no page scrolling)</label>
  ${GATING&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
+ if(document.body.classList.contains('mob')){
+  const tools=document.createElement('div');tools.className='btnrow col';tools.id='mTools';
+  const defs=[['helpBtn','Help',0],['fbBtn','Feedback',0],['spd','',1],['auto','',1],['mute','',1],['coffee','',0]];
+  defs.forEach(([id,name,live])=>{
+   const src=$('#'+id);if(!src||src.classList.contains('hidden'))return;
+   const b=document.createElement('button');b.textContent=name||src.textContent;
+   b.onclick=()=>{src.click();if(live)b.textContent=src.textContent};
+   tools.appendChild(b);
+  });
+  const first=document.querySelector('#modal .btnrow');if(first)first.after(tools);
+  const fl=$('#mFit');if(fl)fl.closest('label').remove();
+ }
  $('#mResume').onclick=closeModal;
  $('#mSave').onclick=()=>{try{localStorage.setItem(SAVE_KEY,WEEK_SNAP)}catch(e){}location.reload()};
  let armed=false;
  $('#mNew').onclick=()=>{if(!armed){armed=true;$('#mMsg').textContent='This deletes your saved game. Click again to confirm.';return}clearSave();location.reload()};
  $('#mTheme').onchange=e=>{applyTheme(e.target.value)};
- $('#mFit').onchange=e=>setFit(e.target.checked);
+ if($('#mFit'))$('#mFit').onchange=e=>setFit(e.target.checked);
  if($('#mUnlock'))$('#mUnlock').onclick=showLicense;
  $$('[data-save]').forEach(b=>b.onclick=()=>{try{const d=JSON.parse(WEEK_SNAP);d.saved=Date.now();localStorage.setItem(SLOT_KEY+b.dataset.save,JSON.stringify(d));$('#mMsg').textContent=`Saved to slot ${b.dataset.save}.`;showMenu()}catch(e){$('#mMsg').textContent='Could not save.'}});
  $$('[data-load]').forEach(b=>b.onclick=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(readSlot(b.dataset.load)));sessionStorage.setItem('municipality-tycoon-autocontinue','1')}catch(e){}location.reload()});
