@@ -25,7 +25,7 @@
  window.chooseDecision=async p=>{
   stats.asks++;
   if(policy==='random'){return{action:pickR(['approve','deny','table']),conds:{}}}
-  const order=['fireplan','buffer','monitor','noise','hire','recycle','fund','bond','road','park'];
+  const order=(p.offered||[]).filter(k=>{const d=cdef(k);return d&&(!d.trap&&!d.wild||Math.random()<.25)}).sort(()=>Math.random()-.5);
   const conds={...p.free};const mx=maxBurden(p)-.2;
   for(const k of order){if(p.nocond)break;if(conds[k])continue;const t={...conds,[k]:true};if(burden(t,p)<=mx)conds[k]=true}
   const yes=COUNCIL.filter(m=>score(m,p,conds,{pub:0,mayor:.15,bribe:0})>0).length;

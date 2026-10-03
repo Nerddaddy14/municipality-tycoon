@@ -509,28 +509,116 @@ function genProject(){
  p.fl=clamp((t.tags.includes('chem')?1:0)+(t.power>=9?1:0)+(t.k==='battery'?1:0)+(Math.random()<.2?1:0)-(sizeF<.2&&!t.tags.includes('chem')?1:0),0,2);
  p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;p.ordFree=[];
  S.ords.forEach(k=>{const o=ORDS.find(x=>x.k===k);if(!o)return;(o.free||[]).forEach(c=>{p.free[c]=true;p.ordFree.push(c)});if(k==='fast')p.durs[0]=1;if(k==='abate')p.tax=Math.round(p.tax*.7)});
+ p.offered=offerConds(p);
  p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
  return p;
 }
+const T=(...ks)=>p=>ks.includes(p.type.k);
 const CONDS=[
- {k:'recycle',name:'Closed-loop water recycling',desc:'Cuts water use by about 65%',b:2},
- {k:'noise',name:'Noise barrier and sound cap',desc:'About 12 dB quieter at the property line',b:1},
- {k:'fund',name:'Community benefit fund (1% of cost)',desc:'Neighbors and council like this',b:2},
- {k:'road',name:'Developer builds access road',desc:'Delivered during construction',b:2},
- {k:'park',name:'Developer funds a public park',desc:'Delivered at commissioning',b:2},
- {k:'hire',name:'Local hire guarantee (70%)',desc:'Labor loves it',b:1},
- {k:'monitor',name:'Independent well and water monitoring',desc:'Fewer and milder incidents',b:1},
- {k:'bond',name:'Cleanup bond (5% of cost)',desc:'Bigger fines when things go wrong',b:2},
- {k:'fireplan',name:'Fire safety plan and on-site hydrants',desc:'Satisfies the Fire Marshal',b:1},
- {k:'buffer',name:'Landscape buffer and setbacks',desc:'Satisfies Zoning',b:1}
+ {k:'recycle',name:'Closed-loop water recycling',desc:'Cuts water use by about 65%.',b:2,when:p=>p.water>=8000},
+ {k:'noise',name:'Noise barrier and sound cap',desc:'About 12 dB quieter at the property line.',b:1,when:p=>p.db>=55},
+ {k:'fund',name:'Community benefit fund (1% of cost)',desc:'Neighbors and council like this.',b:2},
+ {k:'road',name:'Developer builds access road',desc:'Delivered during construction. Eases traffic.',b:2,when:p=>p.traffic>=4},
+ {k:'park',name:'Developer funds a public park',desc:'Delivered at commissioning.',b:2,when:p=>p.cost>=5e6},
+ {k:'hire',name:'Local hire guarantee (70%)',desc:'Labor loves it.',b:1,when:p=>p.jobs>=8},
+ {k:'monitor',name:'Independent well and water monitoring',desc:'Fewer and milder incidents.',b:1,when:p=>p.water>=5000||p.type.tags.includes('chem')||p.type.tags.includes('dust')},
+ {k:'bond',name:'Cleanup bond (5% of cost)',desc:'Bigger fines when things go wrong.',b:2,when:p=>p.cost>=1e6},
+ {k:'fireplan',name:'Fire safety plan and on-site hydrants',desc:'Satisfies the Fire Marshal.',b:1,when:p=>p.fl>=1||p.type.tags.includes('chem')||p.power>=8},
+ {k:'buffer',name:'Landscape buffer and setbacks',desc:'Satisfies Zoning.',b:1,when:p=>p.zl>=1||p.db>=58||p.traffic>=6},
+ {k:'substation',spec:1,when:p=>p.power>=8,name:"Dedicated substation at the developer's expense",desc:'Cuts grid demand by about 3 points.',b:2,mod:{power:-3},appeal:{env:.3,res:.2,dev:-.2}},
+ {k:'ppa',spec:1,when:p=>p.power>=8,name:'Renewable power purchase agreement',desc:'Cleaner power and less grid strain.',b:2,mod:{power:-2},appeal:{env:.7,dev:-.3}},
+ {k:'heatrec',spec:1,when:T('datacenter','crypto','fab'),name:'Waste-heat recovery for district heating',desc:'Warms homes and cuts environmental impact.',b:2,mod:{power:-1},appeal:{env:.6,res:.3,dev:-.3}},
+ {k:'curtail',spec:1,when:p=>p.power>=8,name:'Curtail operations during peak demand',desc:'Less grid strain. Slightly lower output.',b:1,mod:{power:-2,jobs:.95},appeal:{env:.3,res:.2,dev:-.2}},
+ {k:'wellcap',spec:1,when:p=>p.water>=20000,name:'Cap groundwater pumping',desc:'Cuts water use by about 30%.',b:2,mod:{water:.7},appeal:{env:.7,dev:-.5}},
+ {k:'greywater',spec:1,when:p=>p.water>=20000,name:'Use treated greywater for cooling and processing',desc:'Cuts water use by half.',b:2,mod:{water:.5},appeal:{env:.7,dev:-.4}},
+ {k:'waterfee',spec:1,when:p=>p.water>=10000,name:'Per-gallon water fee paid to the city',desc:'Raises annual tax revenue from the project about 15%.',b:1,mod:{tax:1.15},appeal:{tax:.7,dev:-.4}},
+ {k:'curfew',spec:1,when:p=>p.traffic>=6||p.db>=62,name:'Truck curfew from 10 pm to 6 am',desc:'Quieter nights and a little less traffic.',b:1,mod:{db:-3,traffic:-1,jobs:.97},appeal:{res:.7,dev:-.3}},
+ {k:'routing',spec:1,when:p=>p.traffic>=6,name:'Truck routing away from neighborhoods',desc:'Cuts neighborhood truck traffic.',b:1,mod:{traffic:-2},appeal:{res:.7,dev:-.2}},
+ {k:'evfleet',spec:1,when:T('warehouse','quarry','bottling','gas','mall'),name:'Electric truck fleet',desc:'Quieter trucks and cleaner air.',b:2,mod:{db:-4},appeal:{env:.5,res:.4,dev:-.4}},
+ {k:'shuttle',spec:1,when:p=>p.traffic>=5&&p.jobs>=8,name:'Employee shuttle and carpool program',desc:'Takes cars off the road.',b:1,mod:{traffic:-2},appeal:{res:.5,dev:-.2}},
+ {k:'dust',spec:1,when:T('quarry','warehouse','solar','wind','hydro','stadium'),name:'Dust suppression and covered loads',desc:'Fewer dust and runoff incidents.',b:1,risk:.85,appeal:{res:.4,env:.3,dev:-.2}},
+ {k:'blast',spec:1,when:T('quarry'),name:'Blasting only on weekdays from 10 to 3',desc:'Quieter. Slightly slower work.',b:1,mod:{db:-4},appeal:{res:.6,dev:-.3}},
+ {k:'reclaim',spec:1,when:T('quarry','gasplant','chem'),name:'Site reclamation bond',desc:'Pays the city up front to restore the site later.',b:2,cash:.004,appeal:{env:.6,tax:.2,dev:-.5}},
+ {k:'gravel',spec:1,when:T('quarry'),name:'Sell gravel to the city at cost',desc:'Saves the city money up front.',b:1,cash:.012,appeal:{tax:.6,dev:-.2}},
+ {k:'leakdet',spec:1,when:p=>p.type.tags.includes('chem'),name:'Continuous leak detection with a public dashboard',desc:'Cuts incident odds by a quarter.',b:2,risk:.75,appeal:{env:.5,res:.4,dev:-.3}},
+ {k:'hazmat',spec:1,when:p=>p.type.tags.includes('chem'),name:'Fund hazmat training for the fire department',desc:'Fewer and milder incidents.',b:1,risk:.9,envd:.9,appeal:{env:.2,res:.2,dev:-.2}},
+ {k:'sprinkler',spec:1,when:T('battery','gasplant','chem','crypto'),name:'Advanced fire suppression system',desc:'Smaller incidents.',b:1,risk:.85,envd:.8,appeal:{res:.3,env:.2,dev:-.2}},
+ {k:'emerg',spec:1,when:p=>p.type.tags.includes('chem')||p.power>=8,name:'Emergency response fund (1% of cost)',desc:'Pays the city up front for emergencies.',b:2,cash:.01,appeal:{tax:.5,res:.3,dev:-.5}},
+ {k:'afford',spec:1,when:T('apts'),name:'Set aside 20 percent affordable units',desc:'Housing for working families. Raises trust.',b:2,trust:2,appeal:{jobs:.4,res:.2,dev:-.6}},
+ {k:'green',spec:1,when:T('apts','hotel','mall'),name:'Playground and green space',desc:'Neighbors love it.',b:1,appeal:{res:.5,env:.2,dev:-.2}},
+ {k:'parkstruct',spec:1,when:T('apts','hotel','mall','stadium','casino','arena'),name:'Parking structure instead of surface lots',desc:'Less traffic spilling into the streets.',b:1,mod:{traffic:-1},appeal:{res:.4,dev:-.2}},
+ {k:'plaza',spec:1,when:T('hotel','mall','casino','stadium','themepark','arena'),name:'Public plaza and event space',desc:'A public amenity.',b:1,trust:1,appeal:{res:.3,jobs:.2,dev:-.2}},
+ {k:'evtraffic',spec:1,when:T('stadium','arena','themepark','casino'),name:'Event traffic management plan',desc:'Eases game-day and show-night traffic.',b:1,mod:{traffic:-2},appeal:{res:.6,dev:-.2}},
+ {k:'gamblingfund',spec:1,when:T('casino'),name:'Addiction services fund',desc:'Pays for treatment programs.',b:1,trust:1,appeal:{res:.4,tax:.3,dev:-.3}},
+ {k:'noise10',spec:1,when:T('stadium','arena','themepark'),name:'Sound curfew at 10 pm',desc:'Cuts late-night noise.',b:1,mod:{db:-5},appeal:{res:.7,dev:-.3}},
+ {k:'decom',spec:1,when:T('solar','wind','battery','hydro','gasplant'),name:'Decommissioning bond',desc:'Pays the city up front to remove the site at end of life.',b:1,cash:.003,appeal:{env:.4,tax:.2,dev:-.3}},
+ {k:'wildlife',spec:1,when:T('solar','wind','hydro','quarry'),name:'Wildlife and habitat study',desc:'Better siting. Adds a week to permitting.',b:1,delay:1,appeal:{env:.6,dev:-.4}},
+ {k:'discpower',spec:1,when:T('solar','wind','gasplant','hydro'),name:'Discounted power for local residents',desc:'Residents save on bills. Raises trust.',b:2,trust:2,appeal:{res:.5,tax:-.2,dev:-.4}},
+ {k:'cleanday',when:()=>true,name:'Quarterly neighborhood cleanup days',desc:'A small, visible good-neighbor gesture.',b:1,appeal:{res:.35,env:.2,dev:-.1}},
+ {k:'sponsor',when:()=>true,name:'Sponsor town festivals and youth sports',desc:'Cheap goodwill.',b:1,trust:1,appeal:{res:.3,dev:-.1}},
+ {k:'selfcert',trap:1,when:p=>p.cost>=5e5,name:'Let the developer self-certify compliance',desc:'Cheaper and faster for them. Incidents become more likely.',b:-1,risk:1.3,appeal:{dev:.7,env:-.5,res:-.2}},
+ {k:'notraffic',trap:1,when:p=>p.traffic>=4,name:'Waive the traffic study',desc:'Saves the developer time. Real traffic may be worse.',b:-1,mod:{traffic:2},appeal:{dev:.5,res:-.5}},
+ {k:'overnight',trap:1,when:p=>p.cost>=2e6,name:'Allow overnight construction',desc:'Finishes a week faster, but neighbors will hear it.',b:-1,delay:-1,mod:{db:4},appeal:{jobs:.3,dev:.5,res:-.7}},
+ {k:'abate10',trap:1,when:p=>p.cost>=1e7,name:'Ten-year property tax abatement',desc:"Halves the project's tax revenue. Developers love it.",b:-2,mod:{tax:.5,jobs:1.05},appeal:{dev:.8,tax:-.9,jobs:.3}},
+ {k:'expand',trap:1,when:p=>p.cost>=2e7,name:'Pre-approve a future expansion without review',desc:'More risk down the road, and neighbors dislike surprises.',b:-2,risk:1.15,appeal:{dev:.7,env:-.4,res:-.4}},
+ {k:'ownmon',trap:1,when:p=>p.water>=5000||p.type.tags.includes('chem'),name:'Developer runs its own environmental monitoring',desc:'No independent checks. Incidents are more likely.',b:-1,risk:1.25,appeal:{dev:.3,env:-.4}},
+ {k:'nobuffer',trap:1,when:p=>p.zl>=1||p.db>=58,name:'Waive landscape buffers and setbacks',desc:'Cheaper for the developer. Neighbors will be unhappy.',b:-1,mod:{db:2},appeal:{dev:.4,res:-.6}},
+ {k:'liaison',wild:{p:.65,good:{trust:3},bad:{trust:-2,dev:-2},msg:['The liaison committee has been a hit with the neighbors.','The liaison committee turned into a stage for critics.']},when:()=>true,name:'Community liaison committee',desc:'Usually builds goodwill. Sometimes it becomes a platform for critics.',b:1,appeal:{res:.3,dev:-.1}},
+ {k:'localsrc',wild:{p:.5,good:{jobs:1.2,trust:1},bad:{},msg:['The developer is sourcing locally, and job numbers are up.','The local sourcing pledge turned out to be mostly a press release.']},when:p=>p.jobs>=5,name:'Local sourcing pledge',desc:'Might boost local jobs. Might be an empty promise.',b:0,appeal:{jobs:.3,dev:-.1}},
+ {k:'pilot',wild:{p:.55,good:{water:.75,trust:1},bad:{water:1.2,risk:1.25},msg:['The pilot cooling technology is working better than promised.','The pilot cooling technology failed in testing. Water use is up.']},when:p=>p.water>=10000,name:'Pilot an unproven cooling technology',desc:'Could cut water use. Could fail.',b:-1,appeal:{env:.2,dev:.3}},
+ {k:'greenroof',wild:{p:.6,good:{trust:2,env:2},bad:{trust:-1},msg:['The green roof and rain garden are a hit with neighbors.','The experimental green roof looks odd, and neighbors are grumbling.']},when:p=>p.cost>=5e6,name:'Experimental green roof and rain garden',desc:'Might delight neighbors. Might just look odd.',b:1,appeal:{env:.3,dev:-.1}}
 ];
+const cdef=k=>CONDS.find(c=>c.k===k);
+function cmods(c){
+ const m={water:1,db:0,traffic:0,power:0,jobs:1,tax:1,risk:1,envd:1};
+ for(const k in c){if(!c[k])continue;const d=cdef(k);if(!d)continue;const x=d.mod||{};
+  if(x.water)m.water*=x.water;if(x.db)m.db+=x.db;if(x.traffic)m.traffic+=x.traffic;if(x.power)m.power+=x.power;if(x.jobs)m.jobs*=x.jobs;if(x.tax)m.tax*=x.tax;
+  if(d.risk)m.risk*=d.risk;if(d.envd)m.envd*=d.envd}
+ return m;
+}
+function offerConds(p){
+ const ok=CONDS.filter(d=>!d.when||d.when(p));
+ const goods=shuffle(ok.filter(d=>!d.trap&&!d.wild)),traps=shuffle(ok.filter(d=>d.trap)),wilds=shuffle(ok.filter(d=>d.wild));
+ const spec=goods.filter(d=>d.spec),gen=goods.filter(d=>!d.spec);
+ const out=[...spec.slice(0,4),...gen.slice(0,Math.max(3,7-Math.min(4,spec.length)))];
+ if(p.fl>=1)out.push(cdef('fireplan'));
+ if(p.zl>=1)out.push(cdef('buffer'));
+ if(traps.length&&Math.random()<.85)out.push(traps[0]);
+ if(traps.length>1&&Math.random()<.35)out.push(traps[1]);
+ if(wilds.length&&Math.random()<.55)out.push(wilds[0]);
+ return shuffle([...new Set(out.map(d=>d.k))]);
+}
+function bakeConds(p){
+ const c=p.conds||{},cm=cmods(c),notes=[];
+ p.power=Math.round((p.power+cm.power)*10)/10;p.traffic=clamp(p.traffic+cm.traffic,0,10);
+ p.jobs=Math.max(2,Math.round(p.jobs*cm.jobs));p.tax=Math.round(p.tax*cm.tax);
+ p.riskMult=cm.risk;p.envMult=cm.envd;
+ for(const k in c){
+  if(!c[k])continue;const d=cdef(k);if(!d)continue;
+  if(d.cash)addBudget(Math.round(p.cost*d.cash),d.name.toLowerCase());
+  if(d.delay)p.durs[0]=Math.max(1,p.durs[0]+d.delay);
+  if(d.trust)adj('trust',d.trust,d.name.toLowerCase());
+  if(d.wild){
+   const good=Math.random()<d.wild.p,o=good?d.wild.good:d.wild.bad;
+   if(o.trust)adj('trust',o.trust);if(o.dev)adj('dev',o.dev);if(o.env)adj('env',o.env);
+   if(o.water)p.water=Math.round(p.water*o.water);if(o.jobs)p.jobs=Math.round(p.jobs*o.jobs);if(o.risk)p.riskMult*=o.risk;
+   notes.push(d.wild.msg[good?0:1]);
+  }
+ }
+ return notes;
+}
+function condList(p){
+ const base=CONDS.filter(c=>!c.spec&&!c.trap&&!c.wild&&!['cleanday','sponsor'].includes(c.k)).map(c=>c.k);
+ const ks=new Set([...(p.offered||base),...Object.keys(p.free||{})]);
+ return CONDS.filter(c=>ks.has(c.k));
+}
 const burden=(c,p)=>CONDS.reduce((s,x)=>s+(c[x.k]&&!(p&&p.free&&p.free[x.k])?x.b:0),0);
 const maxBurden=p=>3+S.dev/20+p.sizeF*1.5;
-const eff=(p,c)=>({water:p.water*(c.recycle?.35:1),db:p.db-(c.noise?12:0)});
+const eff=(p,c)=>{const cm=cmods(c);return{water:p.water*(c.recycle?.35:1)*cm.water,db:p.db-(c.noise?12:0)+cm.db}};
 function impacts(p,c){
- const e=eff(p,c);
- return{env:clamp(e.water/1.5e6*.7+p.power/10*.3+(p.type.tags.includes('chem')?.25:0)-(c.monitor?.08:0)-(c.bond?.05:0),0,1),
-  res:clamp((e.db-45)/40*.5+p.traffic/10*.5-(c.road?.1:0),0,1),jobs:clamp(p.jobs/250,0,1),tax:clamp(p.tax/1.5e6,0,1)};
+ const e=eff(p,c),cm=cmods(c);
+ return{env:clamp(e.water/1.5e6*.7+(p.power+cm.power)/10*.3+(p.type.tags.includes('chem')?.25:0)-(c.monitor?.08:0)-(c.bond?.05:0),0,1),
+  res:clamp((e.db-45)/40*.5+(p.traffic+cm.traffic)/10*.5-(c.road?.1:0),0,1),jobs:clamp(p.jobs*cm.jobs/250,0,1),tax:clamp(p.tax*cm.tax/1.5e6,0,1)};
 }
 function score(m,p,c,ctx){
  const I=impacts(p,c);
@@ -538,6 +626,7 @@ function score(m,p,c,ctx){
  if(c.fund)s+=.15+.2*m.w.res;if(c.road)s+=.1+.1*m.w.res;if(c.park)s+=.1+.12*(m.w.res+m.w.env)/2;
  if(c.hire)s+=.25*m.w.jobs;if(c.monitor)s+=.12*m.w.env;if(c.bond)s+=.1*m.w.tax+.05;
  if(c.fireplan)s+=.05;if(c.buffer)s+=.05*(m.w.res+.5);
+ for(const k in c){if(!c[k])continue;const d=cdef(k);if(d&&d.appeal){let a=0;for(const w in d.appeal)a+=(m.w[w]||0)*d.appeal[w];s+=a*.28}}
  if(p.type.k==='apts'&&housingRatio()<.92)s+=.15;
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
@@ -793,7 +882,7 @@ async function projectUpdates(mode){
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
   else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
   else{
-   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.stage===0?.5:p.stage===OPER?.6:1);
+   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.riskMult||1)*(p.stage===0?.5:p.stage===OPER?.6:1);
    if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
    if(Math.random()<.13+(S.dev>60?.07:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
   }
@@ -846,7 +935,7 @@ async function runEvent(p,evDef,promised,mode){
  if(ev.extra)opts.splice(2,0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
  const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
  const r=k==='extra'?ev.extra:RESP.find(x=>x.k===k);
- adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*.6),ev.title);adj('dev',r.dev);adj('trust',r.trust);
+ adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*(p.envMult||1)*.6),ev.title);adj('dev',r.dev);adj('trust',r.trust);
  if(k==='fine'){addBudget(fine,'fine')}
  if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
  if(k==='extra')ev.extra.apply(p);
@@ -869,7 +958,7 @@ function chooseDecision(p){
   const lock=c=>p.free[c.k]||p.nocond&&true||(c.k==='bond'&&p.noBond);
   const zt=['no zoning issues','conditionally permitted','conflicts with neighboring zone'][p.waived?0:p.zl],ft=['no fire concerns','fire concerns','major fire concerns'][p.waived?0:p.fl];
   b.innerHTML=`<div class="cTitle">Your motion on the ${p.type.name}</div><div class="mut">Attach conditions to win over members, but a developer pushed too far will walk away. Staff: ${zt}; ${ft}.${p.nocond?' Counsel warned that conditions are unenforceable, so none can be added.':''}</div>
-  <div class="conds">${CONDS.map(c=>`<label><input type="checkbox" data-k="${c.k}" ${p.free[c.k]?'checked disabled':lock(c)?'disabled':''}><span>${c.name}${p.free[c.k]?` <b style="color:var(--good)">(${(p.ordFree||[]).includes(c.k)?'required by ordinance':'offered free'})</b>`:''}<small>${c.desc}</small></span></label>`).join('')}</div>
+  <div class="conds">${condList(p).map(c=>`<label><input type="checkbox" data-k="${c.k}" ${p.free[c.k]?'checked disabled':lock(c)?'disabled':''}><span>${c.name}${p.free[c.k]?` <b style="color:var(--good)">(${(p.ordFree||[]).includes(c.k)?'required by ordinance':'offered free'})</b>`:''}${c.trap?' <b style="color:var(--acc)">(developer-friendly)</b>':''}${c.wild?' <b style="color:#8fb7ff">(uncertain)</b>':''}<small>${c.desc}${c.b<0?' Eases the developer\'s burden.':''}</small></span></label>`).join('')}</div>
   <div id="burden"></div>
   <div class="btnrow"><button class="go" data-a="approve">Recommend APPROVAL</button><button class="stop" data-a="deny">Recommend DENIAL</button>${p.tabled?'':'<button data-a="table">Table for a week</button>'}</div>`;
   const conds={...p.free};const upd=()=>{const bu=burden(conds,p);const st=bu>mx?'<b style="color:var(--bad)">They will walk away.</b>':bu>mx-1.5?'<b style="color:var(--acc)">Getting risky.</b>':'<b style="color:var(--good)">Acceptable to them.</b>';$('#burden').innerHTML=`Developer tolerance: ${st}`};
@@ -940,7 +1029,7 @@ async function officeMeeting(p){
  await say('office',`After hours, your assistant closes the door. ${vis.name} of ${p.company} takes the chair across from your desk.`);
  const nm=k=>CONDS.find(c=>c.k===k).name.toLowerCase();
  if(kind==='offer'){
-  const pool=['fund','road','park','hire','monitor','fireplan','buffer'];
+  let pool=(p.offered||[]).filter(k=>{const d=cdef(k);return d&&!d.trap&&!d.wild});if(pool.length<3)pool=['fund','road','park','hire','monitor','fireplan','buffer'];
   const offered=shuffle(pool).slice(0,2);
   await say(vis,`Mayor, we would rather be partners than adversaries. If you move to approve, ${p.company} will voluntarily commit to ${offered.map(nm).join(' and ')}. No strings attached.`);
   await say(om,'Voluntary commitments go on the record. Go on.');
@@ -1799,6 +1888,7 @@ async function newProject(){
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
   minutes(`Approved the ${p.type.name} (${yes}-${no}).`,'g');renderProjects();
+  for(const n of bakeConds(p))await say('clerk',n);
  }else{
   S.stats.denied++;adj('trust',pubSign<0?4:-3,pubSign<0?'public opposed':'jobs lost');adj('dev',-10);
   if(p.sizeF>.35&&Math.random()<(p.findings?0:p.noFindings?.85:.35)){const l=ri(100,500)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs');}
