@@ -2115,7 +2115,7 @@ function trafficIdx(){
  return clamp(Math.round(c),0,150);
 }
 /* ---------- sewer and trash ---------- */
-const POPGOAL=()=>S.maxWeeks>20?16500:12500;
+const POPGOAL=()=>(S.maxWeeks>20?16500:12500)+(S.goalAdj||0);
 /* ---------- the Clifton Courier: gaffes make the front page ---------- */
 const DEMEAN={
  chen:['I would explain it to the speaker, but I did not bring crayons.','Some people confuse volume with data.'],
@@ -2253,6 +2253,56 @@ async function landfillItem(){
  minutes(k==='table'?'Landfill expansion tabled.':'Landfill plan adopted.',k==='table'?'b':'g');
  hud();showAgenda(null);
 }
+/* ---------- replayability: backgrounds, scenarios, council traits ---------- */
+const relAdd=(id,v)=>{S.rel[id]=clamp(S.rel[id]+v)};
+const BACKGROUNDS={
+ biz:{name:'Business owner',desc:'Developers like you. Environmentalists and neighbors are wary.',intro:'Mayor, I understand you ran a business before this. The developers are pleased. The neighbors have noticed.',fn:()=>{S.dev=66;relAdd('bradley',10);relAdd('jennings',6);relAdd('chen',-6);relAdd('wong',-6)}},
+ union:{name:'Union organizer',desc:'Labor loves you. Business and developers are cool toward you.',intro:'Mayor, the building trades are thrilled to have one of their own in that chair. The Chamber of Commerce is not.',fn:()=>{relAdd('rodriguez',14);relAdd('chen',4);relAdd('wong',4);relAdd('bradley',-8);relAdd('jennings',-4);S.dev=42}},
+ teacher:{name:'Retired teacher',desc:'Residents trust you. The treasury and developers do not.',intro:'Mayor, half of Clifton had you for fourth grade. They trust you. They also remember your pop quizzes.',fn:()=>{S.trust=68;relAdd('wong',10);relAdd('chen',8);S.dev=42;S.budget-=100000}},
+ cop:{name:'Retired police sergeant',desc:'Law and order. Trusted on safety, stiffer with the environment crowd.',intro:'Mayor, the Police Chief says you were the toughest sergeant he ever worked for. Take that as you like.',fn:()=>{S.trust=64;relAdd('rodriguez',6);relAdd('jennings',8);relAdd('wong',-4);relAdd('chen',-4)}}
+};
+const SCENARIOS={
+ std:{name:'Standard',desc:'A balanced town. Normal difficulty.',intro:'',fn:()=>{}},
+ easy:{name:'Sleepy town',desc:'Cash in the bank and a patient public. Easy.',intro:'The treasury is healthy and nobody expects miracles. Enjoy it while it lasts.',fn:()=>{S.budget=2.5e6;S.trust=Math.max(S.trust,66)}},
+ boom:{name:'Boom town',desc:'Growth is already straining the grid, sewers and landfill. Higher goal. Hard.',intro:'The town is growing fast, and the utilities are already running hot. The population goal is higher this term.',fn:()=>{S.pop=12900;S.popPrev=12900;S.housing=7000;S.gridBoost=-8;S.sewerBoost=-8;LFD().used=58;S.goalAdj=1000}},
+ debt:{name:'Town in debt',desc:'A thin treasury and a bond to pay down. Hard.',intro:'The last mayor left a bond payment and a very thin treasury. Count every dollar.',fn:()=>{S.budget=250000;S.debt=1.5e6;S.trust=Math.min(S.trust,58)}},
+ storm:{name:'Storm recovery',desc:'A tornado just hit. The town is smaller, shaken, and the environment is damaged. Hard.',intro:'A tornado tore through the west side last month. Residents left, and the creek is full of debris.',fn:()=>{S.pop=11700;S.popPrev=11700;S.housing=4700;S.env=48;S.trust=Math.min(S.trust,54);S.budget=1.1e6}}
+};
+const TRAITS={
+ thrifty:{name:'Penny-pincher',w:{tax:.3}},
+ green:{name:'Tree hugger',w:{env:.3}},
+ growth:{name:'Pro-growth',w:{dev:.3,jobs:.2}},
+ nimby:{name:'Neighborhood guardian',w:{res:.3}},
+ honest:{name:'Straight arrow',greed:-.3},
+ dealer:{name:'Dealmaker',greed:.15},
+ labor:{name:'Labor champion',w:{jobs:.3}}
+};
+COUNCIL.forEach(m=>{m.w0={...m.w};m.g0=m.greed});
+function applyTraits(){
+ COUNCIL.forEach(m=>{
+  m.w={...m.w0};m.greed=m.g0;
+  const t=TRAITS[(S.traits||{})[m.id]];if(!t)return;
+  if(t.w)for(const k in t.w)m.w[k]=(m.w[k]||0)+t.w[k];
+  if(t.greed)m.greed=Math.max(0,m.greed+t.greed);
+ });
+}
+function newGameSetup(){
+ let bg=$('#bgSel')?$('#bgSel').value:'rand',sc=$('#scSel')?$('#scSel').value:'std';
+ if(bg==='rand')bg=pick(Object.keys(BACKGROUNDS));
+ if(sc==='rand')sc=pick(Object.keys(SCENARIOS).filter(k=>k!=='std'));
+ S.bg=bg;S.scen=sc;
+ SCENARIOS[sc].fn();BACKGROUNDS[bg].fn();
+ const tk=shuffle(Object.keys(TRAITS));S.traits={};COUNCIL.forEach((m,i)=>{S.traits[m.id]=tk[i]});
+ applyTraits();
+}
+function titlePickers(){
+ const host=$('#startBtn');if(!host||$('#bgSel'))return;
+ const d=document.createElement('div');d.className='modes';d.style.margin='10px 0';
+ d.innerHTML=`<label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Your background <select id="bgSel"><option value="rand">Surprise me</option>${Object.entries(BACKGROUNDS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select></label><label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">Starting scenario <select id="scSel">${Object.entries(SCENARIOS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}<option value="rand">Surprise me</option></select></label><div class="mut" id="pickDesc" style="margin-top:6px"></div>`;
+ host.parentNode.insertBefore(d,host);
+ const upd=()=>{const b=BACKGROUNDS[$('#bgSel').value],c=SCENARIOS[$('#scSel').value];$('#pickDesc').textContent=[b?b.desc:'A random background.',c?c.desc:'A random scenario (not the standard one).'].join(' ')};
+ $('#bgSel').onchange=upd;$('#scSel').onchange=upd;upd();
+}
 function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  S.popPrev=S.pop;
@@ -2291,7 +2341,7 @@ function adjRel(id,v,why,silent){
 const relLabel=v=>v>=75?'Loyal ally':v>=60?'Friendly':v>=40?'Neutral':v>=25?'Cool':'Hostile';
 function renderCouncil(){
  const el=$('#council');if(!el)return;
- el.innerHTML=`<h3>Council</h3>${COUNCIL.map(m=>{const v=Math.round(S.rel[m.id]),c=v>=60?'var(--good)':v>=40?'var(--acc)':'var(--bad)';return `<div style="margin:5px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${m.short}${S.commit[m.id]?' &#9733;':''}</span><span style="color:${c}">${relLabel(v)}</span></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${v}%;background:${c}"></i></div></div></div>`}).join('')}<div class="mut" style="font-size:11px">&#9733; has promised you their vote</div>`;
+ el.innerHTML=`<h3>Council</h3>${COUNCIL.map(m=>{const v=Math.round(S.rel[m.id]),c=v>=60?'var(--good)':v>=40?'var(--acc)':'var(--bad)';return `<div style="margin:5px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${m.short}${S.commit[m.id]?' &#9733;':''}${S.traits&&TRAITS[S.traits[m.id]]?` <small class="mut">${TRAITS[S.traits[m.id]].name}</small>`:''}</span><span style="color:${c}">${relLabel(v)}</span></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${v}%;background:${c}"></i></div></div></div>`}).join('')}<div class="mut" style="font-size:11px">&#9733; has promised you their vote</div>`;
 }
 const PRAISE={
  chen:['I want to thank the mayor for taking environmental review seriously. It matters.','The mayor listens. In this building, that is rarer than it should be.'],
@@ -2997,9 +3047,10 @@ function ending(code){
  const hl=epiHeadline(t,met);
  const counts={};S.projects.forEach(p=>{counts[p.type.name]=(counts[p.type.name]||0)+1});
  const plist=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>`${c>1?c+' × ':''}${n}`).join(', ')||'none';
- const shareTxt=`I served as Mayor of Clifton in Municipality Tycoon.\nResult: ${met?'Re-elected':ok?'Finished the term':t} · Grade ${grade} · Score ${sc2}\nPopulation ${num(S.pop)} (goal ${num(goal)}) · Trust ${Math.round(S.trust)} · Env ${Math.round(S.env)}\n${earned.length?'Achievements: '+earned.map(a=>a.name).join(', ')+'\n':''}Play free: https://nerddaddy.itch.io/municipality-tycoon`;
+ const bgName=(BACKGROUNDS[S.bg]||{}).name,scName=(SCENARIOS[S.scen]||{}).name;
+ const shareTxt=`I served as Mayor of Clifton in Municipality Tycoon${bgName?` (${bgName}, ${scName})`:''}.\nResult: ${met?'Re-elected':ok?'Finished the term':t} · Grade ${grade} · Score ${sc2}\nPopulation ${num(S.pop)} (goal ${num(goal)}) · Trust ${Math.round(S.trust)} · Env ${Math.round(S.env)}\n${earned.length?'Achievements: '+earned.map(a=>a.name).join(', ')+'\n':''}Play free: https://nerddaddy.itch.io/municipality-tycoon`;
  const row=(n,a,b)=>`<tr><td>${n}</td><td>${a}</td><td><b>${b}</b></td></tr>`;
- $('#overlay').innerHTML=`<div class="box epi"><h1>${met?'Re-elected: goal reached':ok?'Term complete: goal missed':t}</h1><p>${msg}</p>
+ $('#overlay').innerHTML=`<div class="box epi"><h1>${met?'Re-elected: goal reached':ok?'Term complete: goal missed':t}</h1><p>${msg}</p>${bgName?`<p class="mut">${bgName} &middot; ${scName}</p>`:''}
  <div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Final edition</span><span>Week ${Math.min(S.week,S.maxWeeks)}</span><span>50&cent;</span></div><div class="npHead">${hl.h}</div><div class="npSub">${hl.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...MAYOR,mood:met?'happy':ok?'neutral':'angry'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div></div>
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
@@ -3173,6 +3224,7 @@ async function runGame(){
     await callToOrder();
     if(S.newsMood){audMood(S.newsMood,3500);S.newsMood=null}
     if(S.week===1)await say('clerk','Welcome, Mayor. Your goal is to keep your seat and grow Clifton to '+num(POPGOAL())+' residents by the end of the term. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
+    if(S.week===1){const B=BACKGROUNDS[S.bg],C=SCENARIOS[S.scen];if(B)await say('clerk',B.intro);if(C&&C.intro)await say('clerk',C.intro)}
     await recallStep();
     e=checkEnd();if(e)return ending(e);
     await scandalCheck();
@@ -3216,6 +3268,7 @@ function restore(d){
  const projects=d.S.projects.map(hyd);
  const queue=(d.S.queue||[]).map(q=>[projects.find(p=>p.id===q.pid),q.def,q.pr]).filter(x=>x[0]);
  Object.assign(S,d.S,{projects,pending:d.S.pending?hyd(d.S.pending):null,agenda:d.S.agenda?hyd(d.S.agenda):null,queue});
+ applyTraits();
 }
 const THEMES={classic:'Classic Council Chambers',historic:'Historic Town Hall',modern:'Modern Glass Chamber'},THEME_KEY='municipality-tycoon-theme',SLOT_KEY='municipality-tycoon-slot-',SLOTS=3;
 function applyTheme(k){
@@ -3288,6 +3341,7 @@ function applyDialoguePacks(){
  );
 }
 function openTitleExtras(){
+ titlePickers();
  const lic=$('#licBtn');if(lic){if(GATING&&!licensed())lic.classList.remove('hidden');else lic.classList.add('hidden')}
  const full=document.querySelector('input[name=mode][value="52"]');
  if(full&&!feature('full')){full.disabled=true;full.parentElement.append(' (full version)');document.querySelector('input[name=mode][value="12"]').checked=true}
@@ -3390,6 +3444,7 @@ buildHud();buildScene();hud();renderProjects();showAgenda(null);
 }
 $('#startBtn').onclick=async()=>{
  const m=document.querySelector('input[name=mode]:checked');S.maxWeeks=m?+m.value:52;
+ newGameSetup();
  $('#overlay').classList.add('hidden');hud();
  let seen=false;try{seen=!!localStorage.getItem(HELP_KEY)}catch(e){}
  if(!seen&&!AUTO)await showHelp();
