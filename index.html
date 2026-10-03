@@ -144,6 +144,22 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 @keyframes rc{50%{opacity:.15}}.rec{animation:rc 1s infinite}
 @keyframes bar{0%,100%{transform:scaleY(.82)}50%{transform:scaleY(1)}}.bar{transform-box:view-box;animation:bar 3s ease-in-out infinite;animation-delay:var(--dl,0s)}
 @keyframes bm{50%{opacity:.2}}.beam{animation:bm 4s ease-in-out infinite}
+#paper{position:fixed;inset:0;z-index:130;display:flex;align-items:center;justify-content:center;background:rgba(5,8,14,.72);pointer-events:none}
+#paper.out{animation:paperfade .5s forwards}
+@keyframes paperfade{to{opacity:0}}
+.np{width:min(430px,92vw);max-height:90vh;overflow:hidden;background:#f3ead2;color:#231c10;border:2px solid #7a6a45;box-shadow:0 18px 50px rgba(0,0,0,.65);padding:12px 16px 14px;font-family:Georgia,"Times New Roman",serif;transform:rotate(-3deg);animation:paperin 1s cubic-bezier(.2,.9,.3,1) both}
+@keyframes paperin{0%{transform:translateY(60px) scale(.05) rotate(-900deg);opacity:0}70%{opacity:1}100%{transform:rotate(-3deg) scale(1);opacity:1}}
+.npTop{text-align:center;font-weight:900;font-size:clamp(20px,5.2vw,28px);letter-spacing:1px;border-bottom:3px double #231c10;padding-bottom:4px;font-variant:small-caps}
+.npDate{display:flex;justify-content:space-between;font-size:11px;border-bottom:1px solid #231c10;padding:3px 0;margin-bottom:8px}
+.npHead{font-weight:900;font-size:clamp(20px,5.6vw,30px);line-height:1.05;text-transform:uppercase;margin:4px 0 6px}
+.npSub{font-style:italic;font-size:13px;margin-bottom:8px}
+.npBody{display:flex;gap:10px;align-items:flex-start}
+.npPhoto{flex:none;width:100px;height:104px;border:2px solid #231c10;background:#cbbf9d;overflow:hidden;position:relative;filter:sepia(.6) contrast(1.05)}
+.npPhoto .fig{transform:scale(1.05) translate(0,10px);transform-origin:50% 0}
+.npCols{flex:1;display:flex;flex-direction:column;gap:5px;padding-top:2px}
+.npCols i{display:block;height:5px;background:#8a7c58;border-radius:2px;opacity:.7}
+.npPoll{margin-top:10px;border:1px solid #231c10;padding:5px 8px;font-size:12px;background:#ece1c3}
+@media(max-width:820px){.np{padding:10px 12px}.npPhoto{width:78px;height:84px}}
 @property --pg{syntax:'<number>';inherits:true;initial-value:0}
 .site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
 .site-svg .band{transition:none}
@@ -1187,7 +1203,7 @@ const SILLY={
 async function silly(chance,id){
  if(Math.random()>=chance)return;
  const m=id?CAST[id]:pick(COUNCIL);
- await say(m.id,fresh('silly-'+m.id,SILLY[m.id]));
+ const sl=fresh('silly-'+m.id,SILLY[m.id]);await say(m.id,sl);gaffe(m.id,sl,'silly');
  sfx.pop();audMood('happy',1200);
  const r=Math.random();
  if(r<.55)await say('mayor',fresh('silly-m',['Thank you, Councilmember. We will let that one marinate.','The clerk will not be recording that.','Noted. Please never explain it.','Let us all pretend that made sense. Moving on.','I will allow it, but I will not understand it.','That is... a statement. Moving on.']));
@@ -1284,6 +1300,7 @@ async function runEvent(p,evDef,promised,mode){
   if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);
  }
  const short=custom&&k!=='extra'?r.label.replace(/ \(.*\)/,''):k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven';
+ if(custom&&k!=='extra'&&r.soft&&r.say)gaffe('mayor',r.say.replace(/\.$/,''),'demeaning');
  await say('mayor',custom&&k!=='extra'?(r.say||`My decision: ${r.label.replace(/ \(.*\)/,'').toLowerCase()}.`):k==='fine'?`I am fining ${p.company} ${money(fine)}, effective immediately.`:k==='stop'?`I am issuing a stop-work order at the ${p.type.name} site until inspectors sign off.`:k==='extra'?`I am ordering ${p.company} to do the following: ${ev.extra.label.toLowerCase()}.`:`We will accept the apology, but this is on the record. One more incident and the response will be different.`);
  histNote(p.company,'incidents');
  if(mode==='early'){minutes(`Inspection found: ${ev.title} at ${p.type.name} (${short}).`,'b');return}
@@ -2074,10 +2091,60 @@ function trafficIdx(){
 }
 /* ---------- sewer and trash ---------- */
 const POPGOAL=()=>S.maxWeeks>20?16500:12500;
+/* ---------- the Clifton Courier: gaffes make the front page ---------- */
+const DEMEAN={
+ chen:['I would explain it to the speaker, but I did not bring crayons.','Some people confuse volume with data.'],
+ bradley:['With respect, not everyone in this room has read a balance sheet.','If everyone here ran a business, we would not be having this conversation.'],
+ rodriguez:['If shouting built things, this town would be a skyscraper.','Some of these folks have never lifted anything heavier than a grudge.'],
+ wong:['Some of these folks have not attended a single meeting until it reached their own driveway.','I have seen this crowd before. They arrive angry and leave with the same opinion.'],
+ jennings:['I have audited the last speaker\'s remarks and found them to be mostly volume.','I would ask the speaker to bring a spreadsheet next time. Or a point.']
+};
+function gaffe(who,quote,kind,flag){
+ const G=S.gaffes||(S.gaffes=[]);G.push({who,quote,kind,flag:flag||'',week:S.week});if(G.length>6)G.shift();
+}
+async function maybeDemean(chance){
+ if(Math.random()>=(chance===undefined?.12:chance))return;
+ const m=pick(COUNCIL),line=fresh('dem-'+m.id,DEMEAN[m.id]);
+ await say(m.id,line);heckle('BOO!','no');sfx.bad();audMood('angry',1400);
+ gaffe(m.id,line,'demeaning');
+ await say('mayor',fresh('dem-m',['Councilmember, please address the residents with respect.','Let us keep our remarks civil.','We will keep this respectful, please.']));
+}
+function lastName(id){const m=CAST[id];return id==='mayor'?'MAYOR':(m.short||m.name).replace(/^Dr\.\s*/,'').split(' ').pop().toUpperCase()}
+function paperText(g,tone){
+ const who=lastName(g.who),q=g.quote.length>70?g.quote.slice(0,67).replace(/[ ,.;]+$/,'')+'...':g.quote;
+ if(g.flag==='sun')return{h:'"BUT ENERGY COMES FROM THE SUN, DOESN\'T IT?"',sub:`${who} stuns the chamber during a debate about the power grid. Residents are still asking what happened.`};
+ if(g.kind==='demeaning')return tone==='outrage'?{h:`${who} TO RESIDENTS: "${q}"`,sub:`Speakers say they felt talked down to at the podium. Calls for an apology are growing.`}:{h:`${who} TAKES SHOTS AT PUBLIC`,sub:`Remarks at the podium drew groans from the gallery.`};
+ return tone==='laugh'?{h:`${who} STUNS CHAMBERS: "${q}"`,sub:`Residents posted the clip within minutes. The council would not comment further.`}:{h:`${who} SAYS WHAT?`,sub:`"${q}" The Courier has asked for clarification.`};
+}
+async function showPaper(g,tone,counts,N){
+ const t=paperText(g,tone),m=CAST[g.who]||CAST.mayor;
+ const pr={laugh:'find the remark laughable',outrage:'find the remark offensive'}[tone];
+ const el=document.createElement('div');el.id='paper';
+ el.innerHTML=`<div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Clifton edition</span><span>Week ${S.week} · Special Edition</span><span>50&cent;</span></div><div class="npHead">${t.h}</div><div class="npSub">${t.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...m,mood:tone==='outrage'?'angry':'happy'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div><div class="npPoll"><b>Courier snap poll:</b> ${counts[tone]} of ${N} residents ${pr}.</div></div>`;
+ el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.chime&&sfx.chime();
+ return el;
+}
+async function newsStep(){
+ const G=S.gaffes||[];if(!G.length)return;S.gaffes=[];
+ const g=G.reduce((a,b)=>((b.kind==='demeaning'?2:1)>(a.kind==='demeaning'?2:1)||((b.kind===a.kind)&&Math.random()<.5))?b:a);
+ const N=20,counts={outrage:0,laugh:0,shrug:0};
+ const po=g.kind==='demeaning'?clamp(.52+(55-S.trust)/250,.3,.8):clamp(.15+(55-S.trust)/300,.08,.4),pl=g.kind==='demeaning'?.1:.5;
+ for(let i=0;i<N;i++){const r=Math.random();if(r<po)counts.outrage++;else if(r<po+pl)counts.laugh++;else counts.shrug++}
+ const top=counts.outrage>=counts.laugh?'outrage':'laugh';
+ if(counts[top]<=N/2){minutes('Recent remarks drew mixed reactions around town.');return}
+ const el=await showPaper(g,top,counts,N);
+ await say('office',fresh('news-i',['The Courier hits porches across Clifton before the meeting.','The front page lands on every doorstep in town.','Somebody has left a copy of the Courier on your seat.']));
+ el.classList.add('out');await sleep(AUTO?10:500);el.remove();
+ const mayor=g.who==='mayor';
+ if(top==='outrage'){adj('trust',mayor?-4:-3,'the Courier front page');if(!mayor)adjRel(g.who,-3,'embarrassed the council');S.newsMood='angry'}
+ else{adj('trust',-1.5,'the Courier front page');if(!mayor)adjRel(g.who,-1,'');S.newsMood='happy'}
+ minutes(`The Courier ran a front page about ${mayor?'the mayor':CAST[g.who].short}. ${counts[top]} of ${N} residents ${top==='outrage'?'were offended':'laughed'}.`,'b');
+ await say('clerk',mayor?fresh('news-cm',['Mayor, the phones have been ringing about the Courier since breakfast.','Mayor, you may want to address that front page tonight.']):fresh('news-cc',[`Mayor, I would not bring up ${CAST[g.who].short}'s remarks tonight.`,'Mayor, the gallery has read the Courier. Expect a full house.']));
+}
 async function sunQuip(chance){
  if(Math.random()>=(chance===undefined?.35:chance))return;
  const m=pick(COUNCIL);
- await say(m.id,"But energy comes from the sun, doesn't it?");
+ await say(m.id,"But energy comes from the sun, doesn't it?");gaffe(m.id,"But energy comes from the sun, doesn't it?",'silly','sun');
  sfx.pop();audMood('happy',1200);
  const r=Math.random();
  if(r<.5)await say('mayor',fresh('sun-m',['Technically, yes. Please keep going, Councilmember, and do not explain.','That is the beginning of an answer, and I will leave it there.','The sun does not send an invoice, but the utility does.','Let the record show the sun was not available for comment.']));
@@ -2773,6 +2840,7 @@ async function newProject(){
  const list=genCitizens(p,{},ri(3,5));showCrowd(list);await sleep(AUTO?10:700);
  let opp=0,sup=0;
  for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker();if(c.topic==='power')await sunQuip(.45)}
+ await maybeDemean(.14);
  await hideCrowd();
  await say('mayor',fresh('pc-close',[`Public comment is closed. We heard ${opp} opposed and ${sup} in support.`,`Thank you all. That is ${opp} against and ${sup} in favor. Public comment is closed.`,`We have heard from the public: ${opp} opposed, ${sup} in support. We will close comment.`]));
  minutes(`Public comment on the ${p.type.name}: ${opp} opposed, ${sup} in support.`);
@@ -2913,11 +2981,11 @@ async function actHours(){
    const k=await ask(`Resident concern about the ${p.type.name}`,[{k:'inq',label:'Open an inquiry ($10K)',sub:'Staff watches the site closely for two weeks. Good odds your next inspection finds something.'},{k:'look',label:'Promise to look into it',sub:'Small trust gain, no cost.'},{k:'brush',label:'Brush it off',sub:'Saves time. Costs trust.'}]);
    if(k==='inq'){addBudget(-10000,'inquiry');p.watch=2;p.tip=true;adj('trust',2);await say('mayor','I am opening a formal inquiry. You will hear back from staff.')}
    else if(k==='look'){adj('trust',1);await say('mayor','Thank you for coming in. I will look into it personally.')}
-   else{adj('trust',-3,'brushed off a resident');await say('mayor','The council has already considered those issues. Thank you.')}
+   else{adj('trust',-3,'brushed off a resident');await say('mayor','The council has already considered those issues. Thank you.');gaffe('mayor','The council has already considered those issues.','demeaning')}
   }else{
    await say(R,fresh('oh-gen',['The pothole on Elm Street has been there since March.','Our street lights have been out for a month.','The bus stop on Fourth has no bench. Seniors stand in the rain.','Nobody has picked up the brush on Cedar Lane in weeks.']));
    const k=await ask('Resident request',[{k:'fix',label:'Promise to fix it ($5K)',sub:'Trust up.'},{k:'ref',label:'Refer to Public Works',sub:'Small trust gain.'},{k:'brush',label:'Brush it off',sub:'Trust drops.'}]);
-   if(k==='fix'){addBudget(-5000,'quick fix');adj('trust',2)}else if(k==='ref')adj('trust',1);else adj('trust',-2,'brushed off a resident');
+   if(k==='fix'){addBudget(-5000,'quick fix');adj('trust',2)}else if(k==='ref')adj('trust',1);else{adj('trust',-2,'brushed off a resident');gaffe('mayor','Refer it to Public Works. I have bigger problems.','demeaning')}
   }
   closeOverlay('office');
  }
@@ -2942,7 +3010,7 @@ async function actWalk(ap){
   const k=await ask('Residents raise neglected streets',opts);
   if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
   else if(k==='note'){adj('trust',2,'walked the neighborhood');await say('mayor','I have written it down, and it goes to Public Works today.')}
-  else{adj('trust',-2,'walked past residents');await say('mayor','Thank you for your time.')}
+  else{adj('trust',-2,'walked past residents');await say('mayor','I have a lot of other neighborhoods to see.');gaffe('mayor','I have a lot of other neighborhoods to see.','demeaning')}
   if(sev>.3){ap.biasTopic=t}
  }else{
   if(sev>.3){await say(R,fill(fresh('walk-'+t,TOPICS[t].opp),ap,{}));ap.biasTopic=t;await say('office',`The mood is worried. The big concern is ${TLABEL[t]}. You expect more of it at public comment.`)}
@@ -3030,9 +3098,11 @@ async function runGame(){
    let e;
    autosave();
    if(S.week%2===1){
+    await newsStep();
     await hallScene();
     const ap=S.agenda||S.pending||genProject();S.pending=null;S.agenda=ap;showAgenda(ap);
     await callToOrder();
+    if(S.newsMood){audMood(S.newsMood,3500);S.newsMood=null}
     if(S.week===1)await say('clerk','Welcome, Mayor. Your goal is to keep your seat and grow Clifton to '+num(POPGOAL())+' residents by the end of the term. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
     await recallStep();
     e=checkEnd();if(e)return ending(e);
