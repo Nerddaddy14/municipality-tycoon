@@ -1,7 +1,6 @@
 #!/bin/sh
-# Copies the latest game file here, commits, and pushes. Run from this folder.
+# Commits any changes in this folder and pushes them to GitHub Pages.
 set -e
-cp /c/Users/Stephen/jarvis/zoning-tycoon-chambers/index.html index.html
 git add -A
-git commit -m "Update playtest build" || echo "Nothing new to commit"
+git commit -m "${1:-Update playtest build}" || echo "Nothing new to commit"
 git push
