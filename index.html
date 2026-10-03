@@ -260,6 +260,7 @@ td.bad{color:var(--bad)}
  <p class="mut">You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
  <div class="modes"><label><input type="radio" name="mode" value="52" checked> Full term: 52 weeks (about an hour or more)</label><label><input type="radio" name="mode" value="12"> Quick term: 12 weeks (about 15 to 20 minutes)</label></div>
  <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button>
+ <p id="saveInfo" class="mut" style="margin-top:12px"></p>
 </div></div>
 
 <script>
@@ -356,11 +357,11 @@ function buildHud(){
  <div class="stat"><span>Week</span><b id="hWeek"></b></div>
  <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
  ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
- <div class="ctl"><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="Dialogue speed (F)">Speed 1x</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
+ <div class="ctl"><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="Dialogue speed (F)">Speed 1x</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
  $('#mute').onclick=()=>{MUTE=!MUTE;$('#mute').textContent='Sound: '+(MUTE?'off':'on');setVol();if(MUTE)ambience(false)};
  $('#vol').oninput=e=>{VOL=e.target.value/100;setVol()};
  $('#spd').onclick=cycleSpeed;$('#auto').onclick=toggleAuto;
- $('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
+ $('#menuBtn').onclick=()=>showMenu();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
 }
 function hud(){
  $('#hWeek').textContent=`${Math.min(S.week,S.maxWeeks)} / ${S.maxWeeks} · ${S.week%2===1?'Meeting':'Off week'}`;
@@ -1334,7 +1335,7 @@ async function runGame(){
    snap={trust:S.trust,env:S.env,dev:S.dev,budget:S.budget};
    hud();renderProjects();showAgenda(null);
    let e;
-   if(S.week%2===0)autosave();
+   autosave();
    if(S.week%2===1){
     await hallScene();
     const ap=S.agenda||S.pending||genProject();S.pending=null;S.agenda=ap;showAgenda(ap);
@@ -1362,16 +1363,31 @@ async function runGame(){
 /* ---------- save, help, feedback ---------- */
 const SAVE_KEY='municipality-tycoon-save-v1',HELP_KEY='municipality-tycoon-help-seen',FEEDBACK_URL='';
 const slimProj=p=>{const c={...p,type:p.type.k,rep:{...p.rep}};delete c.rep.el;return c};
+let WEEK_SNAP=null;
+function snapshot(){
+ const queue=S.queue.map(([p,def,pr])=>({pid:p.id,pr,def:{good:def.good,bad:def.bad,id:def.id,pre:def.pre?{...def.pre,extra:undefined}:null}}));
+ return JSON.stringify({v:1,S:{...S,projects:S.projects.map(slimProj),pending:S.pending?slimProj(S.pending):null,agenda:S.agenda?slimProj(S.agenda):null,queue,
+  leaks:S.leaks.map(l=>({amt:l.amt,week:l.week,prob:l.prob,proj:{company:l.proj.company,type:{name:l.proj.type.name}}}))}});
+}
 function autosave(){
- try{
-  const d={v:1,S:{...S,projects:S.projects.map(slimProj),pending:S.pending?slimProj(S.pending):null,agenda:null,queue:[],
-   leaks:S.leaks.map(l=>({amt:l.amt,week:l.week,prob:l.prob,proj:{company:l.proj.company,type:{name:l.proj.type.name}}}))}};
-  localStorage.setItem(SAVE_KEY,JSON.stringify(d));toast('Progress saved',true);
- }catch(e){}
+ try{WEEK_SNAP=snapshot();localStorage.setItem(SAVE_KEY,WEEK_SNAP);toast('Autosaved',true)}catch(e){}
 }
 function readSave(){try{const r=localStorage.getItem(SAVE_KEY);return r?JSON.parse(r):null}catch(e){return null}}
 function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
-function restore(d){const hyd=c=>({...c,type:TYPES.find(t=>t.k===c.type)});Object.assign(S,d.S,{projects:d.S.projects.map(hyd),pending:d.S.pending?hyd(d.S.pending):null})}
+function restore(d){
+ const hyd=c=>({...c,type:TYPES.find(t=>t.k===c.type)});
+ const projects=d.S.projects.map(hyd);
+ const queue=(d.S.queue||[]).map(q=>[projects.find(p=>p.id===q.pid),q.def,q.pr]).filter(x=>x[0]);
+ Object.assign(S,d.S,{projects,pending:d.S.pending?hyd(d.S.pending):null,agenda:d.S.agenda?hyd(d.S.agenda):null,queue});
+}
+function showMenu(){
+ modal(`<h2>Menu</h2><p class="mut">The game autosaves at the start of every week into one save slot. "Save and quit" stores the start of this week, so you replay the week when you come back.</p>
+ <div class="btnrow col"><button class="go" id="mSave" ${WEEK_SNAP?'':'disabled'}>Save and quit to title</button><button id="mResume">Resume game</button><button class="stop" id="mNew">Abandon this game and start over</button></div><div id="mMsg" class="mut" style="margin-top:8px"></div>`);
+ $('#mResume').onclick=closeModal;
+ $('#mSave').onclick=()=>{try{localStorage.setItem(SAVE_KEY,WEEK_SNAP)}catch(e){}location.reload()};
+ let armed=false;
+ $('#mNew').onclick=()=>{if(!armed){armed=true;$('#mMsg').textContent='This deletes your saved game. Click again to confirm.';return}clearSave();location.reload()};
+}
 function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
 const HELP=[
@@ -1419,8 +1435,9 @@ function showFeedback(){
 buildHud();buildScene();hud();renderProjects();showAgenda(null);
 {
  const sv=readSave();
- if(sv&&sv.S&&sv.S.week>1){const b=$('#contBtn');b.textContent=`Continue saved game (week ${sv.S.week} of ${sv.S.maxWeeks})`;b.classList.remove('hidden');
+ if(sv&&sv.S){const b=$('#contBtn');b.textContent=`Continue saved game (week ${sv.S.week} of ${sv.S.maxWeeks})`;b.classList.remove('hidden');$('#saveInfo').textContent=`Saved game found: week ${sv.S.week} of ${sv.S.maxWeeks}. Starting a new game replaces it.`;
   b.onclick=()=>{restore(sv);$('#overlay').classList.add('hidden');hud();renderProjects();runGame()}}
+ else $('#saveInfo').textContent='No saved game yet. The game autosaves at the start of every week.';
 }
 $('#startBtn').onclick=async()=>{
  const m=document.querySelector('input[name=mode]:checked');S.maxWeeks=m?+m.value:52;
