@@ -244,6 +244,7 @@ body.fit #side{overflow-y:auto;min-height:0;height:100%;padding-right:2px}
 body.fit #dlg{margin-top:8px;min-height:122px}
 body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;overflow:auto;z-index:15;margin:0;box-shadow:0 10px 40px rgba(0,0,0,.6)}
 @media (max-height:640px){#overlay{padding:10px}#overlay .box{padding:14px 20px}#overlay h1{font-size:22px;margin-bottom:4px}#overlay p{font-size:13px;margin:6px 0;line-height:1.4}#overlay button{margin-top:8px;padding:8px 18px;font-size:14px}.modes label{margin:3px 0;font-size:13px}}
+.ctl .coffee{border-color:#7a5a1c;color:#f2d28a}
 .guide{color:var(--mut);font-size:12px;text-decoration:underline}
 </style>
 </head>
@@ -396,7 +397,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,arcs:{},prio:null,fests:[],annexT:0,crisisSeen:[],devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,popWhy:[],arcs:{},prio:null,fests:[],annexT:0,crisisSeen:[],devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -405,11 +406,11 @@ function buildHud(){
  <div class="stat hidden" id="hRecall"><span>Recall election</span><b></b></div>
  <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
  ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
- <div class="ctl"><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="Dialogue speed (F)">Speed 1x</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
+ <div class="ctl"><button id="coffee" class="coffee ${TIP_URL&&!isFramed?'':'hidden'}" title="Support the developer">&#9749; Buy the Mayor a Coffee</button><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="${speedUnlocked()?'Dialogue speed (F)':'Faster speeds unlock after your first 12-week term'}">Speed 1x${speedUnlocked()?'':' (locked)'}</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
  $('#mute').onclick=()=>{MUTE=!MUTE;$('#mute').textContent='Sound: '+(MUTE?'off':'on');setVol();if(MUTE)ambience(false)};
  $('#vol').oninput=e=>{VOL=e.target.value/100;setVol()};
  $('#spd').onclick=cycleSpeed;$('#auto').onclick=toggleAuto;
- $('#menuBtn').onclick=()=>showMenu();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
+ $('#coffee').onclick=()=>{if(TIP_URL)window.open(TIP_URL,'_blank','noopener')};$('#menuBtn').onclick=()=>showMenu();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
 }
 function hud(){
  $('#hWeek').textContent=`${Math.min(S.week,S.maxWeeks)} / ${S.maxWeeks} · ${S.week%2===1?'Meeting':'Off week'}`;
@@ -458,7 +459,17 @@ function ask(title,opts,note=''){
  });
 }
 const SPEEDS=[1,2,4,8];
-function cycleSpeed(){SPD=SPEEDS[(SPEEDS.indexOf(SPD)+1)%SPEEDS.length];$('#spd').textContent=SPD>=8?'Speed MAX':'Speed '+SPD+'x';toast(SPD>=8?'Max speed: dialogue auto-advances':'Speed '+SPD+'x',true)}
+const SPEED_KEY='municipality-tycoon-speed-unlocked';let SPEED_SESSION=false;
+const speedUnlocked=()=>{if(SPEED_SESSION)return true;try{return !!localStorage.getItem(SPEED_KEY)}catch(e){return false}};
+function unlockSpeed(){
+ if(speedUnlocked())return;
+ SPEED_SESSION=true;try{localStorage.setItem(SPEED_KEY,'1')}catch(e){}
+ const b=$('#spd');if(b){b.title='Dialogue speed (F)';b.textContent='Speed '+(SPD>=8?'MAX':SPD+'x')}
+ toast(TIP_URL&&!isFramed?'Faster text speeds unlocked. Enjoying it? Buy the Mayor a Coffee, top bar.':'Faster text speeds unlocked',true);
+}
+function cycleSpeed(){
+ if(!speedUnlocked()){toast('Faster speeds unlock after your first 12-week term',false);return}
+ SPD=SPEEDS[(SPEEDS.indexOf(SPD)+1)%SPEEDS.length];$('#spd').textContent=SPD>=8?'Speed MAX':'Speed '+SPD+'x';toast(SPD>=8?'Max speed: dialogue auto-advances':'Speed '+SPD+'x',true)}
 function toggleAuto(){AUTOADV=!AUTOADV;$('#auto').textContent='Auto: '+(AUTOADV?'on':'off');if(AUTOADV)trigger()}
 document.addEventListener('keydown',e=>{
  if(!$('#overlay').classList.contains('hidden')||!$('#modal').classList.contains('hidden'))return;
@@ -1490,6 +1501,7 @@ CRISES.push(
  {k:'layoffs',name:'Mass layoffs',w:()=>1,make:()=>({who:{name:'Miguel Rodriguez',role:'Union Organizer'},text:'Clifton\'s largest private employer announced 300 layoffs. The plant gates have a line of families, and the council is looking at you.',
   opts:[{k:'retrain',label:'Offer a retraining fund ($50K)',sub:'Helps workers. Rodriguez approves.',cost:50000,trust:3,rel:{rodriguez:4}},{k:'relief',label:'Offer the company tax relief to stay',sub:'Developers like it. Fiscal hawks will not.',dev:3,trust:1,rel:{jennings:-4}},{k:'shrug',label:'Call it a national trend',sub:'True, and tone deaf.',trust:-3}]})}
 );
+const POPLOSS={tornado:{rebuild:80,federal:250,volunteer:150},flood:{repair:50,patch:150,aid:300},layoffs:{retrain:100,relief:150,shrug:300},derail:{evacuate:50,shelter:100,rail:150}};
 async function runCrisis(c,mode){
  const d=c.make();
  if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
@@ -1504,6 +1516,7 @@ async function runCrisis(c,mode){
  const k=await ask(`${c.name}: how do you respond?`,d.opts.map(o=>({k:o.k,label:o.label,sub:o.sub})),mit<1?'Your investment in public works and safety is reducing costs.':mit>1?'Cuts to public works and safety are driving costs up.':'');
  const o=d.opts.find(x=>x.k===k);
  const bad=applyOpt(o,mit);
+ const pl=(POPLOSS[c.k]||{})[k];if(pl){S.pop=Math.max(4000,S.pop-pl);toast(`Population -${pl} (families displaced)`,false)}
  await say('mayor',fresh('cr-do',[`Here is what we are going to do: ${o.label.replace(/ \(.*\)/,'').toLowerCase()}.`,`I am authorizing the following: ${o.label.replace(/ \(.*\)/,'').toLowerCase()}.`]));
  if(bad)await say('clerk',fresh('cr-bad',['Mayor, that did not go as planned.','Mayor, there are complications.']));
  const good=!bad&&(o.trust||0)>=0;
@@ -1604,7 +1617,14 @@ function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  S.popPrev=S.pop;
  const target=12000+jobs*1.8+(S.housing-4800)*.6,room=housingRatio()<.9?.4:1;
- S.pop=Math.round(S.pop+(target-S.pop)*.05*room*(S.prio&&S.prio.k==='jobs'?1.5:1));
+ const grow=(target-S.pop)*.05*room*(S.prio&&S.prio.k==='jobs'?1.5:1);
+ const why=[];let leave=0;
+ if(S.trust<35){leave+=(35-S.trust)*.0003;why.push('low public trust')}
+ if(S.env<35){leave+=(35-S.env)*.0002;why.push('a damaged environment')}
+ if(housingRatio()<.88){leave+=(.88-housingRatio())*.02;why.push('housing costs')}
+ if(S.budget<0){leave+=.001;why.push('city finances')}
+ S.popWhy=why;
+ S.pop=Math.max(4000,Math.round((S.pop+grow)*(1-leave)));
  const short=Math.max(0,.95-housingRatio());
  if(short>0)S.trust=clamp(S.trust-short*3);
  const cong=trafficIdx();
@@ -1615,7 +1635,7 @@ function renderGrowth(){
  const el=$('#growth');if(!el)return;
  const r=housingRatio(),c=trafficIdx(),up=S.pop>S.popPrev,dn=S.pop<S.popPrev;
  const hc=r<.9?'var(--bad)':r<.97?'var(--acc)':'var(--good)',cc=c>=95?'var(--bad)':c>=75?'var(--acc)':'var(--good)';
- el.innerHTML=`<h3>City Growth</h3><table><tr><td>Population</td><td>${num(S.pop)} ${up?'<span style="color:var(--good)">&#9650;</span>':dn?'<span style="color:var(--bad)">&#9660;</span>':''}</td></tr><tr><td>Housing supply</td><td style="color:${hc}">${Math.round(r*100)}% of demand</td></tr><tr><td>Traffic</td><td style="color:${cc}">${c>=95?'Gridlock':c>=75?'Congested':c>=55?'Busy':'Flowing'}</td></tr></table><div class="mut" style="margin-top:6px;font-size:12px">${r<.9?'Housing shortage: rents are rising and residents are angry.':c>=75?'Traffic is hurting trust. Fund Public Works or require roads.':'More jobs bring more residents. Homes keep up with them.'}</div>`;
+ el.innerHTML=`<h3>City Growth</h3><table><tr><td>Population</td><td>${num(S.pop)} ${up?'<span style="color:var(--good)">&#9650;</span>':dn?'<span style="color:var(--bad)">&#9660;</span>':''}</td></tr><tr><td>Housing supply</td><td style="color:${hc}">${Math.round(r*100)}% of demand</td></tr><tr><td>Traffic</td><td style="color:${cc}">${c>=95?'Gridlock':c>=75?'Congested':c>=55?'Busy':'Flowing'}</td></tr></table><div class="mut" style="margin-top:6px;font-size:12px">${(S.popWhy&&S.popWhy.length&&S.pop<=S.popPrev)?'Residents are leaving over '+S.popWhy.join(', ')+'.':r<.9?'Housing shortage: rents are rising and residents are angry.':c>=75?'Traffic is hurting trust. Fund Public Works or require roads.':'More jobs bring more residents. Homes keep up with them.'}</div>`;
 }
 
 /* ---------- council relationships ---------- */
@@ -2291,6 +2311,7 @@ function checkEnd(){
 }
 function ending(code){
  clearSave();
+ if(code.startsWith('TERM')||S.week>12)unlockSpeed();
  const [t,msg]=code.split('|');
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  const score=Math.round(S.trust*3+S.env*3+S.dev+Math.min(S.budget/20000,150)+jobs*.4-S.corrupt*2+S.stats.perks*5-S.stats.incidents*3);
@@ -2300,6 +2321,7 @@ function ending(code){
  <p><b>Grade: ${grade}</b> &middot; Score ${score}</p>
  <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
  <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
+ ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Mayor a Coffee</a></p>`:''}
  <button onclick="location.reload()">Run for mayor again</button></div>`;
  $('#overlay').classList.remove('hidden');
 }
@@ -2423,6 +2445,7 @@ async function runGame(){
  try{
   while(true){
    snap={trust:S.trust,env:S.env,dev:S.dev,budget:S.budget};
+   if(S.week>12)unlockSpeed();
    hud();renderProjects();showAgenda(null);
    let e;
    autosave();
@@ -2456,7 +2479,7 @@ async function runGame(){
 }
 
 /* ---------- save, help, feedback ---------- */
-const SAVE_KEY='municipality-tycoon-save-v1',HELP_KEY='municipality-tycoon-help-seen',FEEDBACK_URL='';
+const SAVE_KEY='municipality-tycoon-save-v1',HELP_KEY='municipality-tycoon-help-seen',FEEDBACK_URL='',TIP_URL='';
 const slimProj=p=>{const c={...p,type:p.type.k,rep:{...p.rep}};delete c.rep.el;return c};
 let WEEK_SNAP=null;
 function snapshot(){

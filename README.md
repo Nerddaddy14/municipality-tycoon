@@ -20,6 +20,12 @@ Playtest build. Open the page and press "Call the meeting to order". The game au
 
 The game scales to fit any frame without page scrolling. It switches to fit mode automatically inside an iframe, and anywhere else you can toggle it in the Menu or add `?fit=1` to the URL. `how-to-play.html` is a full player guide, and `portal/SUBMISSION.md` has listing text, tags, technical facts and draft screenshots for portal submissions.
 
+## Support and launch
+
+- **Tip button:** set `TIP_URL` in `index.html` to a Ko-fi, Patreon, or Stripe link and a "Buy the Mayor a Coffee" button appears in the top bar. It hides itself inside iframes.
+- **Speed unlock:** faster text speeds stay locked until a player finishes their first 12-week term.
+- **itch.io:** `python tools/build_itch.py` builds `dist/municipality-tycoon-itch.zip`. Steps and page settings are in `portal/ITCH.md`.
+
 ## Free and paid versions
 
 `index.html` ships fully unlocked (`const GATING=false`). Set `GATING=true` to enforce the split:
