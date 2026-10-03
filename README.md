@@ -14,6 +14,7 @@ Playtest build. Open the page and press "Call the meeting to order". The game au
 - Crises (heat waves, droughts, floods, cyber attacks, scandals, housing protests)
 - Recall elections with challengers and campaigning
 - City attorney advice that may be good or bad, staff reports, closed-door meetings, bribes and leaks
+- Developers with personalities and track records, council story arcs, seasonal festivals, quarterly priorities, and a pool of 16 non-repeating crises plus dozens of project events
 
 ## Free and paid versions
 

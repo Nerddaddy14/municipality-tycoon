@@ -374,7 +374,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,prio:null,fests:[],annexT:0,crisisSeen:[],devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,arcs:{},prio:null,fests:[],annexT:0,crisisSeen:[],devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -507,7 +507,7 @@ function genProject(){
  const heavy=['quarry','chem','fab','crypto','datacenter','warehouse','bottling'].includes(t.k);
  p.zl=clamp((heavy&&sizeF>.35?1:0)+(p.db>=68?1:0)+(Math.random()<.25?1:0)-(sizeF<.15?1:0),0,2);
  p.fl=clamp((t.tags.includes('chem')?1:0)+(t.power>=9?1:0)+(t.k==='battery'?1:0)+(Math.random()<.2?1:0)-(sizeF<.2&&!t.tags.includes('chem')?1:0),0,2);
- p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;p.ordFree=[];
+ p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;p.ordFree=[];p.style=DEVSTYLE[p.company]||'blunt';
  S.ords.forEach(k=>{const o=ORDS.find(x=>x.k===k);if(!o)return;(o.free||[]).forEach(c=>{p.free[c]=true;p.ordFree.push(c)});if(k==='fast')p.durs[0]=1;if(k==='abate')p.tax=Math.round(p.tax*.7)});
  p.offered=offerConds(p);
  p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
@@ -592,10 +592,10 @@ function bakeConds(p){
  const c=p.conds||{},cm=cmods(c),notes=[];
  p.power=Math.round((p.power+cm.power)*10)/10;p.traffic=clamp(p.traffic+cm.traffic,0,10);
  p.jobs=Math.max(2,Math.round(p.jobs*cm.jobs));p.tax=Math.round(p.tax*cm.tax);
- p.riskMult=cm.risk;p.envMult=cm.envd;
+ p.riskMult=cm.risk*(STYLE_RISK[p.style]||1);p.envMult=cm.envd;
  for(const k in c){
   if(!c[k])continue;const d=cdef(k);if(!d)continue;
-  if(d.cash)addBudget(Math.round(p.cost*d.cash),d.name.toLowerCase());
+  if(d.cash)addBudget(Math.min(250000,Math.round(p.cost*d.cash)),d.name.toLowerCase());
   if(d.delay)p.durs[0]=Math.max(1,p.durs[0]+d.delay);
   if(d.trust)adj('trust',d.trust,d.name.toLowerCase());
   if(d.wild){
@@ -897,9 +897,33 @@ async function scandalCheck(){
   }else{await say('mayor','I made a mistake. I will cooperate fully with any inquiry.');adj('trust',-8);adj('corrupt',-30,'came clean');minutes('Mayor came clean about an envelope.','b')}
  }
 }
+BUSINESS.push(
+ {t:'The city clerk reminds residents that dog licenses are due by the first of the month.',w:'jennings',q:'Every dog owes the city. I do not make the rules. I just count the money.'},
+ {t:'The senior center is hosting a free flu shot clinic on Wednesday.',w:'wong',q:'Bring your neighbors. Bring snacks.'},
+ {t:'A resident requests a crosswalk at Fifth and Maple, citing a near miss with a very determined goose.',w:'chen',q:'The goose has rights. So do the pedestrians.'},
+ {t:'The school board invites council members to read to second graders next week.',w:'rodriguez',q:'I will read the one about the dump truck.'},
+ {t:'Waste management reports that Tuesday trash pickup will shift to Wednesday for the holiday.',w:'jennings',q:'I have this on my calendar in three colors.'},
+ {t:'The annual Clifton Chili Cook-Off needs judges.',w:'bradley',q:'I volunteer, for the sake of the community and my appetite.'},
+ {t:'The water department reminds residents not to water lawns between noon and four.',w:'chen',q:'Your lawn is not a person. It does not need a drink at noon.'},
+ {t:'The Planning Department has a new intern named Colby who is very enthusiastic about zoning.',w:'wong',q:'Hire him before another town does.'},
+ {t:'The skate park committee reports that the half-pipe is finally done.',w:'rodriguez',q:'I am too old for the half-pipe, but I respect the half-pipe.'},
+ {t:'The police chief reports a thirteen percent drop in bicycle thefts this quarter.',w:'jennings',q:'Thirteen percent. I like a number with a tidy decimal.'},
+ {t:'The public library is launching a seed swap, tomatoes encouraged.',w:'chen',q:'Native plants only, if I get a vote.'},
+ {t:'A local bakery won a regional award for its cinnamon rolls.',w:'bradley',q:'I am happy to taste test, for civic reasons.'},
+ {t:'Pothole Patrol reports that Fourth Street now has more patch than street.',w:'wong',q:'That is a street with character.'},
+ {t:'The fire department will hold its pancake breakfast on Sunday.',w:'rodriguez',q:'I support any organization that feeds firefighters and me.'},
+ {t:'Residents are reminded that fireworks are not allowed in the town square, despite what a certain group chat claims.',w:'jennings',q:'The group chat is not the municipal code.'},
+ {t:'The community garden has a waiting list of ninety-one people.',w:'wong',q:'Ninety-one people who want to grow a zucchini. That is democracy.'},
+ {t:'The animal shelter is overflowing with kittens and has asked for volunteers.',w:'chen',q:'I have four cats. I am not allowed to volunteer.'},
+ {t:'The parks department is renaming the duck pond. Residents are asked to submit suggestions that are not "Pondy McPondface."',w:'bradley',q:'Too late. I submitted it.'},
+ {t:'The Chamber of Commerce is organizing a downtown sidewalk sale.',w:'bradley',q:'Buy local. Buy early. Buy twice.'},
+ {t:'A new bike lane on Cedar Street opens next month.',w:'chen',q:'More bikes, fewer fumes. Fine by me.'},
+ {t:'The town clock has been repaired and is now exactly six minutes fast.',w:'jennings',q:'Six minutes. I will take it as a gift of time.'},
+ {t:'The school crossing guard, Mr. Henderson, retires this month after thirty-one years.',w:'rodriguez',q:'That man has stopped more traffic than any ordinance ever has.'}
+);
 async function cityBusiness(){
  await say('mayor','First, routine city business.');
- const items=shuffle(BUSINESS).slice(0,2);
+ const items=[fresh('biz',BUSINESS),fresh('biz',BUSINESS)];
  for(const it of items)await say('mayor',it.t);
  await say(items[0].w,items[0].q);
  await say('mayor','Thank you. Moving on.');
@@ -1087,7 +1111,7 @@ function openField(kind,label,vis){
 }
 async function officeMeeting(p){
  if(Math.random()>clamp(.35+S.corrupt/200+p.sizeF*.15,.3,.9))return;
- const bribeP=clamp(.1+S.corrupt/130+(p.cost>=1e7?.12:0),.08,.75);
+ const bribeP=clamp(.1+S.corrupt/130+(p.cost>=1e7?.12:0)+(p.style==='slippery'?.1:0),.08,.75);
  const kind=Math.random()<bribeP?'bribe':pick(['offer','offer','waiver']);
  const vis=kind==='bribe'?{name:'Vince Carrow',role:'Lobbyist, '+p.company,color:'#4a3b6a',...look(),suit:'#222',hair:'#222'}:p.rep;
  const om=openRoom('CLOSED-DOOR MEETING',vis);
@@ -1660,7 +1684,7 @@ function weeklyFinance(){
  const f=finCalc(),L=S.fund;
  S.budget+=f.net;S.q.rev+=f.rev;S.q.exp+=f.exp;
  S.trust=clamp(S.trust+.25*L.parks+.15*L.pw+.1*L.safety-(S.rate-1)*1.2);
- S.dev=clamp(S.dev-(S.rate-1)*.8);
+ S.dev=clamp(S.dev-(S.rate-1)*.8);S.dev=clamp(S.dev+(50-S.dev)*.03);
  if(S.trust>55)S.trust=clamp(S.trust-(S.trust-55)*.06);
  S.env=clamp(S.env+.08*L.parks);
  if(S.budget<0){S.budget-=Math.round(-S.budget*.01);S.defWeeks=(S.defWeeks||0)+1;if(S.defWeeks%2===0)adj('trust',-1,'unpaid bills')}else S.defWeeks=0;
@@ -1888,6 +1912,91 @@ async function festival(){
  showAgenda(null);
 }
 
+/* ---------- council story arcs ---------- */
+const ARCS=[
+ {who:'chen',n:1,at:.2,title:'Dr. Chen\'s grant',text:'Mayor, my lab is applying for a state water-quality grant. The application needs a letter of support from your office.',opts:[
+  {label:'Sign the letter',sub:'She will not forget it.',rel:8,env:3,say:'I would be proud to sign it.',reply:'Thank you. This could fund monitoring for the whole creek.'},
+  {label:'Sign it, and ask for her vote on a big item',sub:'A favor for a favor.',rel:2,commit:.3,say:'I will sign it. And I may ask for your support in return.',reply:'That seems fair. Ask when it matters.'},
+  {label:'Decline politely',sub:'Safe, and a little cold.',rel:-4,say:'I cannot lend my name to every application, Doctor.',reply:'I understand. I had hoped for more.'}]},
+ {who:'chen',n:2,at:.65,title:'The generous developer',text:'A developer has offered my lab a research gift. I did not ask for it, and I do not want it to look like what it is. What should I do?',opts:[
+  {label:'Tell her to disclose it and recuse herself from that project',sub:'The clean answer.',rel:6,corrupt:-2,trust:1,say:'Disclose it, and sit that one out. It is the only answer that holds up.',reply:'You are right. I should have known better.'},
+  {label:'Tell her to take the money quietly',sub:'Convenient. Risky.',rel:4,corrupt:6,commit:.3,say:'Research funding is research funding. Just keep it quiet.',reply:'I will not forget that you protected the lab.'},
+  {label:'Stay out of it',sub:'Not your problem.',rel:-1,say:'That is between you and the ethics office.',reply:'I see. I will handle it myself.'}]},
+ {who:'bradley',n:1,at:.25,title:'The hardware store',text:'Mayor, I need a variance to expand my hardware store\'s loading dock. Yes, I know it is on my own street. It is a perfectly good project.',opts:[
+  {label:'Grant the variance quietly',sub:'A favor. It will look like one.',rel:10,corrupt:4,trust:-2,say:'I do not see why not.',reply:'You will not regret this.'},
+  {label:'Have him recuse and use the normal process',sub:'Fair and a little frosty.',rel:2,trust:1,say:'Go through the normal process, and we will treat it like any other.',reply:'Fair enough. I will file the paperwork.'},
+  {label:'Refuse',sub:'Honest. He will hold a grudge.',rel:-8,trust:2,say:'I cannot grant a variance to a sitting councilmember.',reply:'I see. That is a shame.'}]},
+ {who:'bradley',n:2,at:.7,title:'The Chamber dinner',text:'The Chamber of Commerce wants you to give the keynote at its annual dinner. A packed room of people who sign paychecks, Mayor.',opts:[
+  {label:'Give a pro-growth keynote',sub:'The room will love it.',rel:5,dev:4,trust:-1,say:'I would be glad to. Clifton is open for business.',reply:'Wonderful. I will put you at the head table.'},
+  {label:'Give a balanced keynote',sub:'Honest, and a bit cooler.',rel:1,trust:2,dev:-1,say:'I will come, and I will talk about growth that works for everyone.',reply:'That is a speech I can live with.'},
+  {label:'Send a deputy',sub:'Skipping it sends a message.',rel:-4,say:'My schedule is full. I will send someone.',reply:'The Chamber will notice.'}]},
+ {who:'rodriguez',n:1,at:.3,title:'The union election',text:'Mayor, my local\'s election is next month. A word of support from you would put me over the top.',opts:[
+  {label:'Endorse him',sub:'Rodriguez will owe you.',rel:10,trust:-1,dev:-3,say:'I am happy to support you.',reply:'That means everything. I will be there for you.'},
+  {label:'Stay neutral',sub:'Stay out of union business.',rel:-2,say:'I do not take sides in union elections.',reply:'I understand. I thought we were closer than that.'},
+  {label:'Quietly back his rival',sub:'A risky move.',rel:-10,trust:1,say:'I think the other candidate has the right ideas.',reply:'I will remember that, Mayor.'}]},
+ {who:'rodriguez',n:2,at:.75,title:'The rally at the plant',text:'Workers are rallying at the plant on Friday. I would love for you to say a few words.',opts:[
+  {label:'Speak at the rally',sub:'Workers will cheer. Developers will not.',rel:8,dev:-6,trust:1,say:'I will be there.',reply:'They will remember it.'},
+  {label:'Send a written statement',sub:'Support from a safe distance.',rel:2,say:'I cannot make it, but I will send a statement of support.',reply:'It helps. I wish you could come.'},
+  {label:'Decline',sub:'Developers like it. Labor does not.',rel:-6,dev:2,say:'I have to stay neutral on labor disputes.',reply:'Neutral. Right.'}]},
+ {who:'wong',n:1,at:.25,title:'The petition',text:'I brought eight hundred signatures from the east side. They want this council to slow down on big projects. Will you listen?',opts:[
+  {label:'Hold a public listening session',sub:'Costs time, wins trust.',rel:6,trust:2,say:'I will schedule a session this month.',reply:'Thank you. People just want to be heard.'},
+  {label:'Promise a review of all active projects',sub:'A strong gesture. Developers will notice.',rel:8,trust:3,dev:-3,say:'I will order a review of every active project.',reply:'That is more than I hoped for.'},
+  {label:'Dismiss it',sub:'Simple. Costly.',rel:-8,trust:-2,say:'We have heard these concerns many times.',reply:'That is exactly why people stopped coming to meetings.'}]},
+ {who:'wong',n:2,at:.7,title:'A hard week',text:'The doctors found something, and I will be stepping back for a few weeks for treatment. I wanted you to hear it from me.',opts:[
+  {label:'Offer to postpone controversial votes until she returns',sub:'Generous. Slows things down.',rel:10,trust:-1,dev:-2,say:'We will hold the hard votes until you are back.',reply:'You have no idea how much that means.'},
+  {label:'Take on her committee work',sub:'Practical and kind.',rel:8,trust:1,say:'I will cover your committees. Do not worry about anything here.',reply:'Thank you, Mayor. I will not forget this.'},
+  {label:'Send flowers and a card',sub:'Thoughtful, and the minimum.',rel:4,trust:1,say:'You will have our full support, and a very large bouquet.',reply:'That is sweet of you.'}]},
+ {who:'jennings',n:1,at:.35,title:'The audit',text:'My audit found a $38,000 discrepancy in the parks budget. Someone either made an error or made a choice.',opts:[
+  {label:'Open a formal investigation',sub:'Thorough. Jennings will approve.',rel:8,trust:1,gain:20000,say:'Open a formal investigation. I want every receipt.',reply:'Good. I will have the first report in a week.'},
+  {label:'Quietly correct it',sub:'Easy. It could look like a cover-up.',rel:-2,corrupt:2,say:'Fix it quietly and let us move on.',reply:'I will do it, but I do not love it.'},
+  {label:'Call it rounding',sub:'Jennings will be offended.',rel:-6,trust:-1,say:'It is thirty-eight thousand dollars on a very large budget.',reply:'Rounding. You said rounding.'}]},
+ {who:'jennings',n:2,at:.8,title:'Retirement',text:'I am seventy-one, Mayor. I have been thinking that it might be time.',opts:[
+  {label:'Honor his service with a plaque ($5K)',sub:'Heartfelt. He deserves it.',rel:10,trust:1,cost:5000,say:'You have given this town more than anyone knows. We will honor it.',reply:'I am speechless, which my wife says is a first.'},
+  {label:'Ask him to stay through the term',sub:'You still need him.',rel:6,commit:.25,say:'Stay through the end of this term. This council needs you.',reply:'For you, Mayor, I will stay.'},
+  {label:'Start looking for a successor',sub:'Practical. A little cold.',rel:-4,say:'Perhaps we should start thinking about a transition.',reply:'Of course. I am not indispensable.'}]}
+];
+async function arcCheck(){
+ S.arcs=S.arcs||{};
+ const order=shuffle(COUNCIL);
+ for(const m of order){
+  const done=S.arcs[m.id]||0;
+  const beat=ARCS.find(a=>a.who===m.id&&a.n===done+1);
+  if(!beat||S.week<Math.round(S.maxWeeks*beat.at)||Math.random()>.6)continue;
+  S.arcs[m.id]=done+1;
+  const v={...m};
+  openRoom('A WORD WITH '+m.short.toUpperCase(),v);
+  await say('office',`${m.name} asks for a private word after the meeting.`);
+  await say(v,beat.text);
+  const k=await ask(beat.title,beat.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.sub})));
+  const o=beat.opts[+k];
+  await say('mayor',o.say);
+  await say(v,o.reply);
+  if(o.rel)adjRel(m.id,o.rel,beat.title.toLowerCase());
+  if(o.trust)adj('trust',o.trust);if(o.dev)adj('dev',o.dev);if(o.corrupt)adj('corrupt',o.corrupt);if(o.env)adj('env',o.env);
+  if(o.cost)addBudget(-o.cost,beat.title.toLowerCase());if(o.gain)addBudget(o.gain,'recovered funds');
+  if(o.commit)S.commit[m.id]=Math.max(S.commit[m.id]||0,o.commit);
+  minutes(`${m.short}: ${beat.title}.`);
+  closeOverlay('office');
+  renderCouncil();
+  return;
+ }
+}
+
+/* ---------- developers: personalities and track records ---------- */
+const DEVSTYLE={'Apex Meridian':'blunt','Northgate Capital':'charming','BlueRidge Development':'earnest','Titan Ventures':'slippery','Summit & Stone':'earnest','Vantage Build Group':'blunt','Clearwater Holdings':'charming','Ironwood Partners':'slippery'};
+const STYLE_RISK={slippery:1.2,earnest:.9,blunt:1,charming:1.05};
+function devPitch(p){
+ const h=(S.devHist&&S.devHist[p.company])||{},facts=`a ${money(p.cost)} ${p.type.name} at ${p.site}, with ${num(p.jobs)} jobs and ${money(p.tax)} a year in taxes.`;
+ const hist=(h.incidents||0)>=2?' I know we have had our troubles here, and I want to earn back your trust.':(h.perks||0)>=2?' Our record in Clifton speaks for itself.':(h.denied||0)>=1?' We were disappointed last time, but we are back with a better plan.':'';
+ const L={
+  blunt:[`Thank you. Here is the pitch: ${facts}${hist}`,`I will keep this short. ${p.company} wants to build ${facts}${hist}`,`${p.company} has a project for Clifton: ${facts}${hist}`],
+  charming:[`Mayor, council, what a wonderful town. ${p.company} would be honored to build ${facts}${hist}`,`It is a pleasure to be in Clifton. We are proposing ${facts}${hist} I think you will love what we have planned.`,`Good evening, friends. ${p.company} is in this for the long haul: ${facts}${hist}`],
+  earnest:[`Thank you for having us. We have listened to this community, and we think this fits: ${facts}${hist}`,`We have studied Clifton carefully. ${p.company} is proposing ${facts}${hist} We are open to your conditions.`,`Mayor, we care about getting this right. Our proposal is ${facts}${hist}`],
+  slippery:[`Thanks for having us. This is a straightforward win-win: ${facts}${hist}`,`I will not bore you with details, since they are all in your packet. ${p.company} is proposing ${facts}${hist}`,`${p.company} proposes ${facts}${hist} I would not worry about the fine print.`]
+ }[p.style||'blunt'];
+ return fresh('pitch-'+(p.style||'blunt'),L);
+}
+
 /* ---------- multi-item agenda ---------- */
 const PETITIONS=[
  {t:'Speed bumps on Elm Street',cost:25000,gain:3,ask:'Cars fly down Elm Street past the school. We collected 400 signatures asking for speed bumps.',sign:'SLOW DOWN'},
@@ -1993,7 +2102,7 @@ async function variance(v){
  showAgenda(null);
 }
 function buildExtras(){
- const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],canOrd=ORDS.some(o=>!S.ords.includes(o.k));
+ const n=S.week<=3?1:(S.maxWeeks>20&&S.week>=15?(Math.random()<.55?2:3):(Math.random()<.5?2:1)),out=[],canOrd=ORDS.some(o=>!S.ords.includes(o.k));
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:FESTIVALS[Math.floor((S.week-1)/13)%4].t})}
  const NEWITEMS=[{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
@@ -2045,7 +2154,7 @@ async function newProject(){
  if(returning){
   await say(p.rep,fresh('dev-ret',[`Thank you. We have read the reports and we are ready to answer any questions. We still believe this is a good fit for Clifton.`,`We appreciate the extra time, Mayor. The reports raise fair points, and we will work with the council on conditions.`,`The delay cost us, but we respect the process. We stand by our proposal: ${num(p.jobs)} jobs and ${money(p.tax)} a year.`]));
  }else{
-  await say(p.rep,`Thank you, Mayor and members of the council. ${p.company} is proud to bring a ${money(p.cost)} ${p.type.name} to ${p.site}. We will create ${num(p.jobs)} jobs and generate ${money(p.tax)} a year in tax revenue.`);
+  await say(p.rep,devPitch(p));
   const sp=p.water>=2e4?`Yes, it uses ${num(p.water)} gallons of water a day, but that is a drop in the bucket compared to the regional supply.`:p.db>=65?'There may be some operational sound, but we like to call it the sound of progress.':p.traffic>=7?'Truck traffic will be noticeable. We have a plan for that. Mostly.':'We expect minimal impacts on the surrounding community.';
   await say(p.rep,sp);
  }
@@ -2121,14 +2230,14 @@ async function newProject(){
  }
  const pubSign=sup-opp;
  if(final){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
-  adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(10-burden(p.conds,p)*1.5,2,12)));
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
+  adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(7-burden(p.conds,p)*1.2,1,8)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
   minutes(`Approved the ${p.type.name} (${yes}-${no}).`,'g');renderProjects();
   for(const n of bakeConds(p))await say('clerk',n);
  }else{
-  S.stats.denied++;adj('trust',pubSign<0?4:-3,pubSign<0?'public opposed':'jobs lost');adj('dev',-10);
+  S.stats.denied++;histNote(p.company,'denied');adj('trust',pubSign<0?4:-3,pubSign<0?'public opposed':'jobs lost');adj('dev',-10);
   if(p.sizeF>.35&&Math.random()<(p.findings?0:p.noFindings?.85:.35)){const l=ri(100,500)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs');}
   minutes(`Denied the ${p.type.name} (${yes}-${no}).`,'b');
  }
@@ -2306,6 +2415,7 @@ async function runGame(){
     e=checkEnd();if(e)return ending(e);
     await cityBusiness();
     await memberMoment();
+    await arcCheck();
     await projectUpdates('meeting');
     await crisisCheck('meeting');
     e=checkEnd();if(e)return ending(e);
