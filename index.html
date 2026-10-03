@@ -1435,7 +1435,8 @@ async function chamberDeal(forceBad){
  S.deals=S.deals||[];
  const heavy=ap&&(ap.cost>=2e7||['datacenter','fab','chem','crypto','bottling','hospital'].includes(ap.type.k));
  const badP=forceBad?1:clamp(.42+(S.dev>=65?.12:0)+((S.stats.bribes||0)>0?.08:0)+(heavy?.06:0),.3,.7);
- const bad=Math.random()<badP;
+ const bad=(S.forceGood&&!forceBad)?false:Math.random()<badP;
+ S.forceGood=0;
  let pool=(bad?CH_BAD:CH_GOOD).filter(t=>!t.needsProject||ap);
  const seen=S.dealSeen||(S.dealSeen=[]);
  let fresh_=pool.filter(t=>!seen.includes(t.k));if(!fresh_.length)fresh_=pool;
@@ -2319,6 +2320,92 @@ async function midtermElection(){
 async function electionCheck(){
  if(S.election||S.week<3||S.week<Math.round(S.maxWeeks*.5))return;
  await midtermElection();
+}
+/* ---------- big news: employers, parades, dignitaries and visitors ---------- */
+async function plantClosing(){
+ const n=ri(180,320);
+ showAgendaCard('Plant closing','Dunmore Gear and Tool',[['Jobs lost',n],['Notice','60 days'],['History','Founded 1957']]);
+ await say('mayor','There is bad news from the east side. Dunmore Gear and Tool has announced it will close its Clifton plant.');
+ const R={...lookR(),name:'Roy Pickett',role:'Machinist, 31 years',color:'#8a5a2a',sign:'31 YEARS',mood:'sad'};
+ await showSpeaker(R);await say(R,`Mayor, I started on the line when I was nineteen. They gave us sixty days. ${n} of us are out of work, and the next plant is two hours away.`);await hideSpeaker();
+ await say('rodriguez','These are my people. Do something, Mayor. Anything.');
+ await say('bradley','Plants close. Towns that adapt survive. Let us not make this worse than it is.');
+ const opts=[];if(S.budget>=40000)opts.push({k:'retrain',label:'Offer a retraining and relocation package ($40K)',sub:'Softens the blow. Fewer families leave.',cls:'go'});
+ opts.push({k:'court',label:'Ask the Chamber to court a replacement employer',sub:'Free to the city. You owe Wally one.'},{k:'accept',label:'Accept the loss',sub:'Nothing to spend. A lot of hurt.',cls:'stop'});
+ const k=await ask('Plant closing',opts);
+ if(k==='retrain'){addBudget(-40000,'retraining package');S.pop=Math.max(4000,S.pop-60);adj('trust',2);grp('labor',6);adjRel('rodriguez',6,'');await say('mayor','The city will fund retraining and moving help for every worker.')}
+ else if(k==='court'){S.pop=Math.max(4000,S.pop-110);chAdj(3);S.forceGood=1;adj('trust',-1);grp('labor',-2);await say('mayor','I will ask Wally Handshaw to bring a replacement employer to Clifton as quickly as possible.');await wallySays('A plant closing is just a ribbon-cutting waiting to happen, partner!')}
+ else{S.pop=Math.max(4000,S.pop-170);adj('trust',-3);grp('labor',-6);adjRel('rodriguez',-7,'');await say('mayor','The city has limited options, and I am sorry for every worker affected.')}
+ queueStory({h:`DUNMORE GEAR AND TOOL TO CLOSE; ${n} JOBS LOST`,sub:`The plant has operated in Clifton since 1957. ${k==='retrain'?'The city promised retraining help.':k==='court'?'The mayor will ask the Chamber to find a replacement.':'The mayor said the city had limited options.'}`,who:'mayor',mood:k==='accept'?'angry':'neutral',trust:k==='accept'?-1:0,min:'The Courier covered the plant closing.'});
+ showAgenda(null);
+}
+async function headquarters(){
+ showAgendaCard('Headquarters site selection','Prairie Mutual Insurance',[['Jobs','About 400'],['Competing towns','Three'],['Decision','In six weeks']]);
+ await say('mayor','A regional insurance company is looking for a new headquarters site, and Clifton is on the short list.');
+ await wallySays('Mayor! Partner! Prairie Mutual! Four hundred jobs! I have been dreaming about this ribbon since I was a catfish!');
+ await say('wong','What are they asking for?');
+ await wallySays('Incentives. Of course. A little something to help them make up their minds. I have some ideas, and some of them are even legal.');
+ const opts=[];if(S.budget>=30000)opts.push({k:'public',label:'Make a modest public bid ($30K)',sub:'About a 50% chance. Transparent.',cls:'go'});
+ opts.push({k:'secret',label:'Let the Chamber put together a confidential package',sub:'About a 70% chance. Terms stay secret, and secrets leak.',cls:'stop'},{k:'pass',label:'Pass',sub:'No risk, no reward.'});
+ const k=await ask('Headquarters site selection',opts);
+ if(k==='pass'){await say('mayor','Thank you, Wally. We will sit this one out.');showAgenda(null);return}
+ if(k==='public')addBudget(-30000,'HQ bid');
+ const win=Math.random()<(k==='secret'?.7:.5);
+ if(win){
+  S.pop+=180;adj('trust',3);adj('dev',4);S.budget+=0;
+  if(k==='secret'){(S.deals=S.deals||[]).push({k:'hq',title:'Headquarters incentive package',week:S.week,real:'It is a ten-year tax holiday and free land, never disclosed to the council.',secret:true,ended:false,leak:.1,sev:.7,weekly:{budget:-1500},proj:'Prairie Mutual headquarters'});chAdj(8);S.stats.badDeals=(S.stats.badDeals||0)+1}
+  await say('clerk','Mayor, Prairie Mutual has chosen Clifton for its new headquarters.');
+  await wallySays('A WIN-WIN-WIN! I am so happy I could cut my own tie!');
+  queueStory({h:'PRAIRIE MUTUAL CHOOSES CLIFTON FOR HEADQUARTERS',sub:'About 400 jobs are expected over three years. The terms of the deal were not disclosed.',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the headquarters win.'});
+ }else{
+  adj('trust',-1);
+  await say('clerk','Mayor, Prairie Mutual has chosen a town in the next county.');
+  await wallySays('A setback. A setback is just a ribbon waiting to happen.');
+ }
+ showAgenda(null);
+}
+async function parade(){
+ showAgendaCard('Championship parade','Clifton Riverhawks',[['Event','League championship'],['Cost','$15,000'],['Grand marshal','To be determined']]);
+ await say('mayor','The Clifton Riverhawks have won the regional baseball championship, for the first time in forty years.');
+ await say('rodriguez','I cried. I am not ashamed of it.');
+ await wallySays('Mayor! Partner! A parade! I will be the Grand Marshal! I will be in the suit! I mean, I will be in a suit. A real suit. With a tie. Maybe a fin.');
+ await say('wong','Please say the fin is optional.');
+ const opts=[];if(S.budget>=15000)opts.push({k:'big',label:'Fund the full parade ($15K)',sub:'Marching bands, floats, and Wally in some form of fish.',cls:'go'});
+ opts.push({k:'small',label:'A modest parade on Main Street',sub:'Cheap and cheerful.'},{k:'skip',label:'Skip it',sub:'Baseball fans will remember.',cls:'stop'});
+ const k=await ask('Championship parade',opts);
+ if(k==='big'){addBudget(-15000,'championship parade');adj('trust',4);chAdj(4);await say('mayor','We will hold the parade this Saturday, and the Riverhawks will lead it.');await wallySays('I will wave to every child in Clifton, and some of the adults. Mostly the children.');queueStory({h:'THOUSANDS TURN OUT FOR RIVERHAWKS PARADE',sub:'The grand marshal, a local booster in a catfish-themed vest, was seen shaking hands for three straight hours.',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the championship parade.'})}
+ else if(k==='small'){adj('trust',1);await say('mayor','We will hold a modest parade on Main Street.')}
+ else{adj('trust',-3);await say('mayor','We will pass on the parade this year.')}
+ showAgenda(null);
+}
+async function governorVisit(){
+ const G={...lookPro(),name:'Governor Tammy Rasch',role:'Governor',color:'#2b3a6a',suit:'#2b3a6a',cl:'blazer',hs:'bob',hair:'#8a8a90'};
+ showAgendaCard('Governor visit','Photo op',[['Visitor','The Governor'],['Time','One hour'],['Cameras','Statewide']]);
+ await say('clerk','Mayor, the Governor is making a swing through the county, and her office has asked for a stop in Clifton.');
+ await say('mayor','Where do we take her?');
+ const op=S.projects.filter(p=>p.stage===OPER).sort((a,b)=>b.cost-a.cost)[0];
+ const opts=[{k:'proud',label:op?`Show off the ${op.type.name}`:'Show off downtown',sub:'A polished photo op. Developers love it.'},{k:'problem',label:'Show her a problem you need help with',sub:'Honest, and a bid for state attention.'},{k:'wally',label:'Let the Chamber host the visit',sub:'Wally will make the most of it. Wally will make too much of it.'}];
+ const k=await ask('Governor visit',opts);
+ if(k==='proud'){adj('trust',2);adj('dev',3);await say('mayor',`Governor, I would like you to see our ${op?op.type.name:'downtown'}. It is the best of what Clifton can do.`);await showSpeaker(G);await say(G,'This is impressive, Mayor. Mind if I get a photo with the construction crew?');await hideSpeaker()}
+ else if(k==='problem'){adj('trust',1);S.budget+=60000;toast('Treasury +$60K (state discretionary fund)',true);await say('mayor','Governor, I want to show you the east side. The roads, the fire response, the schools. We need help, and I would rather be honest about it.');await showSpeaker(G);await say(G,'I appreciate the candor. I will see what my office can do.');await hideSpeaker()}
+ else{chAdj(6);adj('dev',2);await say('mayor','Wally Handshaw will be your host, Governor.');await wallySays('Governor! Partner! Did you know I have cut eighty-seven ribbons in a single year? I have a pair of scissors in my car. Shall I?');await showSpeaker(G);await say(G,'Perhaps later, Mr. Handshaw.');await hideSpeaker();queueStory({h:'GOVERNOR VISITS CLIFTON, GETS THE CHAMBER TOUR',sub:'The visit included a long tour of the Chamber trophy case. A spokesperson called it "memorable."',who:'mayor',mood:'happy',trust:0,min:'The Courier covered the Governor visit.'})}
+ minutes('The Governor visited Clifton.','g');
+ showAgenda(null);
+}
+async function sisterCity(){
+ showAgendaCard('Sister city delegation','Kleinhausen',[['Visitors','Six, plus a mayor and a translator'],['Stay','Three days'],['Cost to host','$6,000']]);
+ await say('mayor','Our sister city in Germany has sent a delegation to visit Clifton.');
+ const V={...lookPro(),name:'Burgermeister Konrad Albers',role:'Mayor of Kleinhausen',color:'#8a2b2b',suit:'#3a3a4a',hs:'balding',hair:'#cccccc'};
+ await showSpeaker(V);await say(V,'Herr Mayor, we bring you greetings, a wheel of cheese, and a gift for your town: a copper weathervane in the shape of a catfish. Our carver was told this is your local symbol.');await hideSpeaker();
+ await say('jennings','We do not have an official catfish. Do we have an official catfish?');
+ await wallySays('We have an UNOFFICIAL catfish. His name is Whiskers. He is a mascot. I was him.');
+ const opts=[];if(S.budget>=6000)opts.push({k:'host',label:'Host a banquet ($6K)',sub:'Warm, awkward, and memorable.',cls:'go'});
+ opts.push({k:'coffee',label:'Coffee and a tour of City Hall',sub:'Polite and cheap.'},{k:'decline',label:'Send regrets',sub:'An international incident, but a small one.',cls:'stop'});
+ const k=await ask('Sister city delegation',opts);
+ if(k==='host'){addBudget(-6000,'sister city banquet');adj('trust',2);adj('dev',1);await say('mayor','Please join us for a banquet, and, for the record, Whiskers is welcome too.');queueStory({h:'CATFISH WEATHERVANE ARRIVES FROM GERMANY',sub:'The gift from Clifton\'s sister city will be installed on City Hall. The mayor called it "an honor, and a surprise."',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the sister city visit.'})}
+ else if(k==='coffee'){adj('trust',1);await say('mayor','We will give you a tour, and a lot of coffee.')}
+ else{adj('trust',-1);adj('dev',-1);await say('mayor','I am afraid we cannot host you this time. Please accept our regrets.')}
+ showAgenda(null);
 }
 async function scandalCheck(){
  if(S.corrupt>=100)return;
@@ -4457,7 +4544,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'group',t:'Interest group meeting',f:groupMeeting,w:S.week>=5},{k:'stategrant',t:'State infrastructure grant',f:stateGrant,w:S.week>=8},{k:'statemandate',t:'State mandate',f:stateMandate,w:S.week>=10},{k:'fedaid',t:'Federal disaster aid',f:federalAid,w:!!S.disaster},{k:'townhall',t:'Town hall meeting',f:townHall,w:S.week>=5&&S.week-(S.thLast||-99)>=(S.maxWeeks>20?13:99)},{k:'referendum',t:'Referendum petition',f:referendum,w:S.projects.some(x=>x.stage<=1&&x.sizeF>.35&&x.pubSign<0&&!x.refDone)},{k:'trail',t:'Riverwalk trail grant',f:trailGrant,w:S.week>=7&&!PF().trail},{k:'dogpark',t:'Dog park petition',f:dogPark,w:S.week>=6&&!PF().dog},{k:'playground',t:'Playground safety',f:playground,w:S.week>=9&&!PF().play},{k:'library',t:'Library hours',f:libraryHours,w:S.week>=5},{k:'bus',t:'Transit proposal',f:busRoute,w:S.week>=9&&!S.transit},{k:'fiber',t:'Fiber broadband',f:fiberCoop,w:S.week>=10&&!S.fiber},{k:'hospital',t:'Hospital finances',f:hospitalBoard,w:S.week>=11},{k:'firestation',t:'Second fire station',f:fireStation,w:S.week>=8&&fireRT()>=7},{k:'ems',t:'Ambulance service contract',f:emsContract,w:S.week>=7&&!S.emsMode},{k:'volfire',t:'Volunteer firefighters',f:volunteers,w:S.week>=6&&!S.volStipend},{k:'schoolbond',t:'School bond measure',f:schoolBond,w:S.week>=8&&schoolLoad()>=90},{k:'teacher',t:'Teacher retention request',f:teacherPay,w:S.week>=6},{k:'portables',t:'Portable classrooms',f:portables,w:schoolLoad()>=96},{k:'merge',t:'School consolidation',f:schoolMerge,w:S.week>=10&&schoolLoad()<=76},{k:'afford',t:'Affordable housing proposal',f:affordableProject,w:S.week>=6},{k:'shelter',t:'Shelter and encampments',f:shelter,w:S.week>=8&&HOMELESS()>=40},{k:'rentstab',t:'Rent stabilization petition',f:rentStab,w:S.week>=8&&RENT()>=112},{k:'mobile',t:'Mobile home park closure',f:mobilePark,w:S.week>=9},{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'plant',t:'Plant closing',f:plantClosing,w:S.week>=8&&S.pop>=11500},{k:'hq',t:'Headquarters site selection',f:headquarters,w:S.week>=9},{k:'parade',t:'Championship parade',f:parade,w:S.week>=6},{k:'govvisit',t:'Governor visit',f:governorVisit,w:S.week>=10},{k:'sister',t:'Sister city delegation',f:sisterCity,w:S.week>=7},{k:'group',t:'Interest group meeting',f:groupMeeting,w:S.week>=5},{k:'stategrant',t:'State infrastructure grant',f:stateGrant,w:S.week>=8},{k:'statemandate',t:'State mandate',f:stateMandate,w:S.week>=10},{k:'fedaid',t:'Federal disaster aid',f:federalAid,w:!!S.disaster},{k:'townhall',t:'Town hall meeting',f:townHall,w:S.week>=5&&S.week-(S.thLast||-99)>=(S.maxWeeks>20?13:99)},{k:'referendum',t:'Referendum petition',f:referendum,w:S.projects.some(x=>x.stage<=1&&x.sizeF>.35&&x.pubSign<0&&!x.refDone)},{k:'trail',t:'Riverwalk trail grant',f:trailGrant,w:S.week>=7&&!PF().trail},{k:'dogpark',t:'Dog park petition',f:dogPark,w:S.week>=6&&!PF().dog},{k:'playground',t:'Playground safety',f:playground,w:S.week>=9&&!PF().play},{k:'library',t:'Library hours',f:libraryHours,w:S.week>=5},{k:'bus',t:'Transit proposal',f:busRoute,w:S.week>=9&&!S.transit},{k:'fiber',t:'Fiber broadband',f:fiberCoop,w:S.week>=10&&!S.fiber},{k:'hospital',t:'Hospital finances',f:hospitalBoard,w:S.week>=11},{k:'firestation',t:'Second fire station',f:fireStation,w:S.week>=8&&fireRT()>=7},{k:'ems',t:'Ambulance service contract',f:emsContract,w:S.week>=7&&!S.emsMode},{k:'volfire',t:'Volunteer firefighters',f:volunteers,w:S.week>=6&&!S.volStipend},{k:'schoolbond',t:'School bond measure',f:schoolBond,w:S.week>=8&&schoolLoad()>=90},{k:'teacher',t:'Teacher retention request',f:teacherPay,w:S.week>=6},{k:'portables',t:'Portable classrooms',f:portables,w:schoolLoad()>=96},{k:'merge',t:'School consolidation',f:schoolMerge,w:S.week>=10&&schoolLoad()<=76},{k:'afford',t:'Affordable housing proposal',f:affordableProject,w:S.week>=6},{k:'shelter',t:'Shelter and encampments',f:shelter,w:S.week>=8&&HOMELESS()>=40},{k:'rentstab',t:'Rent stabilization petition',f:rentStab,w:S.week>=8&&RENT()>=112},{k:'mobile',t:'Mobile home park closure',f:mobilePark,w:S.week>=9},{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
