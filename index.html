@@ -811,6 +811,7 @@ const CONDS=[
  {k:'canopy',spec:1,when:p=>p.type.k==='ev',name:'Solar canopy over the chargers',desc:'Cuts grid demand and looks good.',b:2,mod:{power:-2},appeal:{env:.5,dev:-.2}},
  {k:'curfew',spec:1,when:p=>p.type.k==='airstrip',name:'Night flight curfew',desc:'About 10 dB quieter at night. Fewer flights.',b:1,mod:{db:-10,jobs:.95},appeal:{res:.6,dev:-.3}},
  {k:'schoolfee',spec:1,when:p=>p.units>=100,name:'School impact fee (1% of cost)',desc:'The developer pays toward new classroom seats. The council likes it.',b:1,appeal:{res:.4,dev:-.2}},
+ {k:'ladder',spec:1,when:p=>['apts','hotel','hospital'].includes(p.type.k)&&p.sizeF>.25,name:'Developer funds a ladder truck',desc:'Cuts the fire department response time for good.',b:2,appeal:{res:.3,dev:-.2}},
  {k:'retain',spec:1,when:isSurv,name:'Data retention limit (30 days)',desc:'Plate data is deleted after a month. Less to misuse or leak.',b:1,risk:.8,appeal:{res:.5,dev:-.1}},
  {k:'warrant',spec:1,when:isSurv,name:'Warrant required for searches',desc:'Officers need a judge before looking anyone up. Cuts wrongful stops and misuse.',b:2,risk:.6,appeal:{res:.7,dev:-.3}},
  {k:'audit',spec:1,when:isSurv,name:'Public audit log and transparency portal',desc:'Every search is logged and published. Raises trust.',b:2,risk:.7,trust:2,appeal:{res:.6,dev:-.2}},
@@ -963,7 +964,7 @@ function gridEv(p,gl){
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
  const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
- $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${bar(Math.min(schoolLoad(),130),'School capacity used','')}${bar(clamp(Math.round((RENT()-80)/70*100),0,130),'Rent pressure','')}${S.probe?`<div class="mut" style="margin-top:6px;font-size:12px">Ethics probe open: ${S.probe.title.toLowerCase()} (finding due week ${S.probe.due})</div>`:''}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${(()=>{const rt=fireRT(),c=rt>=10?'var(--bad)':rt>=8?'var(--acc)':'var(--good)';return `<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>Emergency response</span><b style="color:${c}">${rt.toFixed(1)} min</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${clamp((rt-3)*9,4,100)}%;background:${c}"></i></div></div></div>`})()}${bar(Math.round(100-STR()),'Street wear','')}${bar(Math.min(schoolLoad(),130),'School capacity used','')}${bar(clamp(Math.round((RENT()-80)/70*100),0,130),'Rent pressure','')}${S.probe?`<div class="mut" style="margin-top:6px;font-size:12px">Ethics probe open: ${S.probe.title.toLowerCase()} (finding due week ${S.probe.due})</div>`:''}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
 }
 function renderProjects(){
  const el=$('#projs');
@@ -1098,6 +1099,7 @@ const EV=[
  {good:1,id:'recovered',st:[4],when:isSurv,make:p=>({title:'Stolen vehicle recovered',text:`The ${p.type.name} flagged a stolen car heading out of town. Officers recovered it within the hour and arrested two suspects wanted in three counties.`,dev:'This is exactly what the system is for.',chief:'That is a case we would not have made a year ago. I will take wins like this all day.',trust:2,env:0})},
  {good:1,id:'missing',st:[4],when:isSurv,make:p=>({title:'Missing person found',text:`A camera alert helped officers find a missing teenager at a bus station two counties away, safe and unharmed.`,dev:'We are glad it helped, and we will keep working with the department.',chief:'The family called us crying. I am not going to pretend that does not matter.',trust:3,env:0})},
  {good:1,id:'ring',st:[4],when:isSurv,make:p=>({title:'Burglary ring arrested',text:`Plate reads tied one van to eleven burglaries across Clifton and Millbrook. Police made arrests Tuesday.`,dev:'We are proud of the role our system played.',chief:'Eleven burglaries, one van. That is a case that used to take months.',trust:2,env:0})},
+ {bad:1,id:'structfire',st:[4],when:p=>p.sizeF>.15,make:p=>{const rt=fireRT();return{title:'Structure fire',text:`A fire broke out at the ${p.type.name}. Engines took ${rt.toFixed(1)} minutes to arrive. ${rt>=8?'The building took heavy damage before crews could get ahead of it.':'Crews contained it quickly, but the loss was still significant.'}`,dev:'Our systems worked as designed, and we are cooperating with the fire marshal.',chief:rt>=8?'That was too slow, Mayor. A second station and more crews on the east side would have cut that response by a third.':'My crews did their job. A sprinkler retrofit would make the next one smaller.',env:rt>=8?4:2,fine:rt>=8?90000:50000,topic:'safety',extra:{label:'Require a sprinkler and alarm retrofit',sub:'Cuts the odds of another serious fire.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}}}},
  {bad:1,id:'ambulance',st:[4],when:p=>p.type.k==='hospital',make:p=>({title:'Ambulance gridlock',text:`Ambulances backed up for forty minutes outside the ${p.type.name} after a road closure, and two patients were diverted to Millbrook.`,dev:'We have asked the city to improve access. We staff to the standard we were given.',chief:'Every minute matters, Mayor. A second access road would help my officers as well.',env:0,fine:50000,topic:'traffic',extra:{label:'Require a second access road',sub:'The developer pays. Fewer repeat incidents.',dev:-5,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}})},
  {good:1,id:'healthfair',st:[4],when:p=>p.type.k==='hospital',make:p=>({title:'Free health fair',text:`The ${p.type.name} hosted a free health fair at the high school gym. Four hundred residents got screenings, and eleven were referred for early treatment.`,dev:'This is why we are here.',trust:3,env:0})},
  {bad:1,id:'dropgrid',st:[4],when:p=>p.type.k==='school',make:p=>({title:'Drop-off gridlock',text:`Parents lined up for half a mile at the ${p.type.name} on the first rainy morning of the term. A school bus was blocked for twenty minutes.`,dev:'We are adding staggered start times. Families are still adjusting.',env:0,fine:30000,topic:'traffic',extra:{label:'Require a traffic plan and turn lane',sub:'The school pays. Cuts repeat jams.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}})},
@@ -1864,6 +1866,71 @@ async function schoolInput(p){
  if(p.type.k==='school')await supSays(`The charter school would take pressure off our buildings, and it would also draw students and funding from the district. I am cautiously supportive. Enrollment sits at ${L} percent of capacity.`);
  else await supSays(`A hundred and more new apartments means more children, Mayor. We are already at ${L} percent of capacity. A school impact fee would help, and I would ask the council to consider one.`);
 }
+/* ---------- fire and EMS ---------- */
+const fireRT=()=>clamp(6.2+Math.max(0,S.pop-12000)/6000*.9+trafficIdx()/150-S.fund.safety*.6-(S.stations||0)*1.1-(S.fireBonus||0)-(S.emsMode==='city'?1:S.emsMode==='private'?.5:0)+(S.volShort?1:0)+(S.volStipend?-.3:0),3.5,14);
+let _fch=null;
+function fireChief(){return _fch||(_fch={...lookPro(),name:'Chief Arlen Schroeder',role:'Fire Chief',color:'#a8412b',cl:'uniform',hs:'short',suit:'#a8412b',hair:'#9a9a9a',fh:'mustache'})}
+async function fireSays(t){const C=fireChief();await showSpeaker(C);await say(C,t);await hideSpeaker()}
+function weeklyFire(){
+ const rt=fireRT();
+ if(rt>=11)S.trust=clamp(S.trust-.3);else if(rt>=9)S.trust=clamp(S.trust-.15);
+ S.fireFlag=S.fireFlag||{};
+ if(rt>=10.5&&!S.fireFlag.slow){S.fireFlag.slow=1;queueStory({h:'AMBULANCES TAKE 11 MINUTES TO REACH EAST SIDE',sub:'A family says it waited longer than they thought possible. The fire chief says his crews are stretched thin.',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported slow emergency response.'})}
+ else if(rt<9)S.fireFlag.slow=0;
+}
+async function fireStation(){
+ const rt=fireRT();
+ showAgendaCard('Second fire station','East side coverage',[['Response time',rt.toFixed(1)+' minutes'],['Cost','$240,000'],['Stations',1+(S.stations||0)]]);
+ await say('mayor','The Fire Chief has a capital request.');
+ await fireSays(`Mayor, council, on the east side we are at ${rt.toFixed(1)} minutes. The standard is under six. A second station near Quarry Lane would cover the gap, and it would cost about two hundred forty thousand dollars.`);
+ await say('jennings','A quarter of a million dollars is not a rounding error.');
+ await say('rodriguez','It is a lot less than the cost of a house fire. I have seen both.');
+ const opts=[];if(S.budget>=240000)opts.push({k:'build',label:'Fund the station ($240K)',sub:'Response times drop a lot for years. Firefighters and residents are grateful.',cls:'go'});
+ opts.push({k:'grant',label:'Apply for a federal staffing and facilities grant ($5K)',sub:'About a 45% chance. Free if it works.'},{k:'wait',label:'Defer it',sub:'Saves money. Response times stay long.',cls:'stop'});
+ if(S.budget<5000)opts.splice(opts.findIndex(o=>o.k==='grant'),1);
+ const k=await ask('Second fire station',opts);
+ if(k==='build'){addBudget(-240000,'fire station');S.stations=(S.stations||0)+1;adj('trust',3);adjRel('rodriguez',5,'');adjRel('jennings',-4,'');await say('mayor','The second station is approved. It will be on the east side, near Quarry Lane.');queueStory({h:'EAST SIDE GETS ITS OWN FIRE STATION',sub:'Response times in the east side are expected to drop by more than a third.',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the new fire station.'})}
+ else if(k==='grant'){addBudget(-5000,'grant application');if(Math.random()<.45){S.stations=(S.stations||0)+1;adj('trust',2);await say('mayor','We got the grant. The station is on its way.');await fireSays('Mayor, I will frame the letter.')}else{await say('mayor','We applied, but the grant was not awarded this round.');await fireSays('We will try again. The need will not go away.')}}
+ else{adj('trust',-2);adjRel('rodriguez',-4,'');await say('mayor','We will defer this one. Please keep your crews safe.')}
+ showAgenda(null);
+}
+async function emsContract(){
+ const rt=fireRT();
+ showAgendaCard('Ambulance service contract','Emergency medical services',[['Response time',rt.toFixed(1)+' minutes'],['Current provider',({county:'County',private:'Private contractor',city:'City-run'})[S.emsMode||'county']]]);
+ await say('mayor','The county is renegotiating the ambulance service contract.');
+ await fireSays('Mayor, the county provider is understaffed, and the contract is up. We can stay with the county, hire a private contractor, or run EMS ourselves. They all cost money. They all cost different amounts.');
+ await say('chen','I would like the option that does not leave a grandmother waiting twenty minutes.');
+ const opts=[{k:'county',label:'Renew with the county',sub:'Cheapest. Response stays slow.'},{k:'private',label:'Hire a private contractor ($6K a week)',sub:'Faster. Costs money every week.'}];
+ if(S.budget>=150000)opts.push({k:'city',label:'Start a city-run EMS service ($150K and $4K a week)',sub:'The fastest. A big commitment.',cls:'go'});
+ const k=await ask('Ambulance service contract',opts);
+ if(k==='county'){S.emsMode='county';S.emsWeekly=0;adj('trust',-1);await say('mayor','We will renew with the county.')}
+ else if(k==='private'){S.emsMode='private';S.emsWeekly=6000;adj('trust',1);adj('dev',1);await say('mayor','We will contract with a private provider.')}
+ else{addBudget(-150000,'EMS startup');S.emsMode='city';S.emsWeekly=4000;adj('trust',3);adjRel('rodriguez',4,'');adjRel('jennings',-4,'');await say('mayor','Clifton will run its own ambulance service.')}
+ showAgenda(null);
+}
+async function volunteers(){
+ showAgendaCard('Volunteer firefighters','Falling numbers',[['Active volunteers','31, down from 54'],['Median age',57]]);
+ await say('mayor','The Fire Chief has a staffing concern.');
+ await fireSays('Mayor, when the pager goes off at three in the morning, the volunteer who answers is fifty-seven years old. We are losing them faster than we can recruit. A small stipend would help.');
+ const opts=[];if(S.budget>=8000)opts.push({k:'drive',label:'Fund a recruitment drive ($8K)',sub:'Some help. Not a cure.'});
+ opts.push({k:'stipend',label:'Fund a paid-on-call stipend ($1.5K a week)',sub:'A real difference. A permanent cost.',cls:'go'},{k:'none',label:'Do nothing',sub:'Response times slip.',cls:'stop'});
+ const k=await ask('Volunteer firefighters',opts);
+ if(k==='drive'){addBudget(-8000,'recruitment drive');S.volShort=0;adj('trust',1);await say('mayor','We will launch a recruitment drive, with a pancake breakfast.')}
+ else if(k==='stipend'){S.volStipend=1;S.volShort=0;S.emsWeekly=(S.emsWeekly||0)+1500;adj('trust',2);adjRel('rodriguez',3,'');await say('mayor','We will pay volunteers a stipend for each call. It is the least we can do.')}
+ else{S.volShort=1;adj('trust',-1);await say('mayor','Please do the best you can with what you have.')}
+ showAgenda(null);
+}
+async function fireChiefInput(p){
+ const tall=['apts','hotel','hospital'].includes(p.type.k)&&p.sizeF>.25,rare=p.type.k==='battery'||p.type.k==='datacenter'||p.type.k==='ev';
+ if(!(tall||rare||p.type.tags.includes('chem')))return;
+ if(S.maxWeeks<=20&&Math.random()<.5)return;
+ await say('mayor','And the Fire Chief.');
+ const rt=fireRT();
+ if(tall)await fireSays(`That is a tall building for our equipment. Our tallest ladder reaches about seven stories on a good day. I would ask the developer to fund a ladder truck and a stairwell pressurization system. Right now my response time to that part of town is about ${rt.toFixed(1)} minutes.`);
+ else if(rare)await fireSays('A lithium battery fire does not respond to water the way a house fire does. I would ask for a dedicated suppression system and a staging area for my crews, and I would ask to train there before opening day.');
+ else await fireSays(`With hazardous materials on site, my crews need specific training and equipment. At ${rt.toFixed(1)} minutes of response time, a spill on that side of town would be a very long few minutes.`);
+ if(tall)p.ladderAsk=true;
+}
 async function scandalCheck(){
  if(S.corrupt>=100)return;
  const li=S.leaks.findIndex(l=>l.week<S.week&&Math.random()<l.prob);
@@ -2508,6 +2575,7 @@ async function staffReports(p,returning){
  await chiefInput(p,false);
  await engineerInput(p,false);
  await schoolInput(p);
+ await fireChiefInput(p);
  if(p.power>=7||p.type.k==='datacenter')await orionHearing(p);
  if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
  else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
@@ -2667,6 +2735,8 @@ const CRISES=[
   opts:[{k:'restrict',label:'Impose mandatory water restrictions',sub:'Residents grumble. Demand drops a lot.',trust:-2,temp:{water:8}},{k:'truck',label:'Truck in emergency water ($60K)',sub:'Expensive, and residents notice.',cost:60000,trust:2,temp:{water:12}},{k:'ask',label:'Ask the biggest water users to cut back',sub:'Developers will not love it.',dev:-4,trust:1,temp:{water:12}}]})},
  {k:'blizzard',name:'Blizzard',w:()=>seasonIdx()===3?4:0,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A blizzard has buried Clifton under eighteen inches of snow. Roads are impassable and a thousand homes have lost power.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,8);S.temp.weeks=Math.max(S.temp.weeks,2)},
   opts:[{k:'fleet',label:'Call in every plow and a salt crew ($45K)',sub:'Roads open fast. Residents are grateful.',cost:45000,trust:4},{k:'priority',label:'Plow the priority routes only ($15K)',sub:'Cheaper. Side streets stay buried.',cost:15000,trust:0,risk:.35,bad:{trust:-4}},{k:'wait',label:'Wait for it to melt',sub:'Free. Very unpopular.',trust:-5}]})},
+ {k:'dtfire',name:'Downtown fire',w:()=>1+(fireRT()>9?2:0),make:()=>({who:{name:'Chief Arlen Schroeder',role:'Fire Chief'},text:'A fire has broken out in the old downtown block, and it is spreading to the building next door. Mutual aid is on the way from two counties.',
+  opts:[{k:'aid',label:'Authorize mutual aid and overtime ($35K)',sub:'More engines, faster control. Residents notice.',cost:35000,trust:3},{k:'hold',label:'Let the department handle it',sub:'Free. It may not be enough.',risk:.45,bad:{trust:-5}},{k:'evac',label:'Evacuate the block and open the library ($10K)',sub:'Safe and careful.',cost:10000,trust:2}]})},
  {k:'flood',name:'Flooding',w:()=>seasonIdx()===0?3:.4,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Heavy rain has flooded low-lying streets and the Cedar Creek bridge. Basements are underwater across the south side.',
   opts:[{k:'repair',label:'Emergency repairs ($120K)',sub:'Fast and thorough.',cost:120000,trust:3},{k:'patch',label:'Patch what we can ($50K)',sub:'Cheaper. It may not hold.',cost:50000,trust:-1,risk:.4,bad:{trust:-4}},{k:'aid',label:'Wait for state aid',sub:'Free, but slow and unpopular.',trust:-4,risk:.5,bad:{cost:100000}}]})},
  {k:'storm',name:'Windstorm',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A windstorm has knocked down power lines across the east side. About six thousand homes are in the dark.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,10);S.temp.weeks=Math.max(S.temp.weeks,1)},
@@ -3090,6 +3160,7 @@ function weeklyStreets(){
 }
 function weeklyUtilities(){
  weeklyStreets();
+ weeklyFire();
  weeklySchoolHousing();
  recordHist();
  chamberWeekly();
@@ -3236,6 +3307,9 @@ function mapSVG(){
  o+=`<g transform="translate(890,452)"><path d="M-40,14 Q-10,-30 40,14Z" fill="#8a7a5a" stroke="#5d4a3e" stroke-width="2"/><circle cx="26" cy="-8" r="5" fill="${lc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Landfill ${lp}%</text></g>`;
  o+=`<g transform="translate(715,398)"><rect x="-16" y="-14" width="32" height="28" fill="none" stroke="#6b7078" stroke-width="2" stroke-dasharray="4 3"/><path d="M-3,-10 L6,-1 L0,-1 L4,10 L-6,0 L0,0Z" fill="#f2c200" stroke="#7a6a1a"/><circle cx="18" cy="-16" r="5" fill="${glc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Grid ${gl}%</text></g>`;
  o+=`<g transform="translate(345,205)"><path d="M-8,18 L-4,-6 H4 L8,18Z" fill="#9aa3ad" stroke="#6b7078"/><ellipse cx="0" cy="-12" rx="12" ry="9" fill="#c9ced3" stroke="#6b7078"/><circle cx="14" cy="-18" r="5" fill="${wlc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Water ${wl}%</text></g>`;
+ // fire stations
+ o+=`<g transform="translate(455,300)"><rect x="-11" y="-9" width="22" height="18" fill="#c0392b" stroke="#7a2a1a" stroke-width="1.5"/><rect x="-5" y="-1" width="10" height="10" fill="#f3ead2"/><text y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Fire ${fireRT().toFixed(1)} min</text></g>`;
+ if(S.stations)o+=`<g transform="translate(790,262)"><rect x="-11" y="-9" width="22" height="18" fill="#c0392b" stroke="#7a2a1a" stroke-width="1.5"/><rect x="-5" y="-1" width="10" height="10" fill="#f3ead2"/><text y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Station 2</text></g>`;
  // projects
  const bySite={};S.projects.forEach((p,i)=>{(bySite[p.site]=bySite[p.site]||[]).push([p,i])});
  const prop=(S.agenda&&S.agenda.stage===-1?S.agenda:null)||(S.pending&&S.pending.stage===-1?S.pending:null);
@@ -3381,14 +3455,14 @@ async function actLunch(){
 /* ---------- budget and taxes ---------- */
 const DEPTS=[
  {k:'pw',name:'Public Works',base:22000,note:'Streets, plowing, cleanup after events, and water mains. Boost keeps streets clean and snow moving. Cut lets potholes and trash pile up.'},
- {k:'safety',name:'Public Safety',base:26000,note:'Fire and police. Boost softens the damage from incidents.'},
+ {k:'safety',name:'Public Safety',base:26000,note:'Fire, EMS and police. Boost speeds emergency response and softens the damage from incidents.'},
  {k:'parks',name:'Parks and Library',base:9000,note:'Boost lifts trust and slowly heals the environment.'},
  {k:'insp',name:'Inspections and Planning',base:7000,note:'Boost cuts the odds of incidents at project sites.'}
 ];
 const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
 function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
  const k=S.pop/12000,rev=Math.round(2e8*k*rate/100/52+33000*k*(.9+S.trust/500));
- const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200+(S.lf&&S.lf.haul?9000:0);
+ const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200+(S.lf&&S.lf.haul?9000:0)+(S.emsWeekly||0);
  const pk=S.prio&&S.prio.k;const exp2=Math.round(exp*(pk==='fiscal'?.93:1)+(pk==='infra'?12000:0));
  return{rev,exp:exp2,net:rev-exp2};
 }
@@ -3984,7 +4058,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'schoolbond',t:'School bond measure',f:schoolBond,w:S.week>=8&&schoolLoad()>=90},{k:'teacher',t:'Teacher retention request',f:teacherPay,w:S.week>=6},{k:'portables',t:'Portable classrooms',f:portables,w:schoolLoad()>=96},{k:'merge',t:'School consolidation',f:schoolMerge,w:S.week>=10&&schoolLoad()<=76},{k:'afford',t:'Affordable housing proposal',f:affordableProject,w:S.week>=6},{k:'shelter',t:'Shelter and encampments',f:shelter,w:S.week>=8&&HOMELESS()>=40},{k:'rentstab',t:'Rent stabilization petition',f:rentStab,w:S.week>=8&&RENT()>=112},{k:'mobile',t:'Mobile home park closure',f:mobilePark,w:S.week>=9},{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'firestation',t:'Second fire station',f:fireStation,w:S.week>=8&&fireRT()>=7},{k:'ems',t:'Ambulance service contract',f:emsContract,w:S.week>=7&&!S.emsMode},{k:'volfire',t:'Volunteer firefighters',f:volunteers,w:S.week>=6&&!S.volStipend},{k:'schoolbond',t:'School bond measure',f:schoolBond,w:S.week>=8&&schoolLoad()>=90},{k:'teacher',t:'Teacher retention request',f:teacherPay,w:S.week>=6},{k:'portables',t:'Portable classrooms',f:portables,w:schoolLoad()>=96},{k:'merge',t:'School consolidation',f:schoolMerge,w:S.week>=10&&schoolLoad()<=76},{k:'afford',t:'Affordable housing proposal',f:affordableProject,w:S.week>=6},{k:'shelter',t:'Shelter and encampments',f:shelter,w:S.week>=8&&HOMELESS()>=40},{k:'rentstab',t:'Rent stabilization petition',f:rentStab,w:S.week>=8&&RENT()>=112},{k:'mobile',t:'Mobile home park closure',f:mobilePark,w:S.week>=9},{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
@@ -4113,7 +4187,7 @@ async function newProject(){
  const pubSign=sup-opp;
  await commissionAftermath(p,final);
  if(final){
-  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;if(p.conds&&p.conds.schoolfee)S.schoolAdd=(S.schoolAdd||0)+Math.min(300,Math.round(p.cost/4e5));p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
+  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;if(p.conds&&p.conds.ladder)S.fireBonus=(S.fireBonus||0)+.4;if(p.conds&&p.conds.schoolfee)S.schoolAdd=(S.schoolAdd||0)+Math.min(300,Math.round(p.cost/4e5));p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(7-burden(p.conds,p)*1.2,1,8)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
