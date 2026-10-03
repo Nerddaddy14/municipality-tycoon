@@ -632,10 +632,10 @@ function buildScene(){
  place(MAYOR,50,134,'mayor');
  COUNCIL.forEach((m,i)=>place(m,xs[i],152));
  place(CAST.clerk,92,156,'clerk');
- const plate=(txt,left,top)=>{const p=document.createElement('div');p.className='plate';p.textContent=txt;p.style.left=left+'%';p.style.top=top+'px';plates.appendChild(p)};
+ const plate=(txt,left,top,id)=>{const p=document.createElement('div');p.className='plate';p.textContent=txt;if(id)p.dataset.id=id;p.style.left=left+'%';p.style.top=top+'px';plates.appendChild(p)};
  const mobS=document.body.classList.contains('mob'),ln=t=>t.replace(/^(Dr\.|Chad|Doris)\s+/,'');
  plate(mobS?'MAYOR':'MAYOR GAVELSWORTH',50,252);
- COUNCIL.forEach((m,i)=>plate(mobS?ln(m.short):m.short,xs[i],246));
+ COUNCIL.forEach((m,i)=>plate(mobS?ln(m.short):m.short,xs[i],246,m.id));
  plate('CLERK',92,246);
  const aud=$('#aud');
  [[386,[-350,-280,-210,-140,140,210,280,350]],[444,[-385,-315,-245,-175,-105,-35,35,105,175,245,315,385]]].forEach(([top,row])=>row.forEach(x=>{const d=document.createElement('div');d.className='aud';d.style.left=`calc(50% + ${x+Math.round(rnd(-5,5))}px)`;d.style.top=top+'px';d.innerHTML=figHTML(look());aud.appendChild(d)}));
@@ -1373,7 +1373,7 @@ async function scandalSystem(){
  const p=Math.min(.3,(.06+S.corrupt/400+(S.dev>70?.03:0))*(S.maxWeeks<=20?.8:1));
  if(Math.random()>p)return;
  S.scanSeen=S.scanSeen||[];
- let pool=SCANDALS.filter(x=>x.w()>0&&!S.scanSeen.includes(x.k));if(!pool.length){S.scanSeen=[];pool=SCANDALS.filter(x=>x.w()>0)}
+ const okSc=x=>x.w()>0&&!(x.who&&replaced(x.who));let pool=SCANDALS.filter(x=>okSc(x)&&!S.scanSeen.includes(x.k));if(!pool.length){S.scanSeen=[];pool=SCANDALS.filter(okSc)}
  if(!pool.length)return;
  const bag=[];pool.forEach(x=>{for(let i=0;i<x.w();i++)bag.push(x)});
  const sc=pick(bag);S.scanSeen.push(sc.k);
@@ -2233,6 +2233,92 @@ async function referendum(){
  if(pass){adj('trust',2,'voters backed the project');adj('dev',3);await say('mayor','The voters have spoken, and the project moves forward.');queueStory({h:`VOTERS APPROVE ${p.type.name.toUpperCase()}`,sub:'A petition drive sent the project to the ballot, and a majority backed it.',who:'mayor',mood:'happy',trust:1,min:'The Courier reported on the referendum.'})}
  else{S.projects=S.projects.filter(x=>x!==p);S.stats.approved=Math.max(0,S.stats.approved-1);S.stats.denied++;adj('trust',3,'voters rejected the project');adj('dev',-8);grp('nbhd',6);adj('trust',0);await say('mayor','The voters have spoken. The project is canceled.');queueStory({h:`VOTERS KILL ${p.type.name.toUpperCase()}`,sub:`${p.company} said it was disappointed and would review its options.`,who:'mayor',mood:'neutral',trust:1,min:'The Courier reported voters killed a project.'});if(Math.random()<.3){addBudget(-150000,'developer settlement');await say('clerk',`Mayor, ${p.company} has filed a claim over the cancellation.`)}}
  renderProjects();showAgenda(null);
+}
+/* ---------- the mid-term election: two council seats, endorsements, new faces ---------- */
+const LANES={
+ chen:{roles:['Veterinarian','Watershed Nonprofit Director','Retired Park Ranger'],w:{env:.9,jobs:.1,tax:.15,res:.45,dev:-.2},greed:.05},
+ bradley:{roles:['Insurance Agent','Car Dealer','Restaurant Owner'],w:{env:.1,jobs:.5,tax:.6,res:.1,dev:.7},greed:.3},
+ rodriguez:{roles:['Union Electrician','Retired Firefighter','Steamfitter'],w:{env:.3,jobs:1,tax:.3,res:.3,dev:.1},greed:.15},
+ wong:{roles:['Retired Teacher','Nurse','Pastor'],w:{env:.4,jobs:.2,tax:.2,res:1,dev:-.1},greed:.05},
+ jennings:{roles:['Retired Banker','Farmer','Certified Public Accountant'],w:{env:.2,jobs:.2,tax:1,res:.3,dev:.2},greed:.25}
+};
+const FN_M=['Karl','Dale','Roger','Nels','Gordon','Wayne','Eldon','Marcus','Tom','Gary'],FN_F=['Nadine','Corinne','Beth','Lorna','Joanne','Carla','Tessa','Marla','Ingrid','Renee'];
+const LN_R=['Thiel','Rasmussen','Hoffmeier','Lindgren','Bruhn','Soderberg','Kruse','Pohlman','Eggers','Mohr','Ahlers','Nissen','Dierks','Brandt'];
+const SLOGANS=['I will bring common sense back to City Hall.','Clifton deserves a fresh start.','Experience matters, and so does listening.','I am not a politician. I am a neighbor.','A seat at the table for everyone.','Less talk. More paving.'];
+function makeMember(id){
+ const L=LANES[id],fem=Math.random()<.5,fn=pick(fem?FN_F:FN_M),ln=pick(LN_R),role=pick(L.roles),w={};
+ for(const k in L.w)w[k]=Math.round(clamp(L.w[k]+rnd(-.25,.25),-.3,1.2)*100)/100;
+ const lk=lookPro();
+ return{name:`${fn} ${ln}`,short:`${fn} ${ln}`,role,skin:lk.skin,hair:lk.hair,hs:lk.hs&&lk.hs!=='cap'?lk.hs:(fem?'bob':'short'),cl:fem?'blazer':'suit',suit:lk.suit,shirt:lk.shirt,tie:lk.tie,gl:lk.gl,acc:lk.acc,fh:'',w,greed:L.greed,slogan:pick(SLOGANS)};
+}
+function refreshMemberDOM(id){
+ const m=COUNCIL.find(x=>x.id===id);if(!m)return;
+ const el=document.getElementById('c-'+id);if(el)el.innerHTML='<div class="tag"></div>'+figHTML(m);
+ const pl=document.querySelector(`.plate[data-id="${id}"]`);if(pl){const mobS=document.body.classList.contains('mob');pl.textContent=mobS?m.short.replace(/^(Dr\.|Chad|Doris)\s+/,'').split(' ').pop():m.short}
+ if(typeof renderCouncil==='function')renderCouncil();
+}
+function applyMember(id,f){
+ const m=COUNCIL.find(x=>x.id===id);if(!m)return;
+ const keep={name:f.name,short:f.short,role:f.role,skin:f.skin,hair:f.hair,hs:f.hs,cl:f.cl,suit:f.suit,shirt:f.shirt,tie:f.tie,gl:f.gl,acc:f.acc,fh:f.fh,w:f.w,greed:f.greed};
+ Object.assign(m,keep);m.w0={...f.w};m.g0=f.greed;
+ (S.repl=S.repl||{})[id]=keep;
+ refreshMemberDOM(id);
+}
+function applyRepl(){
+ if(!S.repl)return;
+ for(const id in S.repl){const m=COUNCIL.find(x=>x.id===id);if(!m)continue;Object.assign(m,S.repl[id]);m.w0={...S.repl[id].w};m.g0=S.repl[id].greed;refreshMemberDOM(id)}
+ applyTraits();
+}
+const replaced=id=>!!(S.repl&&S.repl[id]);
+function leanOf(m,k){return k==='real'?m.w.dev+m.w.tax:k==='nbhd'?m.w.res+m.w.env:k==='farm'?m.w.tax+m.w.env:m.w.jobs}
+async function midtermElection(){
+ S.election=1;
+ const seats=shuffle(COUNCIL.slice()).slice(0,2);
+ showAgendaCard('Mid-term election','Two council seats',[['Seats',seats.map(m=>m.short).join(' and ')],['Date','Next Tuesday'],['Your role','Endorse, or stay neutral']]);
+ await say('clerk',`Mayor, it is election season. Two council seats are on the ballot: ${seats[0].short} and ${seats[1].short}.`);
+ await say('mayor','The voters will decide who sits on this council for the next two years. Let us see who is running.');
+ const results=[];
+ for(const inc of seats){
+  const ch=makeMember(inc.id),C={name:ch.name,role:`${ch.role}, challenger`,color:'#5a6a8a',skin:ch.skin,hair:ch.hair,hs:ch.hs,cl:ch.cl,suit:ch.suit,shirt:ch.shirt,tie:ch.tie,gl:ch.gl,acc:ch.acc,w:ch.w};
+  showAgendaCard('Seat race',`${inc.short} vs ${ch.name}`,[['Incumbent',inc.role],['Challenger',ch.role],['Your standing with '+inc.short,relLabel(S.rel[inc.id])]]);
+  await say('clerk',`${inc.short}, ${inc.role.toLowerCase()}, is being challenged by ${ch.name}, a ${ch.role.toLowerCase()}.`);
+  await showSpeaker(C);await say(C,ch.slogan);await hideSpeaker();
+  await say(inc.id,pick(['I have served this town honestly, and I would like to keep doing it.','The record speaks for itself. I am asking for your vote.','I have an eye for the details, and the details matter.']));
+  // group endorsements
+  const G=GS(),notes=[];let gb=0;
+  for(const k of Object.keys(GROUPS)){const side=leanOf(inc,k)>=leanOf(ch,k)?'inc':'chal';const weight=G[k]>=60?.04:G[k]<=35?-.04:.02*(Math.random()<.5?1:-1);gb+=side==='inc'?weight:-weight;if(Math.random()<.6)notes.push(`${GROUPS[k].name} endorses ${side==='inc'?inc.short:ch.name}.`)}
+  if(notes.length)await say('clerk',notes.slice(0,2).join(' '));
+  const k=await ask(`Endorsement: ${inc.short} or ${ch.name}?`,[{k:'inc',label:`Endorse ${inc.short}`,sub:'Loyalty. It helps them a lot, and the challenger will not forget it.'},{k:'chal',label:`Endorse ${ch.name}`,sub:`A bold move. A new voice on the council, and ${inc.short} will take it personally.`},{k:'none',label:'Stay neutral',sub:'Keeps your hands clean. Lets the voters decide.',cls:'stop'}]);
+  const mPop=clamp((S.trust-40)/100,-.15,.3);
+  const pInc=clamp(.55+(S.rel[inc.id]-50)/250+gb+(k==='inc'?.1+mPop*.5:k==='chal'?-(.1+mPop*.5):0)+(S.trust<35&&k==='inc'?-.08:0),.12,.9);
+  results.push({inc,ch,pInc,k});
+ }
+ await say('mayor','Election night. Let us hear the results.');
+ for(const r of results){
+  const winInc=Math.random()<r.pInc,pct=Math.round(clamp(r.pInc*100+ri(-6,6),30,70));
+  await say('clerk',winInc?`${r.inc.short} wins re-election, ${Math.max(51,pct)} percent to ${100-Math.max(51,pct)}.`:`${r.ch.name} defeats ${r.inc.short}, ${Math.max(51,100-pct)} percent to ${100-Math.max(51,100-pct)}.`);
+  if(winInc){
+   S.rel[r.inc.id]=clamp(S.rel[r.inc.id]+(r.k==='inc'?10:r.k==='chal'?-10:3));
+   if(r.k==='inc')S.stats.endorsedWins=(S.stats.endorsedWins||0)+1;
+   await say(r.inc.id,r.k==='inc'?'I will not forget who stood with me, Mayor.':r.k==='chal'?'I know who you backed, Mayor. I will remember it.':'Thank you, Clifton. Back to work.');
+   queueStory({h:`${lastName(r.inc.id)} WINS RE-ELECTION`,sub:'The incumbent held the seat against a first-time challenger.',who:r.inc.id,mood:'happy',trust:0,min:`${r.inc.short} was re-elected.`});
+  }else{
+   const old=r.inc.short;await say(r.inc.id,'I called the winner to concede. I wish the council well.');
+   applyMember(r.inc.id,r.ch);S.rel[r.inc.id]=clamp(50+(r.k==='chal'?18:r.k==='inc'?-8:0));
+   if(r.k==='chal')S.stats.endorsedWins=(S.stats.endorsedWins||0)+1;
+   S.stats.turnover=(S.stats.turnover||0)+1;
+   if(S.traits){const used=Object.values(S.traits),pool=Object.keys(TRAITS).filter(t=>!used.includes(t));S.traits[r.inc.id]=pick(pool.length?pool:Object.keys(TRAITS))}
+   applyTraits();refreshMemberDOM(r.inc.id);sfx.chime();
+   await say(r.inc.id,pick(['Thank you for trusting me. I will work hard, and I will listen.','It is an honor to serve this community. Let us get to work.']));
+   queueStory({h:`NEW FACE ON THE COUNCIL: ${lastName(r.inc.id)} UNSEATS ${old.split(' ').pop().toUpperCase()}`,sub:`A ${r.ch.role.toLowerCase()} takes the seat in a result that surprised some at City Hall.`,who:r.inc.id,mood:'happy',trust:0,min:`${r.ch.name} won a council seat.`});
+  }
+ }
+ minutes('Mid-term election held.');
+ renderCouncil();showAgenda(null);
+}
+async function electionCheck(){
+ if(S.election||S.week<3||S.week<Math.round(S.maxWeeks*.5))return;
+ await midtermElection();
 }
 async function scandalCheck(){
  if(S.corrupt>=100)return;
@@ -4203,7 +4289,8 @@ const FEUDS=[
 async function feudCheck(){
  if(S.feud||S.week<Math.round(S.maxWeeks*.35)||Math.random()>.35)return false;
  S.feud=1;
- const f=pick(FEUDS),A=CAST[f.a],B=CAST[f.b];
+ const fp=FEUDS.filter(x=>!replaced(x.a)&&!replaced(x.b));if(!fp.length){S.feud=0;return false}
+ const f=pick(fp),A=CAST[f.a],B=CAST[f.b];
  openRoom('A WORD WITH '+A.short.toUpperCase(),{...A});
  await say('office',`${A.name} and ${B.name} corner you after the meeting, and neither of them is smiling.`);
  for(const [who,t] of f.lines)await say(who,t);
@@ -4223,6 +4310,7 @@ async function arcCheck(){
  const order=shuffle(COUNCIL);
  for(const m of order){
   const done=S.arcs[m.id]||0;
+  if(replaced(m.id))continue;
   const beat=ARCS.find(a=>a.who===m.id&&a.n===done+1);
   if(!beat||S.week<Math.round(S.maxWeeks*beat.at)||Math.random()>.6)continue;
   S.arcs[m.id]=done+1;
@@ -4581,6 +4669,7 @@ const ACHS=[
  {k:'fireready',name:'Ready to Roll',desc:'End with an emergency response time under 6 minutes.',test:()=>fireRT()<6},
  {k:'kept',name:'Man of His Word',desc:'Keep two town hall promises.',test:()=>(S.stats.kept||0)>=2},
  {k:'allies',name:'Friends in Many Places',desc:'End with all four interest groups at 60 or higher.',test:()=>Object.values(GS()).every(v=>v>=60)},
+ {k:'kingmaker',name:'Kingmaker',desc:'Endorse the winner in both seat races.',test:()=>(S.stats.endorsedWins||0)>=2},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -4616,7 +4705,7 @@ function ending(code){
  <div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Final edition</span><span>Week ${Math.min(S.week,S.maxWeeks)}</span><span>50&cent;</span></div><div class="npHead">${hl.h}</div><div class="npSub">${hl.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...MAYOR,mood:met?'happy':ok?'neutral':'angry'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div></div>
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
- <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('Emergency response','6.5 min',fireRT().toFixed(1)+' min')}${row('Parks score',50,Math.round(parksScore()))}${row('School capacity used','83%',schoolLoad()+'%')}${row('Rent index',100,Math.round(RENT()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
+ <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${S.stats.turnover?row('Council seats changed',0,S.stats.turnover):''}${row('Emergency response','6.5 min',fireRT().toFixed(1)+' min')}${row('Parks score',50,Math.round(parksScore()))}${row('School capacity used','83%',schoolLoad()+'%')}${row('Rent index',100,Math.round(RENT()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
  <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}${S.stats.scandals?` &middot; scandals weathered ${S.stats.scandals}`:''}${(S.stats.goodDeals||S.stats.badDeals)?` &middot; Chamber deals: ${S.stats.goodDeals||0} good, ${S.stats.badDeals||0} secret`:''}.</p>
  <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
  <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
@@ -4821,6 +4910,7 @@ async function runGame(){
     if(!(await chamberLeakCheck()))await scandalSystem();
     e=checkEnd();if(e)return ending(e);
     await promiseCheck();
+    await electionCheck();
     await cityBusiness();
     await memberMoment();
     await arcCheck();
@@ -4860,6 +4950,7 @@ function restore(d){
  const projects=d.S.projects.map(hyd);
  const queue=(d.S.queue||[]).map(q=>[projects.find(p=>p.id===q.pid),q.def,q.pr]).filter(x=>x[0]);
  Object.assign(S,d.S,{projects,pending:d.S.pending?hyd(d.S.pending):null,agenda:d.S.agenda?hyd(d.S.agenda):null,queue});
+ applyRepl();
  applyTraits();
 }
 const THEMES={classic:'Classic Council Chambers',historic:'Historic Town Hall',modern:'Modern Glass Chamber'},THEME_KEY='municipality-tycoon-theme',SLOT_KEY='municipality-tycoon-slot-',SLOTS=3;
