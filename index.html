@@ -248,6 +248,7 @@ td.bad{color:var(--bad)}
   </div>
   <aside id="side">
    <div class="card" id="agenda"></div>
+   <div class="card" id="council"></div>
    <div class="card" id="fin"></div>
    <div class="card" id="sys"></div>
    <div class="card"><h3>Active Projects</h3><div id="projs"></div></div>
@@ -352,7 +353,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -372,6 +373,7 @@ function hud(){
  METERS.forEach(([k])=>{const e=$(`.stat[data-k=${k}]`);e.querySelector('i').style.width=S[k]+'%';e.querySelector('b').textContent=Math.round(S[k])});
  if(typeof renderSys==='function'&&$('#sys'))renderSys();
  if(typeof renderFin==='function'&&$('#fin'))renderFin();
+ if(typeof renderCouncil==='function'&&$('#council'))renderCouncil();
 }
 function toast(t,good){const d=document.createElement('div');d.className='toast'+(good?'':' b');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
 function flash(k,good){const e=$(`.stat[data-k=${k}]`);if(!e)return;e.classList.add(good?'flashg':'flashb');setTimeout(()=>e.classList.remove('flashg','flashb'),700)}
@@ -499,7 +501,7 @@ function score(m,p,c,ctx){
  if(c.fireplan)s+=.05;if(c.buffer)s+=.05*(m.w.res+.5);
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
- s+=p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250;
+ s+=p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
  return s;
 }
 function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.water)).replace(/\{noise\}/g,Math.round(e.db)).replace(/\{jobs\}/g,num(p.jobs)).replace(/\{tax\}/g,money(p.tax)).replace(/\{name\}/g,p.type.name).replace(/\{site\}/g,p.site).replace(/\{cost\}/g,money(p.cost))}
@@ -1088,6 +1090,69 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- council relationships ---------- */
+const ALLY={chen:'wong',wong:'chen',bradley:'jennings',jennings:'bradley',rodriguez:'wong'};
+function adjRel(id,v,why,silent){
+ S.rel[id]=clamp(S.rel[id]+v);
+ const a=ALLY[id];if(a)S.rel[a]=clamp(S.rel[a]+v*.3);
+ if(!silent&&v)toast(`${CAST[id].short}: relationship ${v>0?'+':''}${Math.round(v)}${why?' ('+why+')':''}`,v>0);
+ if(typeof renderCouncil==='function')renderCouncil();
+}
+const relLabel=v=>v>=75?'Loyal ally':v>=60?'Friendly':v>=40?'Neutral':v>=25?'Cool':'Hostile';
+function renderCouncil(){
+ const el=$('#council');if(!el)return;
+ el.innerHTML=`<h3>Council</h3>${COUNCIL.map(m=>{const v=Math.round(S.rel[m.id]),c=v>=60?'var(--good)':v>=40?'var(--acc)':'var(--bad)';return `<div style="margin:5px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${m.short}${S.commit[m.id]?' &#9733;':''}</span><span style="color:${c}">${relLabel(v)}</span></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${v}%;background:${c}"></i></div></div></div>`}).join('')}<div class="mut" style="font-size:11px">&#9733; has promised you their vote</div>`;
+}
+const PRAISE={
+ chen:['I want to thank the mayor for taking environmental review seriously. It matters.','The mayor listens. In this building, that is rarer than it should be.'],
+ bradley:['The mayor understands that jobs do not come from lectures. I appreciate that.','Give credit where it is due: this mayor is keeping Clifton open for business.'],
+ rodriguez:['The mayor has always picked up the phone when my members call. Thank you.','This is a mayor who respects working people. I will say it on the record.'],
+ wong:['I hear from neighbors that the mayor shows up. That counts for a lot.','Thank you, Mayor, for walking the neighborhoods. People noticed.'],
+ jennings:['The mayor reads the budget. All of it. Do not underestimate how rare that is.','I will say it: the books are in better hands than I feared.']
+};
+const CRIT={
+ chen:['I am concerned that this administration treats the environment as an afterthought.','The mayor keeps promising green and delivering gravel.'],
+ bradley:['This administration has been hostile to business, and the empty storefronts show it.','I have yet to see a plan from the mayor. Only reactions.'],
+ rodriguez:['Working people feel ignored by this administration, and I am done pretending otherwise.','The mayor talks about jobs and then votes for contractors who bring their own crews.'],
+ wong:['Neighbors tell me the mayor has not listened. I am tired of passing along the message.','This administration has lost touch with the people who live here.'],
+ jennings:['The mayor treats the budget like a suggestion, and the audit will say so.','I have yet to see the mayor justify a single line item.']
+};
+async function memberMoment(){
+ if(Math.random()>.3)return;
+ const hi=COUNCIL.filter(m=>S.rel[m.id]>=70),lo=COUNCIL.filter(m=>S.rel[m.id]<=30);
+ if(!hi.length&&!lo.length)return;
+ const useHi=hi.length&&(!lo.length||Math.random()<.5),m=pick(useHi?hi:lo);
+ await say(m.id,fresh((useHi?'praise-':'crit-')+m.id,(useHi?PRAISE:CRIT)[m.id]));
+ if(useHi)adj('trust',1,`${m.short} praised you`);else adj('trust',-1,`${m.short} criticized you`);
+}
+const LUNCH={
+ chen:['Thanks for the invitation. I only get out of the lab for good coffee and good conversation.','I brought a notebook. Do not worry, it is mostly about snails.'],
+ bradley:['Lunch is on me, Mayor, as long as we can talk shop.','I have exactly forty minutes. Let us make them count.'],
+ rodriguez:['This diner has the best breakfast burrito in town. Let us get to it.','I skipped my break for this. Do not waste it, Mayor.'],
+ wong:['Thank you for asking. People rarely invite me to lunch unless they want something.','I recommend the soup. The soup is always the answer.'],
+ jennings:['I will have the soup, and I would like a separate check.','I measured the portions here once. It was a very good day.']
+};
+const PRIORITY={env:'protecting our water and land',jobs:'good local jobs',tax:'a healthy tax base',res:'quiet, safe neighborhoods',dev:'a welcoming climate for developers'};
+async function actLunch(){
+ const k=await ask('Whom do you take to lunch?',COUNCIL.map(m=>({k:m.id,label:m.name,sub:`${m.role} · ${relLabel(S.rel[m.id])}${S.commit[m.id]?' · has promised their vote':''}`})));
+ const m=CAST[k],v={...m};
+ openRoom('LUNCH WITH '+m.short.toUpperCase(),v);
+ await say('office',`You meet ${m.name} for lunch at the diner on Main Street.`);
+ await say(v,fresh('lunch-'+k,LUNCH[k]));
+ const opts=[{k:'ask',label:'Ask about their priorities',sub:'Builds rapport and shows what they care about.'},{k:'favor',label:'Do them a favor ($15K)',sub:'A real investment in the relationship.'},{k:'vote',label:'Ask for their vote on the next main item',sub:'Costs goodwill. Works better with friends.'},{k:'chat',label:'Just talk about Clifton',sub:'A small, free bump.'}];
+ if(S.budget<15000)opts.splice(1,1);
+ const c=await ask('What do you do at lunch?',opts,`${m.short}: ${relLabel(S.rel[k])}`);
+ if(c==='ask'){const top=Object.entries(m.w).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]))[0][0];await say(v,`Honestly, what keeps me up at night is ${PRIORITY[top]}.`);adjRel(k,4,'listened')}
+ else if(c==='favor'){addBudget(-15000,'lunch favor');await say(v,'That is generous, Mayor. I will not forget it.');adjRel(k,9,'favor')}
+ else if(c==='vote'){
+  const r=S.rel[k];
+  if(r>=55||(r>=40&&Math.random()<.5)){S.commit[k]=.35;await say(v,fresh('lunch-yes',['You have my vote on the next big one. Do not make me regret it.','All right. I will stand with you on the next one.']));adjRel(k,-3,'you owe them')}
+  else{await say(v,fresh('lunch-no',['I need more than a lunch, Mayor. Earn it first.','I do not give my vote away over soup.']));adjRel(k,r<40?-4:-2,'pushed too hard')}
+ }
+ else{await say(v,fresh('lunch-chat',['It is a good town. It deserves a better debate than it gets.','I like these talks. People forget we are on the same side, mostly.']));adjRel(k,2)}
+ closeOverlay('office');
+}
+
 /* ---------- budget and taxes ---------- */
 const DEPTS=[
  {k:'pw',name:'Public Works',base:22000,note:'Roads and water mains. Boost lowers water-system strain and lifts trust.'},
@@ -1136,7 +1201,7 @@ function budgetPanel(){
 }
 function budgetScore(m,cur,pub){
  const F=cur.fund,f=finCalc(cur.rate,F,S.debt+(cur.bond?BOND:0)),spend=F.pw+F.safety+F.parks+F.insp,dr=cur.rate-1,def=Math.max(0,-f.net);
- let s=.2+(S.trust-50)/250+pub*.1+rnd(-.08,.08);
+ let s=.2+(S.trust-50)/250+(S.rel[m.id]-50)/200+pub*.1+rnd(-.08,.08);
  if(m.id==='jennings')s+=.3-def/50000-.05*spend-(cur.bond?.2:0)+(f.net>=0?.1:0);
  else if(m.id==='bradley')s+=.25-1.6*dr-(cur.bond?.05:0)-def/90000;
  else if(m.id==='rodriguez')s+=.1+.14*(F.pw+F.safety)-.5*dr-def/120000+(cur.bond?.1:0);
@@ -1223,10 +1288,10 @@ function showAgendaCard(title,sub,rows){
  $('#agenda').innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${title}</div><div class="mut">${sub}</div><table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>${agendaList()}`;
 }
 async function quickVote(p,ctx){
- let yes=0,no=0;
- for(const m of COUNCIL){const y=score(m,p,p.conds,ctx)>0;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');sfx[y?'good':'bad']();y?yes++:no++;await sleep(AUTO?10:380)}
+ let yes=0,no=0;const votes={};
+ for(const m of COUNCIL){const y=score(m,p,p.conds,ctx)>0;votes[m.id]=y;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');sfx[y?'good':'bad']();y?yes++:no++;await sleep(AUTO?10:380)}
  await gavel(1);
- return{yes,no,passed:yes>=3};
+ return{yes,no,passed:yes>=3,votes};
 }
 async function minorProject(p){
  showAgenda(p);
@@ -1256,6 +1321,7 @@ async function minorProject(p){
  const r=await quickVote(p,ctx);
  await say('mayor',r.passed?fresh('mi-y',[`That carries, ${r.yes} to ${r.no}.`,`Approved, ${r.yes} to ${r.no}.`]):fresh('mi-n',[`That fails, ${r.yes} to ${r.no}.`,`Denied, ${r.yes} to ${r.no}.`]));
  clearTags();
+ COUNCIL.forEach(m=>adjRel(m.id,(k==='deny'?!r.votes[m.id]:r.votes[m.id])?1:-.7,'',true));
  if(r.passed){
   p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;
   adj('trust',pub>0?2:pub<0?-3:0);adj('dev',k==='cond'?4:7);minutes(`Approved the ${p.type.name} (${r.yes}-${r.no}).`,'g');renderProjects();
@@ -1398,13 +1464,14 @@ async function newProject(){
  await silly(.2);
  // vote
  await say('mayor','The question before us is whether to approve the project as drafted. Clerk, call the roll.');
- let yes=0,no=0;
+ let yes=0,no=0;const votes={};
  for(const m of COUNCIL){
   await say('clerk',`${m.short}?`,{auto:450});
   const y=score(m,p,p.conds,ctx)>0;
   await say(m.id,y?fresh('aye-'+m.id,['Aye.','Aye, with reservations.','Yes.','Aye, and I hope we do not regret it.','Yes, on the strength of the conditions.']):fresh('nay-'+m.id,['Nay.','No.','Nay, and I mean it.','No. The risks are too high.','Nay. Not in this form.']),{auto:500});
-  showTag(m.id,y?'AYE':'NAY',y?'yes':'no');y?yes++:no++;sfx[y?'good':'bad']();await sleep(AUTO?10:350);
+  votes[m.id]=y;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');y?yes++:no++;sfx[y?'good':'bad']();await sleep(AUTO?10:350);
  }
+ COUNCIL.forEach(m=>{const match=rec==='deny'?!votes[m.id]:votes[m.id];adjRel(m.id,match?2:(p.bribed?-3:-1.5),'',true)});S.commit={};
  const passed=yes>=3;
  await gavel(1);
  if(passed)sfx.clap();else sfx.boo();
@@ -1557,7 +1624,8 @@ const ACT={
  hours:{label:'Office hours with residents',sub:'Builds trust and can surface tips about active projects.',fn:actHours},
  walk:{label:'Community walk',sub:'Builds trust and previews what residents will say about the next project.',fn:actWalk},
  press:{label:'Press interview',sub:'Shape the story. Reporters ask hard questions.',fn:actPress},
- session:{label:'Work session',sub:'Fund utility upgrades or commission an early report on the next project.',fn:actSession}
+ session:{label:'Work session',sub:'Fund utility upgrades or commission an early report on the next project.',fn:actSession},
+ lunch:{label:'Lunch with a council member',sub:'Build a relationship, or ask for a vote on the next big item.',fn:actLunch}
 };
 async function offWeek(){
  const ap=S.pending||S.agenda||genProject();S.agenda=ap;showAgenda(ap);
@@ -1589,6 +1657,7 @@ async function runGame(){
     await scandalCheck();
     e=checkEnd();if(e)return ending(e);
     await cityBusiness();
+    await memberMoment();
     await projectUpdates('meeting');
     e=checkEnd();if(e)return ending(e);
     await runAgenda();
