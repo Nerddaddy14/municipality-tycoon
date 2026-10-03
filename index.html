@@ -374,7 +374,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -794,6 +794,62 @@ const RESP=[
  {k:'forgive',label:'Accept their apology',sub:'Developer is relieved. Residents will not be.',mult:1,dev:6,trust:-6}
 ];
 
+function histNote(c,k){S.devHist=S.devHist||{};const h=S.devHist[c]||(S.devHist[c]={proj:0,incidents:0,perks:0,denied:0});h[k]=(h[k]||0)+1}
+EV.push(
+ {bad:1,id:'whistle',st:[1,2,3,4],when:p=>p.cost>=2e7||p.waived,make:p=>({title:'Whistleblower report',text:`A whistleblower says ${p.company} falsified inspection records at the ${p.type.name}. Copies of the paperwork are now in the Courier's hands.`,dev:'Those were clerical errors. Someone is trying to hurt us.',env:3,fine:0,topic:'safety',resp:[
+  {k:'audit',label:'Order an independent audit ($40K)',sub:'Slow and thorough. Builds trust.',cost:40000,trust:3,dev:-5,mult:.3,say:'I am ordering an independent audit of every inspection record.'},
+  {k:'protect',label:'Fine the company and protect the whistleblower',sub:'A strong signal. The developer will not forget it.',gain:60000,trust:4,dev:-9,mult:.4,say:'The company is fined, and the whistleblower is under the city\'s protection.'},
+  {k:'dismiss',label:'Dismiss it as a disgruntled employee',sub:'Quiet, and dangerous if it is true.',trust:-4,dev:3,soft:true,say:'We have no evidence of wrongdoing, and I consider the matter closed.'}]})},
+ {bad:1,id:'arch',st:[1,2],when:p=>p.sizeF>.2,make:p=>({title:'Archaeological discovery',text:`Excavators at the ${p.type.name} site uncovered an old burial ground and stone foundations. A state archaeologist is demanding a halt.`,dev:'Every day of delay costs us tens of thousands. Can we not just document it quickly?',env:0,fine:0,topic:'nimby',resp:[
+  {k:'halt',label:'Halt work for a proper excavation',sub:'Adds two weeks. Honors the site.',trust:3,dev:-5,delay:2,mult:0,say:'Work stops until the site is properly excavated.'},
+  {k:'watch',label:'Allow work with an archaeologist on site',sub:'Adds a week. A reasonable compromise.',trust:1,dev:-1,delay:1,mult:0,say:'Work may continue with an archaeologist on site at the developer\'s expense.'},
+  {k:'ignore',label:'Let construction continue',sub:'Fast. Dangerous if it gets out.',dev:4,trust:-5,soft:true,mult:0,say:'Staff reviewed the site and construction will continue.'}]})},
+ {bad:1,id:'strike',st:[2],when:p=>p.jobs>=10,make:p=>({title:'Subcontractor strike',text:`Workers at the ${p.type.name} site walked off the job, saying a subcontractor underpaid them. Pickets are up at the gate.`,dev:'This is a dispute between a subcontractor and its workers. We are not a party to it.',env:0,fine:0,topic:'safety',resp:[
+  {k:'mediate',label:'Mediate between the union and the contractor',sub:'Costs a week. Costs nobody much goodwill.',delay:1,trust:2,dev:-3,rel:{rodriguez:3},say:'I am calling both sides to city hall tomorrow morning.'},
+  {k:'union',label:'Publicly back the workers',sub:'Rodriguez will love it. The developer will not.',delay:1,trust:3,dev:-8,rel:{rodriguez:7},say:'These workers deserve to be paid what they were promised.'},
+  {k:'stay',label:'Stay out of it',sub:'The developer is relieved. Labor is not.',soft:true,trust:-3,dev:3,rel:{rodriguez:-6},say:'This is a private dispute, and the city will not take sides.'}]})},
+ {bad:1,id:'fatal',st:[2],when:p=>p.traffic>=6,make:p=>({title:'Haul-road fatality',text:`A cyclist was struck and killed by a truck serving the ${p.type.name} site. The community is stunned.`,dev:'We are heartbroken. We will cooperate fully with the investigation.',env:0,fine:0,topic:'traffic',resp:[
+  {k:'shutdown',label:'Suspend trucking until a safety plan is approved',sub:'The strongest response. Costs a week.',delay:1,trust:4,dev:-10,say:'Trucking is suspended until a real safety plan is approved.'},
+  {k:'plan',label:'Require a traffic safety plan and flaggers',sub:'Work continues with new safeguards.',trust:2,dev:-4,say:'The developer must submit a safety plan this week, with flaggers at every crossing.'},
+  {k:'moveon',label:'Offer condolences and let the investigation run',sub:'Residents will call it cold.',soft:true,trust:-6,dev:2,say:'My thoughts are with the family. We will await the investigation.'}]})},
+ {bad:1,id:'species',st:[1,2],when:p=>p.sizeF>.3&&!p.type.tags.includes('chem'),make:p=>({title:'Protected species found',text:`A state biologist found a nesting pair of protected hawks on the ${p.type.name} parcel. Birdwatchers have already arrived.`,dev:'They are birds. We will plant new trees.',env:5,fine:0,topic:'nimby',resp:[
+  {k:'survey',label:'Require a wildlife survey and nesting buffer',sub:'Adds a week. Protects the hawks.',delay:1,trust:2,dev:-4,mult:.2,say:'Work in the nesting zone stops until a survey is complete.'},
+  {k:'relocate',label:'Make the developer pay for relocation',sub:'No delay. Moderate protection.',trust:1,dev:-2,mult:.5,say:'The developer will pay for a professional relocation effort.'},
+  {k:'waive',label:'Waive the issue',sub:'Fast, and the birdwatchers will be furious.',soft:true,dev:4,trust:-3,mult:1.4,say:'The birds are not on the endangered list, and work will continue.'}]})},
+ {bad:1,id:'bankrupt',st:[2],when:p=>p.sizeF>.15,make:p=>({title:'Contractor bankruptcy',text:`The general contractor at the ${p.type.name} filed for bankruptcy. The site is idle and subcontractors are unpaid.`,dev:'We are lining up a replacement. Please be patient.',env:1,fine:0,topic:'safety',resp:[
+  {k:'bond',label:'Call the performance bond',sub:'A new contractor is hired. Costs a week.',delay:1,dev:-2,say:'The performance bond is being called, and a new contractor will be hired.'},
+  {k:'extend',label:'Grant a six-week extension',sub:'Developer is grateful. Residents are not.',delay:2,dev:2,trust:-1,say:'The developer has six weeks to find a replacement contractor.'},
+  {k:'pull',label:'Pull the permits until they re-bid',sub:'Hard line. Costs three weeks.',delay:3,trust:2,dev:-6,mult:.5,say:'The permits are suspended until the developer re-bids the job.'}]})},
+ {bad:1,id:'odor',st:[4],when:T('bottling','quarry','chem','gas','gasplant','warehouse','crypto'),make:p=>({title:'Odor complaints',text:`Residents downwind of the ${p.type.name} say a foul smell is keeping them indoors.`,dev:'Emissions are within permitted limits, and we are investigating.',env:1,fine:0,topic:'chem',resp:[
+  {k:'scrubber',label:'Require odor control equipment',sub:'Solves it for good. Costs the developer.',trust:2,dev:-4,mult:.3,say:'The developer must install odor control equipment within the month.'},
+  {k:'hours',label:'Limit operating hours at night',sub:'Quiets the smell and the plant for a few weeks.',delay:2,trust:1,dev:-2,say:'Night operations are suspended while the cause is identified.'},
+  {k:'shrug',label:'Do nothing',sub:'Free. Residents will remember.',soft:true,trust:-2,dev:1,say:'The readings are within limits, so there is nothing further for the city to do.'}]})},
+ {bad:1,id:'light',st:[4],when:T('stadium','arena','datacenter','warehouse','casino','themepark','mall'),make:p=>({title:'Light pollution',text:`Neighbors of the ${p.type.name} say its floodlights turn night into day.`,dev:'Safety lighting is required by code.',env:0,fine:0,topic:'noise',resp:[
+  {k:'shield',label:'Require shielded lighting',sub:'Cheap and effective.',trust:2,dev:-2,say:'The developer will shield every fixture facing the neighborhood.'},
+  {k:'curfew',label:'Impose a lighting curfew',sub:'Stronger. Costs the developer more.',delay:1,trust:3,dev:-5,say:'Non-essential lighting goes off at 11 p.m.'},
+  {k:'shrug',label:'Do nothing',sub:'Free, and it will not go away.',soft:true,trust:-2,dev:1,say:'The lighting meets code, so there is no violation.'}]})},
+ {bad:1,id:'wage',st:[2],when:p=>p.jobs>=10,make:p=>({title:'Wage-theft complaint',text:`Workers say a contractor at the ${p.type.name} site shorted their pay for weeks.`,dev:'We will make sure everyone is paid, whatever it takes.',env:0,fine:0,topic:'safety',resp:[
+  {k:'investigate',label:'Open a labor investigation',sub:'Slow. Labor will appreciate it.',trust:2,dev:-5,rel:{rodriguez:5},say:'The city is opening a labor investigation into the contractor.'},
+  {k:'fine',label:'Fine the contractor',sub:'Quick and visible.',gain:40000,trust:2,dev:-3,say:'The contractor is fined, and the workers will be paid in full.'},
+  {k:'refer',label:'Refer it to the state',sub:'Hands-off. Residents will call it a dodge.',soft:true,trust:-2,say:'This is a state matter, and I am referring it today.'}]})},
+ {bad:1,id:'sue',st:[4],when:p=>p.db>=60,make:p=>({title:'Neighbors sue over noise',text:`Residents near the ${p.type.name} filed a lawsuit over constant noise, naming both the city and the developer.`,dev:'We will fight this in court.',env:0,fine:0,topic:'noise',resp:[
+  {k:'settle',label:'Broker a settlement with soundproofing ($30K)',sub:'Costs the city a little. Ends the fight.',cost:30000,trust:3,dev:-3,say:'We reached a settlement that includes soundproofing for the nearest homes.'},
+  {k:'mediate',label:'Order mediation',sub:'Cheap, and it takes a week.',delay:1,trust:1,dev:-1,say:'Both sides will go to mediation before anyone goes to court.'},
+  {k:'fight',label:'Back the developer in court ($60K)',sub:'Expensive, and the neighbors will resent it.',cost:60000,soft:true,trust:-3,dev:4,say:'The city will defend the permit in court.'}]})},
+ {bad:1,id:'pond',st:[2,3],when:p=>p.water>=5000,make:p=>({title:'Stormwater pond overflow',text:`A retention pond at the ${p.type.name} site overflowed into backyards after the rains.`,dev:'It was a once-in-fifty-year storm.',env:3,fine:40000,topic:'water'})},
+ {bad:1,id:'leakscare',st:[4],when:p=>p.type.tags.includes('chem'),make:p=>({title:'Gas leak scare',text:`A leak at the ${p.type.name} triggered a shelter-in-place order for two hundred homes.`,dev:'No one was hurt, and the leak was fixed within the hour.',env:4,fine:90000,topic:'chem'})},
+ {good:1,id:'science',st:[2,3,4],when:p=>p.cost>=2e6,make:p=>({title:'Science fair sponsor',text:`${p.company} sponsored the district science fair, and a team of fifth graders won a state prize.`,dev:'We want to inspire the next generation of engineers.',trust:2})},
+ {good:1,id:'veterans',st:[3,4],when:p=>p.jobs>=15,make:p=>({title:'Veterans hiring program',text:`The ${p.type.name} hired thirty veterans through a new local program.`,dev:'They have the discipline and skills we need.',trust:3})},
+ {good:1,id:'mural',st:[3,4],when:p=>p.cost>=1e6,make:p=>({title:'Public mural',text:`${p.company} commissioned a local artist to paint a community mural on the wall facing Main Street.`,dev:'Blank walls are a missed opportunity.',trust:2})},
+ {good:1,id:'broadband',st:[3,4],when:T('datacenter','fab','crypto','warehouse'),make:p=>({title:'Free neighborhood broadband',text:`${p.company} ran fiber past the ${p.type.name} and is offering free broadband to forty nearby homes.`,dev:'The fiber was already there. We are happy to share it.',trust:3})},
+ {good:1,id:'apprentice',st:[3,4],when:p=>p.jobs>=20,make:p=>({title:'Apprenticeship program',text:`${p.company} launched a paid apprenticeship program with the building trades union.`,dev:'We would rather grow our own workforce.',trust:2,rel:{rodriguez:3}})},
+ {good:1,id:'intersection',st:[2,3,4],when:p=>p.traffic>=6,make:p=>({title:'Intersection upgrade',text:`${p.company} paid to rebuild the dangerous Elm and Fourth intersection, with a new signal and crosswalks.`,dev:'If our trucks are going to use it, it ought to be safe.',trust:3})},
+ {good:1,id:'firestation',st:[3,4],when:p=>p.cost>=3e7,make:p=>({title:'Land for a fire station',text:`${p.company} donated two acres for a new fire station on the east side.`,dev:'Faster response times protect our site and our neighbors.',trust:3})},
+ {good:1,id:'trees',st:[3,4],when:p=>p.cost>=5e6,make:p=>({title:'Tree planting',text:`${p.company} planted five hundred trees around the ${p.type.name} and along the creek.`,dev:'A little shade goes a long way.',trust:1,env:3})},
+ {good:1,id:'foodbank',st:[2,3,4],when:p=>p.cost>=1e6,make:p=>({title:'Food bank donation',text:`${p.company} donated a refrigerated truck and $20,000 to the Clifton food bank.`,dev:'Nobody should go hungry in a town we build in.',trust:2})},
+ {good:1,id:'youth',st:[3,4],when:p=>p.cost>=1e7,make:p=>({title:'Youth sports field',text:`${p.company} built a lighted youth sports field next to the ${p.type.name}.`,dev:'Little League needs a home field.',trust:3})}
+);
+
 /* ---------- game flow ---------- */
 let snap=null;
 async function callToOrder(){
@@ -883,7 +939,7 @@ async function projectUpdates(mode){
   else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
   else{
    const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.riskMult||1)*(p.stage===0?.5:p.stage===OPER?.6:1);
-   if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
+   if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&!(e.id&&p.seen[e.id])&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
    if(Math.random()<.13+(S.dev>60?.07:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
   }
  }
@@ -913,7 +969,7 @@ async function runEvent(p,evDef,promised,mode){
   await say('mayor',`Good news. ${promised?'As promised in the approval conditions: ':''}${ev.text}`);
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
   const m=pick(COUNCIL);await say(m.id,pick(['Well, that is a pleasant surprise.','That is what a good neighbor looks like.','I will gladly take good news for a change.']));
-  sfx.good();adj('trust',ev.trust||0,ev.title);adj('env',ev.env||0);S.stats.perks++;adj('dev',promised?2:3);
+  sfx.good();adj('trust',ev.trust||0,ev.title);adj('env',ev.env||0);S.stats.perks++;adj('dev',promised?2:3);histNote(p.company,'perks');if(ev.rel)for(const[id,v]of Object.entries(ev.rel))adjRel(id,v,'');
   minutes(`${ev.title}: ${p.type.name}.`,'g');return;
  }
  p.incidents++;S.stats.incidents++;S.stats.gallons+=ev.gal||0;sfx.alarm();sfx.bad();banner(ev.title.toUpperCase());
@@ -931,25 +987,35 @@ async function runEvent(p,evDef,promised,mode){
  }
  const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
  if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
- const opts=RESP.map(r=>({k:r.k,label:r.label,sub:r.k==='fine'?`Collect ${money(fine)}. ${r.sub}`:r.sub}));
- if(ev.extra)opts.splice(2,0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
+ const baseResp=ev.resp||RESP,custom=!!ev.resp;
+ const opts=baseResp.map(r=>({k:r.k,label:r.label,sub:(!custom&&r.k==='fine')?`Collect ${money(fine)}. ${r.sub}`:r.sub,cls:r.cls}));
+ if(ev.extra)opts.splice(Math.min(2,opts.length),0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
  const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
- const r=k==='extra'?ev.extra:RESP.find(x=>x.k===k);
- adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*(p.envMult||1)*.6),ev.title);adj('dev',r.dev);adj('trust',r.trust);
- if(k==='fine'){addBudget(fine,'fine')}
- if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
- if(k==='extra')ev.extra.apply(p);
- await say('mayor',k==='fine'?`I am fining ${p.company} ${money(fine)}, effective immediately.`:k==='stop'?`I am issuing a stop-work order at the ${p.type.name} site until inspectors sign off.`:k==='extra'?`I am ordering ${p.company} to do the following: ${ev.extra.label.toLowerCase()}.`:`We will accept the apology, but this is on the record. One more incident and the response will be different.`);
- if(mode==='early'){minutes(`Inspection found: ${ev.title} at ${p.type.name} (${k==='fine'?'fined':k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven'}).`,'b');return}
+ const r=k==='extra'?ev.extra:baseResp.find(x=>x.k===k);
+ const soft=custom&&k!=='extra'?!!r.soft:k==='forgive';
+ adj('env',-Math.round(ev.env*(r.mult===undefined?1:r.mult)*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*(p.envMult||1)*.6),ev.title);adj('dev',r.dev||0);adj('trust',r.trust||0);
+ if(custom&&k!=='extra'){
+  if(r.cost)addBudget(-r.cost,'response');if(r.gain)addBudget(r.gain,'penalty');
+  if(r.delay){p.stageLeft+=r.delay;if(p.stage===OPER){p.stageLeft=0;p.curtail=Math.max(p.curtail||0,r.delay+1)}}
+  if(r.rel)for(const[id,v]of Object.entries(r.rel))adjRel(id,v,'');
+ }else{
+  if(k==='fine'){addBudget(fine,'fine')}
+  if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
+  if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);
+ }
+ const short=custom&&k!=='extra'?r.label.replace(/ \(.*\)/,''):k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven';
+ await say('mayor',custom&&k!=='extra'?(r.say||`My decision: ${r.label.replace(/ \(.*\)/,'').toLowerCase()}.`):k==='fine'?`I am fining ${p.company} ${money(fine)}, effective immediately.`:k==='stop'?`I am issuing a stop-work order at the ${p.type.name} site until inspectors sign off.`:k==='extra'?`I am ordering ${p.company} to do the following: ${ev.extra.label.toLowerCase()}.`:`We will accept the apology, but this is on the record. One more incident and the response will be different.`);
+ histNote(p.company,'incidents');
+ if(mode==='early'){minutes(`Inspection found: ${ev.title} at ${p.type.name} (${short}).`,'b');return}
  // citizens react
- const topic=k==='forgive'?ev.topic:'thanks',n=k==='forgive'?2:1;
- const crowd=[];for(let i=0;i<n;i++){const T=TOPICS[topic];const opp=k==='forgive';crowd.push({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:opp?'#8a3b3b':'#2f7a55',...look(),stance:opp?'opp':'sup',sign:pick(T.sign),mood:opp?'angry':'happy',
-  text:opp?`You are letting them off with a warning?! After "${ev.title.toLowerCase()}"? Shame on you, Mayor!`:fill(pick(T.sup),p)})}
- await say('mayor',k==='forgive'?'I see members of the public rising from the gallery.':'A resident has asked to speak.',{auto:700});
+ const topic=soft?(TOPICS[ev.topic]&&TOPICS[ev.topic].opp?ev.topic:'nimby'):'thanks',n=soft?2:1;
+ const crowd=[];for(let i=0;i<n;i++){const T=TOPICS[topic];const opp=soft;crowd.push({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:opp?'#8a3b3b':'#2f7a55',...look(),stance:opp?'opp':'sup',sign:fresh('sg-'+topic,T.sign),mood:opp?'angry':'happy',
+  text:opp?fresh('soft-react',[`You are letting them off with a warning?! After "${ev.title.toLowerCase()}"? Shame on you, Mayor!`,`"${ev.title}" and the mayor shrugs. Is anybody in charge here?`,`I came here worried about "${ev.title.toLowerCase()}", and you just made me angrier.`]):fill(fresh('thx-'+topic,T.sup),p)})}
+ await say('mayor',soft?fresh('soft-i',['I see members of the public rising from the gallery.','Several residents would like to be heard.']):fresh('hard-i',['A resident has asked to speak.','One resident would like a word.']),{auto:700});
  showCrowd(crowd);await sleep(AUTO?10:300);
- for(const c of crowd){await showSpeaker(c);await say(c,c.text);if(k==='forgive')heckle('BOO!');await hideSpeaker()}
+ for(const c of crowd){await showSpeaker(c);await say(c,c.text);if(soft)heckle('BOO!');await hideSpeaker()}
  await hideCrowd();
- minutes(`${ev.title}: ${p.type.name} (${k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven'}).`,'b');
+ minutes(`${ev.title}: ${p.type.name} (${short}).`,'b');
 }
 function chooseDecision(p){
  return new Promise(res=>{
