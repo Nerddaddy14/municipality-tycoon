@@ -10,10 +10,12 @@ Everything a game portal's submission form is likely to ask for. Check each port
 
 **Short description (about 150 characters):** You are the mayor of Clifton. Hear developers, balance the budget, and decide what gets built, before the voters recall you.
 
-**Long description:**
+**Long description:** (update the lines below to match the current game before pasting)
 You are the mayor of Clifton. Every other week the city council meets in chambers. Developers pitch projects from a coffee shop to a billion-dollar data center. Residents line up at the podium. Your own council argues over every condition you attach.
 
 Approve a project and it moves through permitting, construction and operation, and things go wrong or right: unpermitted wells, contaminated water, blackouts, water main breaks, but also new parks, roads and donations. Set the tax rate and fund your departments. Take a council member to lunch. Hear the city attorney's advice, and decide whether to trust it. Resist the lobbyist's envelope, or don't, and hope it never leaks.
+
+Your goal: keep the job and grow Clifton past its population target by the end of your term. Pick a background (business owner, union organizer, teacher, retired cop) and a starting scenario (sleepy town, boom town, town in debt, storm recovery), meet a council whose personalities change every game, and watch the Clifton Courier put your worst moments on the front page.
 
 Play a quick 12-week term in about an hour, or the full 52-week term. There is no single right way to run a city, only trade-offs you have to live with.
 
@@ -24,6 +26,12 @@ Play a quick 12-week term in about an hour, or the full 52-week term. There is n
 - A real budget: property tax, four departments, bonds and deficits
 - Council relationships, story arcs, and developers who remember how you treated them
 - Bribes that can leak, recall elections, and a city that grows with your decisions
+- Sewer plant and landfill that fill up as the city grows, with expansion fights, overflows and recycling programs
+- Solar and wind farms that help the grid and hurt the land; surveillance camera networks that catch criminals and cause wrongful arrests; a Police Chief with opinions
+- Off-week scenes with a tower crane and moving construction crews, buildings that rise each time you visit, and wealthy, middle-class or struggling neighborhoods on your community walks
+- The Clifton Courier: gaffes by you or the council can make the front page, with a snap poll of residents and a reporter who asks about it later
+- A final-edition epilogue with a grade, a then-and-now table, 14 achievements and a share card
+- Plays on phones as well as desktops, with text size, color-blind and reduce-motion options
 - Autosaves every week
 
 ## Controls
@@ -59,21 +67,21 @@ Portals now ask about generative AI. For this project the honest answer is **Yes
 - Runs in an iframe. The layout scales to fit the frame with no page scrolling, and falls back to a normal scrolling page when opened directly
 - Audio uses the Web Audio API and starts only after the player clicks. It pauses when the tab is hidden. A mute button and volume slider are built in
 - Saves use `localStorage`, wrapped so the game still runs if storage is blocked (saving is simply unavailable)
-- Desktop browsers. The interface is not designed for phones, so mark it as desktop and tablet only
+- Desktop and phone browsers. Under 820px wide the layout switches to a phone mode (scaled council scene, one Menu button, larger touch targets). On itch.io tick Mobile friendly (portrait) in the embed options
 - Recommended frame size: 960x540 or larger. It runs down to about 800x500, though text gets small at that size
 
 ## Assets
 
-- `portal/screens/01-title.jpg` through `05-budget.jpg` are draft screenshots at 800x600
+- `portal/screens/01-title.jpg` through `05-budget.jpg` are earlier 800x600 screenshots. `06` to `11` show the newer features: title options, Courier front page, construction site, struggling neighborhood, epilogue and the phone layout
 - Most portals want specific cover sizes (for example 512x384 and 512x512). Crop or re-capture from the game at those sizes before submitting
 
 ## Monetization notes
 
 - The free build can hold rewarded video ads later. Hooks have not been added yet, since each portal uses its own SDK
-- Any paid features (`GATING=true`) should be removed or disabled in the portal build, since portals usually do not allow external purchases
+- The portal build hides every link to the paid version, since portals usually do not allow external purchases
 
 ## Before you submit
 
 - Decide whether the portal build should have the Feedback button open an outside form. The button currently copies feedback text and does not leave the page, which portals prefer
-- Keep `GATING=false` for the portal copy
+- Use the portal build (`python tools/build_itch.py portal`, output in `dist/itch-portal/`): 12-week term only, no outside purchase or tip links. The `GATING` and `EDITION` constants are stamped by the build script
 - Test the game in an iframe on the portal's staging page if they offer one

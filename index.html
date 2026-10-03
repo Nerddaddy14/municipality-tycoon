@@ -448,11 +448,12 @@ const SPEED=AUTO?1:16;
 /* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
 /* EDITION is stamped by tools/build_itch.py: 'free' (12-week) or 'full' (everything). 'dev' leaves everything unlocked. The source ships as 'free' so GitHub Pages serves the free edition. */
 const EDITION='free',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full';
-const GATING=EDITION==='free',LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
+const PORTAL=EDITION==='portal',GATING=EDITION==='free'||PORTAL,LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
 const FREE_FEATURES=['quick'];
 const fnv=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36).toUpperCase()};
 function validKey(k){const m=/^MT-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{1,8})$/.exec((k||'').trim().toUpperCase());return !!m&&fnv(m[1]+'-'+m[2]+LICENSE_SALT)===m[3]}
 function licensed(){try{return validKey(localStorage.getItem(LICENSE_KEY))}catch(e){return false}}
+const FVL=PORTAL?' (locked)':' (full version)';
 function feature(k){return !GATING||FREE_FEATURES.includes(k)||licensed()}
 
 /* ---------- audio ---------- */
@@ -3111,7 +3112,7 @@ function ending(code){
  ${ok?`<div class="achs">${ACHS.map(a=>{const e=earned.includes(a),nw=fresh_.includes(a),old=!e&&have[a.k];return `<div class="ach ${nw?'new':e||old?'':'off'}"><b>${e||old?a.name:'???'}${nw?' &middot; NEW':''}</b><small>${e||old?a.desc:'Locked'}</small></div>`}).join('')}</div>`:'<p class="mut">Finish a full term to earn achievements.</p>'}
  <h2>Share your result</h2><div class="sharebox" id="shareTxt">${shareTxt.replace(/</g,'&lt;')}</div>
  <div class="btnrow"><button class="go" id="shareCopy">Copy result</button><button id="shareAgain">Run for mayor again</button></div><div class="mut" id="shareMsg" style="margin-top:6px"></div>
- ${GATING?`<p><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener"><b>Play the full 52-week term</b></a> with recall elections, themes and more.</p>`:''}
+ ${GATING&&!PORTAL?`<p><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener"><b>Play the full 52-week term</b></a> with recall elections, themes and more.</p>`:''}
  ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Dev a Coffee</a></p>`:''}</div>`;
  $('#overlay').classList.remove('hidden');
  $('#shareAgain').onclick=()=>location.reload();
@@ -3350,9 +3351,9 @@ function showMenu(){
  const slots=feature('saves')?`<h3 style="margin:14px 0 4px;font-size:13px;color:var(--acc);letter-spacing:1px;text-transform:uppercase">Save slots</h3>${Array.from({length:SLOTS},(_,i)=>`<div style="display:flex;gap:6px;align-items:center;margin:4px 0"><span style="flex:1;font-size:13px">Slot ${i+1}: ${slotLabel(i+1)}</span><button class="ctlb" data-save="${i+1}" ${WEEK_SNAP?'':'disabled'}>Save here</button><button class="ctlb" data-load="${i+1}" ${readSlot(i+1)?'':'disabled'}>Load</button></div>`).join('')}`:`<p class="mut" style="margin-top:12px">Free version: one save slot (the autosave). Unlock the full game for 3 manual save slots.</p>`;
  modal(`<h2>Menu</h2><p class="mut">The game autosaves at the start of every week. "Save and quit" stores the start of this week, so you replay the week when you come back.</p>
  <div class="btnrow col"><button class="go" id="mSave" ${WEEK_SNAP?'':'disabled'}>Save and quit to title</button><button id="mResume">Resume game</button><button class="stop" id="mNew">Abandon this game and start over</button></div>${slots}
- <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?' (full version)':''}</option>`).join('')}</select></label>
+ <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?FVL:''}</option>`).join('')}</select></label>
  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="mFit" ${document.body.classList.contains('fit')?'checked':''}> Fit the game to the window (no page scrolling)</label>
- ${GATING&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
+ ${GATING&&!PORTAL&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
  {
   const tools=document.createElement('div');tools.className='btnrow col';tools.id='mTools';
   const defs=[['helpBtn','Help',0],['fbBtn','Feedback',0],['spd','',1],['auto','',1],['mute','',1],['coffee','',0]];
@@ -3412,9 +3413,9 @@ function applyDialoguePacks(){
 }
 function openTitleExtras(){
  titlePickers();
- const lic=$('#licBtn');if(lic){if(GATING&&!licensed())lic.classList.remove('hidden');else lic.classList.add('hidden')}
+ const lic=$('#licBtn');if(lic){if(GATING&&!PORTAL&&!licensed())lic.classList.remove('hidden');else lic.classList.add('hidden')}
  const full=document.querySelector('input[name=mode][value="52"]');
- if(full&&!feature('full')){full.disabled=true;full.parentElement.append(' (full version)');document.querySelector('input[name=mode][value="12"]').checked=true}
+ if(full&&!feature('full')){full.disabled=true;full.parentElement.append(FVL);document.querySelector('input[name=mode][value="12"]').checked=true}
 }
 function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}

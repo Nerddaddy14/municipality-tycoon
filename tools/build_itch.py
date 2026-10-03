@@ -2,7 +2,8 @@
 Writes dist/itch-free/ and dist/itch-full/ (folders for butler) plus a zip of each for manual upload.
 The EDITION constant in index.html is stamped as 'free' (12-week term, locked extras) or 'full' (everything).
 itch.io HTML5 games need index.html at the root.
-Usage: python tools/build_itch.py [free|full|both]   (default: both)"""
+Usage: python tools/build_itch.py [free|full|portal|both]   (default: both = free and full)
+  portal = the free 12-week build with no outside purchase links, for game portals"""
 import os, re, shutil, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

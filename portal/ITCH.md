@@ -8,13 +8,13 @@ The plan from your notes: put the game on itch.io first, free with a voluntary t
 python tools/build_itch.py
 ```
 
-This writes `dist/municipality-tycoon-itch.zip` with `index.html` at the root, which is what itch.io requires for an HTML5 game.
+This writes two builds: `dist/itch-free/` and `dist/itch-full/` (with a zip of each in `dist/`). The free build plays the 12-week term and links to the full game. The full build unlocks everything. `python tools/build_itch.py portal` writes a third build for game portals with no purchase links. Each has `index.html` at the root, which is what itch.io requires for an HTML5 game.
 
 ## Page settings
 
 1. Create a new project on itch.io. **Kind of project:** HTML.
 2. Upload `dist/municipality-tycoon-itch.zip` and tick **This file will be played in the browser**.
-3. **Embed options:** viewport 1280 by 720, turn on the fullscreen button, leave "Mobile friendly" off. The game scales to fit whatever frame you choose.
+3. **Embed options:** viewport 1280 by 720, turn on the fullscreen button, and tick **Mobile friendly** with portrait orientation so phones get the phone layout. The game scales to fit whatever frame you choose.
 4. **Pricing:** choose **$0 or donate** (name your price). Set the minimum to $0 and a suggested price of a few dollars. Players can launch the game without paying, and a tip jar sits on the page.
 5. Turn on **Donations** if you want players to be able to tip without buying anything.
 6. Paste the text from `portal/SUBMISSION.md` for the description, tags and content notes. Use the screenshots in `portal/screens/` for the page gallery.
@@ -23,8 +23,8 @@ This writes `dist/municipality-tycoon-itch.zip` with `index.html` at the root, w
 
 Butler (itch.io's command-line uploader) is installed at `C:\Users\Stephen\butler\butler.exe` and logged in to your account. After you create the project page once (you can upload the zip by hand the first time, or skip that and push straight away):
 
-1. Create a file named `.itch-target` in the repo root containing one line: `yourname/municipality-tycoon:html5` (your itch username, the page's URL slug, and the channel name `html5`). It is ignored by git.
-2. Push: `python tools/push_itch.py`. Add `--dry-run` first if you want to see what would be uploaded.
+1. Create `.itch-target` (free page) and `.itch-target-full` (paid page) in the repo root, each containing one line like `yourname/municipality-tycoon:html5` and `yourname/municipality-tycoon-full:html5` (your itch username, the page's URL slug, and the channel name `html5`). It is ignored by git.
+2. Push: `python tools/push_itch.py free`, `full` or `both`. Add `--dry-run` first if you want to see what would be uploaded.
 
 Each push builds the game, uploads only what changed, and tags the build with the current git commit. Pushed updates show up on the itch page after itch processes them, usually within a minute or two. If the page is still a draft, players cannot see it until you make it public.
 
