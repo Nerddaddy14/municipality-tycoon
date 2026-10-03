@@ -205,6 +205,18 @@ body.rm *,body.rm *:before,body.rm *:after{animation-duration:.001s!important;an
  #overlay .box.title .tcol2{border-left:1px solid #2a3750;padding-left:36px}
  #overlay .box.title .tcol1 p:first-child{margin-top:0}
 }
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+.chips button{background:#10192a;color:#c6d0e0;border:1px solid #2a3750;border-radius:999px;padding:5px 12px;cursor:pointer;font-size:12px}
+.chips button.on{background:#27402f;border-color:#3fbf6a;color:#d6f5e0}
+.mapwrap{position:relative}
+.mapctl{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px}
+.mapctl button{background:rgba(16,25,42,.85);color:#fff;border:1px solid #34425c;border-radius:8px;min-width:34px;height:34px;cursor:pointer;font-size:16px;font-weight:700}
+.mapwrap svg{touch-action:pan-y}
+.mapwrap.big{overflow:auto;max-height:68vh;-webkit-overflow-scrolling:touch}
+.mapwrap.big svg{width:1150px;max-width:none}
+body.mob .mapctl{flex-direction:row;top:auto;bottom:8px;right:8px;gap:4px}
+body.mob .mapctl button{min-width:30px;height:28px;font-size:12px;padding:0 8px}
+.mapwrap.big .mapctl{position:sticky;float:right;top:6px;right:6px}
 @property --pg{syntax:'<number>';inherits:true;initial-value:0}
 .site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
 .site-svg .band{transition:none}
@@ -3811,56 +3823,168 @@ function recordHist(){
  H.push({w:S.week,t:Math.round(S.trust),e:Math.round(S.env),d:Math.round(S.dev),c:Math.round(S.corrupt),p:Math.round(S.pop),b:Math.round(S.budget/1000),s:Math.round(STR())});
  if(H.length>120)H.shift();
 }
-const MAP_SITES={'Harlan Road':[260,115],'the old Dunmore farm':[115,195],'Riverside Industrial Park':[300,430],'the Route 9 corridor':[700,200],'the edge of Millbrook wetlands':[135,385],'Cedar Hill':[645,95],'the former Henley rail yard':[500,435],'Quarry Lane':[835,330],'Eastgate Business Park':[815,150],'the Pinecrest subdivision edge':[585,255]};
+const MAP_SITES={'Harlan Road':[250,100],'the old Dunmore farm':[100,185],'Riverside Industrial Park':[300,420],'the Route 9 corridor':[745,150],'the edge of Millbrook wetlands':[125,385],'Cedar Hill':[650,72],'the former Henley rail yard':[535,432],'Quarry Lane':[855,325],'Eastgate Business Park':[850,200],'the Pinecrest subdivision edge':[625,225]};
 const STAGE_COL=['#9aa3ad','#a9835a','#e8791a','#f2c200','#3fbf6a'];
-function mapSVG(){
- const sn=seasonIdx(),grass=['#8fbf74','#79b45f','#c9a45a','#e4eaee'][sn],grass2=['#9ccb82','#86c06b','#d6b56e','#f4f7f9'][sn],tree=['#4c9a46','#3f8a3a','#d9822b','#8aa0ad'][sn];
- let o=`<rect width="960" height="540" fill="${grass}"/>`;
- // farmland patchwork
- [[20,110,150,110],[60,120,0,0],[860,60,80,70],[880,250,70,90],[30,300,90,60]].forEach(([x,y,w,h],i)=>{if(w)o+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${grass2}" opacity=".8"/>`});
+let MAPMODE='map';
+const MAP_MODES=[['map','Overview'],['util','Utilities'],['serv','Services'],['nbhd','Neighborhoods'],['env','Environment']];
+const mapAnim=()=>!document.body.classList.contains('rm');
+const MAP_ROADS={main:'M-10,268 H970',ns:'M480,-10 V550',r9:'M372,550 L772,28',north:'M250,-10 V268',east:'M690,268 V550',west:'M-10,160 H330',eastw:'M620,160 H970'};
+function mapTxt(x,y,t,sz,col,anchor,wt){return `<text x="${x}" y="${y}" font-size="${sz||11}" font-weight="${wt||700}" text-anchor="${anchor||'middle'}" fill="${col||'#fff'}" stroke="rgba(10,20,30,.55)" stroke-width="2.4" paint-order="stroke" stroke-linejoin="round">${t}</text>`}
+function mapPalette(){
+ const sn=seasonIdx();
+ return{grass:['#93c47a','#7fb865','#cfa95e','#e7edf0'][sn],grass2:['#a2cf88','#8fc673','#dcbb73','#f3f7f9'][sn],tree:['#4d9a47','#3f8a3a','#d9822b','#7f97a6'][sn],tree2:['#3c8238','#2f7230','#b8661a','#6c8594'][sn],crop1:['#7ab25f','#6aa94f','#b8913f','#cfd8dc'][sn],crop2:['#c9d77a','#d9d36a','#c47a2a','#e6ecef'][sn],water:sn===3?'#8fb8d4':'#5aa3d1',water2:sn===3?'#c9e1ef':'#8cc6e8',hill:['#85b36d','#72a85c','#b8964f','#d6dfe4'][sn],roof:['#a85a3a','#a85a3a','#8a4a2a','#7a6a6a'][sn]};
+}
+function mapTree(x,y,r,P,k){return `<g transform="translate(${x},${y})"><ellipse cx="2" cy="${r*.9}" rx="${r*.9}" ry="${r*.35}" fill="rgba(0,0,0,.18)"/><rect x="-1.2" y="${r*.2}" width="2.4" height="${r*.8}" fill="#6b4a2b"/><circle cx="0" cy="0" r="${r}" fill="${k%2?P.tree:P.tree2}"/><circle cx="${-r*.3}" cy="${-r*.3}" r="${r*.45}" fill="${P.tree}" opacity=".7"/></g>`}
+function mapHouses(x,y,cols,rows,wall,roof,gap,tier){
+ let h='';
+ for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+  const hx=x+c*gap,hy=y+r*(gap*.85),bad=tier==='poor'&&(r*3+c)%4===1;
+  h+=`<g transform="translate(${hx},${hy})"><rect x="-1" y="-1" width="${gap-4}" height="${gap*.7}" fill="rgba(0,0,0,.12)"/><rect x="0" y="2" width="${gap-6}" height="${gap*.5}" fill="${bad?'#9a9488':wall}" stroke="rgba(0,0,0,.25)" stroke-width=".8"/><path d="M-2,3 L${(gap-6)/2},-3 L${gap-4},3Z" fill="${bad?'#6b5a50':roof}" stroke="rgba(0,0,0,.25)" stroke-width=".8"/>${tier==='rich'?`<rect x="${gap-12}" y="-4" width="2.4" height="5" fill="#7a5a4a"/>`:''}</g>`;
+ }
+ return h;
+}
+function mapBlock(x,y,w,h,ht,col){return `<g><rect x="${x+3}" y="${y+3}" width="${w}" height="${h}" fill="rgba(0,0,0,.2)"/><rect x="${x}" y="${y-ht+h-2}" width="${w}" height="${ht}" fill="${col}" stroke="rgba(0,0,0,.28)" stroke-width=".8"/><rect x="${x}" y="${y-ht+h-2}" width="${w}" height="4" fill="rgba(255,255,255,.35)"/>${Array.from({length:Math.max(1,Math.floor(ht/9))},(_,i)=>`<rect x="${x+3}" y="${y-ht+h+2+i*9-2}" width="${w-6}" height="3" fill="rgba(255,255,255,.45)"/>`).join('')}</g>`}
+function projGlyph(p,i){
+ const k=p.type.k,a=ARCH[k]||'box',col=ARCHCOLOR[k]||'#8d9296',sz=.75+(p.sizeF||.3)*.95,pg=p.stage>=OPER?1:buildProgress(p),anim=mapAnim();
+ let g='';
+ const base=(w,h,c)=>`<rect x="${-w/2}" y="${-h+16}" width="${w}" height="${h}" fill="${c}" stroke="rgba(0,0,0,.35)" stroke-width="1"/>`;
+ if(a==='box'){const w=44,h=18;g=base(w,h,col)+`<rect x="${-w/2}" y="${-h+16}" width="${w}" height="4" fill="rgba(255,255,255,.35)"/>${[-12,0,12].map(x=>`<rect x="${x-4}" y="8" width="8" height="8" fill="rgba(0,0,0,.45)"/>`).join('')}`+(k==='datacenter'||k==='crypto'?`<rect x="-16" y="-8" width="8" height="5" fill="#9aa3ad"/><rect x="2" y="-8" width="8" height="5" fill="#9aa3ad"/>`:`<rect x="-18" y="-6" width="36" height="2" fill="rgba(0,0,0,.2)"/>`)}
+ else if(a==='tower'){const h=34+28*(p.sizeF||.3),w=24;g=base(w,h,col)+Array.from({length:Math.floor(h/8)},(_,r)=>[0,1,2].map(c=>`<rect x="${-w/2+3+c*7}" y="${-h+20+r*8}" width="4" height="4" fill="#bfe3ff"/>`).join('')).join('')+(k==='hospital'?`<rect x="-5" y="${-h+8}" width="10" height="10" fill="#fff"/><path d="M-1.5,${-h+9} h3 v3 h3 v3 h-3 v3 h-3 v-3 h-3 v-3 h3z" fill="#d6293a"/>`:`<rect x="${-w/2-2}" y="${-h+14}" width="${w+4}" height="3" fill="#6c7279"/>`)}
+ else if(a==='shop'){g=`<rect x="-20" y="2" width="40" height="14" fill="${col}" stroke="rgba(0,0,0,.35)"/><path d="M-22,2 L22,2 L18,-3 L-18,-3Z" fill="${k==='dispensary'?'#3f8a5c':'#c0392b'}"/><rect x="-5" y="7" width="10" height="9" fill="#5a3b2a"/><rect x="-18" y="6" width="9" height="6" fill="#bfe3ff"/><rect x="9" y="6" width="9" height="6" fill="#bfe3ff"/>`+(k==='ev'?`<rect x="-24" y="-8" width="48" height="3" fill="#cfd4d8"/><rect x="-20" y="-5" width="3" height="10" fill="#6c7279"/><rect x="17" y="-5" width="3" height="10" fill="#6c7279"/>`:'')}
+ else if(a==='plant'){g=`<rect x="-26" y="8" width="52" height="9" fill="#a9b0b6" stroke="rgba(0,0,0,.3)"/>`+[-16,0,16].map((x,j)=>`<rect x="${x-6}" y="${-8-j*3}" width="12" height="${24+j*3}" rx="3" fill="${j===1?'#dfe4e8':'#c9ced3'}" stroke="rgba(0,0,0,.3)"/><ellipse cx="${x}" cy="${-8-j*3}" rx="6" ry="2.5" fill="#eef1f3"/>`).join('')+`<rect x="22" y="-16" width="5" height="30" fill="#8a5a46"/>`+(p.stage>=OPER&&anim?`<circle cx="24.5" cy="-20" r="4" fill="rgba(235,235,235,.8)"><animate attributeName="cy" values="-20;-38" dur="3.2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="3.2s" repeatCount="indefinite"/><animate attributeName="r" values="3;9" dur="3.2s" repeatCount="indefinite"/></circle>`:'')}
+ else if(a==='solar'){g=Array.from({length:3},(_,r)=>Array.from({length:4},(_,c)=>`<path d="M${-24+c*13-r*3},${-6+r*9} l11,0 l-3,7 l-11,0z" fill="#1d3a6e" stroke="#9db8e6" stroke-width=".8"/>`).join('')).join('')}
+ else if(a==='wind'){g=[-18,0,18].map((x,j)=>`<path d="M${x-1.5},16 L${x-.6},${-14-j*2} L${x+.6},${-14-j*2} L${x+1.5},16Z" fill="#eef1f3" stroke="#b9c1c7" stroke-width=".6"/><g>${anim&&p.stage>=OPER?`<animateTransform attributeName="transform" type="rotate" from="0 ${x} ${-14-j*2}" to="360 ${x} ${-14-j*2}" dur="${5+j}s" repeatCount="indefinite"/>`:''}<path d="M${x},${-14-j*2} l-1.4,-14 l2.8,0z M${x},${-14-j*2} l12,6 l-1.4,2.4z M${x},${-14-j*2} l-12,6 l1.4,2.4z" fill="#f4f6f8" stroke="#c9d0d5" stroke-width=".5"/></g>`).join('')}
+ else if(a==='pit'){g=[0,1,2,3].map(r=>`<ellipse cx="0" cy="${8+r*0}" rx="${28-r*6}" ry="${12-r*2.4}" fill="${r%2?'#6b5338':'#8a6c4a'}" stroke="rgba(0,0,0,.25)"/>`).join('')+`<rect x="14" y="-6" width="6" height="14" fill="#7d8791"/>`}
+ else if(a==='poles'){g=[-18,-6,6,18].map(x=>`<rect x="${x-1}" y="-4" width="2" height="20" fill="#8a9096"/><rect x="${x-4}" y="-8" width="8" height="5" rx="1.5" fill="#2b3036"/><circle cx="${x+2}" cy="-5.5" r="1.4" fill="#6fa8dc"/>`).join('')}
+ else{g=`<rect x="-20" y="-2" width="40" height="18" fill="${col}" stroke="rgba(0,0,0,.3)"/>`}
+ if(k==='school')g+=`<rect x="12" y="-14" width="1.6" height="16" fill="#555"/><path d="M13.6,-14 h8 v5 h-8z" fill="#e63946"/>`;
+ if(k==='airstrip')g=`<rect x="-34" y="6" width="68" height="8" fill="#6b7078"/><path d="M-30,10 h60" stroke="#fff" stroke-width="1" stroke-dasharray="4 4"/><path d="M-8,-4 l12,4 l-12,4 l3,-4z" fill="#e8eef3" stroke="#6b7078" stroke-width=".6"/>`;
+ if(k==='brewery'||k==='chem'||k==='bottling')g+=`<rect x="-31" y="2" width="8" height="14" rx="3" fill="#b98a4e" stroke="rgba(0,0,0,.3)"/>`;
+ // stage presentation
+ if(p.stage===-1)return `<g opacity=".65"><rect x="-26" y="-6" width="52" height="24" fill="none" stroke="#e8791a" stroke-width="2" stroke-dasharray="5 4"/><text y="10" font-size="14" text-anchor="middle" fill="#e8791a" font-weight="800">?</text></g>`;
+ if(p.stage===0)return `<rect x="-28" y="-4" width="56" height="22" fill="rgba(169,131,90,.35)" stroke="#9aa3ad" stroke-width="1.6" stroke-dasharray="4 3"/><rect x="-14" y="-10" width="28" height="9" fill="#fff" stroke="#9aa3ad"/><text y="-3" font-size="6" font-weight="800" text-anchor="middle" fill="#234">PERMIT</text>`;
+ if(p.stage===1)return `<ellipse cx="0" cy="8" rx="30" ry="12" fill="#a9835a" opacity=".85"/><path d="M-12,8 l14,-10 l5,3 l-10,9z" fill="#f2b324" stroke="#8a6210"/><rect x="-4" y="6" width="24" height="6" rx="3" fill="#333"/>`;
+ if(p.stage===2){const fr=clamp(pg*1.05,.1,1);return `<defs><clipPath id="cp${i}"><rect x="-60" y="${(16-fr*64).toFixed(1)}" width="120" height="${(fr*64+10).toFixed(1)}"/></clipPath></defs><g clip-path="url(#cp${i})" opacity=".92">${g}</g><g stroke="#e8791a" stroke-width="1.2" opacity=".9">${[-24,-8,8,24].map(x=>`<path d="M${x},18 V${(16-fr*64-6).toFixed(1)}"/>`).join('')}<path d="M-26,${(16-fr*64).toFixed(1)} H26"/></g><path d="M30,18 V-30 M30,-30 H6 M30,-30 L38,-30" stroke="#f2a900" stroke-width="2.4" fill="none"/>${anim?`<rect x="8" y="-29" width="3" height="8" fill="#e0b53c"><animate attributeName="y" values="-29;-12;-29" dur="5s" repeatCount="indefinite"/></rect>`:''}`}
+ return `<g>${g}</g>${p.stage===3?`<path d="M-22,16 H22" stroke="#e63946" stroke-width="3" stroke-dasharray="3 3"/>`:''}`;
+}
+function mapSVG(mode){
+ mode=mode||MAPMODE;const P=mapPalette(),anim=mapAnim(),sn=seasonIdx(),dim=mode==='map'?0:.0;
+ const sl=sewerLoad(),slc=sl>=100?'#e04646':sl>=80?'#e8a317':'#3fbf6a',lp=trashPct(),lc=lp>=100?'#e04646':lp>=75?'#e8a317':'#3fbf6a',gl=gridLoad(),glc=gl>=88?'#e04646':gl>=72?'#e8a317':'#3fbf6a',wl=waterLoad(),wlc=wl>=90?'#e04646':wl>=75?'#e8a317':'#3fbf6a',scl=schoolLoad(),sccol=scl>=110?'#e04646':scl>=98?'#e8a317':'#3fbf6a',rt=fireRT(),rtc=rt>=10?'#e04646':rt>=8?'#e8a317':'#3fbf6a';
+ let o=`<defs>
+  <pattern id="crop1" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0,3 H12 M0,9 H12" stroke="${P.crop1}" stroke-width="3"/></pattern>
+  <pattern id="crop2" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(90)"><path d="M0,3 H12 M0,9 H12" stroke="${P.crop2}" stroke-width="3"/></pattern>
+  <linearGradient id="riv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${P.water2}"/><stop offset="1" stop-color="${P.water}"/></linearGradient>
+  <radialGradient id="glowR"><stop offset="0" stop-color="#e04646" stop-opacity=".75"/><stop offset="1" stop-color="#e04646" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowG"><stop offset="0" stop-color="#3fbf6a" stop-opacity=".6"/><stop offset="1" stop-color="#3fbf6a" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowB"><stop offset="0" stop-color="#9a7a3a" stop-opacity=".7"/><stop offset="1" stop-color="#9a7a3a" stop-opacity="0"/></radialGradient>
+  ${Object.entries(MAP_ROADS).map(([k,d])=>`<path id="rd_${k}" d="${d}"/>`).join('')}
+  <path id="rd_rail" d="M-60,455 H1020"/>
+ </defs>`;
+ o+=`<rect width="960" height="540" fill="${P.grass}"/>`;
+ // hills in the north-east
+ o+=`<ellipse cx="660" cy="62" rx="150" ry="60" fill="${P.hill}"/><ellipse cx="660" cy="58" rx="105" ry="40" fill="${P.grass2}" opacity=".55"/><ellipse cx="660" cy="54" rx="58" ry="22" fill="${P.hill}" opacity=".8"/>`;
+ // farmland
+ [[30,120,150,90,'crop1'],[30,215,90,40,'crop2'],[820,60,100,70,'crop2'],[880,240,70,80,'crop1'],[20,300,60,40,'crop1']].forEach(([x,y,w,h,pt])=>{o+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#${pt})" stroke="rgba(0,0,0,.12)"/>`});
+ o+=`<g transform="translate(60,160)"><rect x="-10" y="-8" width="20" height="14" fill="#a33b2c" stroke="rgba(0,0,0,.3)"/><path d="M-12,-8 L0,-16 L12,-8Z" fill="#7a2a1a"/><rect x="14" y="-18" width="8" height="24" rx="3" fill="#cfd4d8" stroke="rgba(0,0,0,.3)"/></g>`;
+ // forests
+ for(let i=0;i<46;i++){const x=(i*277+40)%940+10,y=(i*131+30)%500+10;if(Math.abs(y-268)<26||Math.abs(x-480)<22||(y>285&&y<395&&x>0&&x<900&&Math.abs(y-(335+Math.sin(x/90)*30))<44)||(y>440&&y<472))continue;if((x>380&&x<540&&y>180&&y<340)||(x>140&&x<340&&y>195&&y<270)||(x>395&&x<520&&y>55&&y<150))continue;o+=mapTree(x,y,5+i%4,P,i)}
  // river
- o+=`<path d="M-20,310 C150,345 210,255 340,305 S530,380 650,335 S870,385 990,352" stroke="#5aa3d1" stroke-width="38" fill="none"/><path d="M-20,310 C150,345 210,255 340,305 S530,380 650,335 S870,385 990,352" stroke="#8cc6e8" stroke-width="22" fill="none" opacity=".7"/>`;
- if(PF().trail)o+=`<path d="M-20,318 C150,352 210,262 340,312 S530,388 650,342 S870,392 990,360" stroke="#c9a24a" stroke-width="3" stroke-dasharray="2 6" fill="none"/>`;
+ const RV='M-20,300 C140,335 230,250 350,300 S540,390 660,335 S880,392 990,352';
+ o+=`<path d="${RV}" stroke="url(#riv)" stroke-width="40" fill="none"/><path d="${RV}" stroke="#fff" stroke-opacity=".3" stroke-width="3" stroke-dasharray="6 18" fill="none">${anim?'<animate attributeName="stroke-dashoffset" from="0" to="-48" dur="4s" repeatCount="indefinite"/>':''}</path>`;
  // wetlands
- o+=`<ellipse cx="135" cy="388" rx="70" ry="38" fill="#6fae8c" opacity=".85"/>${[100,128,150,172].map(x=>`<path d="M${x},398 v-18 M${x+4},398 v-14" stroke="#3f7a5a" stroke-width="2"/>`).join('')}`;
- // roads and rail
- o+=`<path d="M0,268 H960" stroke="#7a7f86" stroke-width="16"/><path d="M0,268 H960" stroke="#e8d36a" stroke-width="2" stroke-dasharray="14 12"/><path d="M480,0 V540" stroke="#7a7f86" stroke-width="14"/><path d="M380,540 L760,40" stroke="#7a7f86" stroke-width="11"/><path d="M0,455 H960" stroke="#5b4a3a" stroke-width="5"/><path d="M0,455 H960" stroke="#c9b48c" stroke-width="3" stroke-dasharray="3 7"/>`;
- [[250,0,250,268],[690,268,690,540],[0,160,330,160],[620,160,960,160]].forEach(([a,b,c,d])=>{o+=`<path d="M${a},${b} L${c},${d}" stroke="#9a9fa6" stroke-width="7"/>`});
- // trees
- for(let i=0;i<34;i++){const x=(i*277+60)%940+10,y=(i*131+40)%500+10;if(Math.abs(y-268)<24||Math.abs(x-480)<20||(y>290&&y<340)||(y>440&&y<470))continue;o+=`<circle cx="${x}" cy="${y}" r="${5+i%4}" fill="${tree}" opacity=".8"/>`}
+ o+=`<ellipse cx="125" cy="388" rx="78" ry="42" fill="#6fae8c" opacity=".88"/><ellipse cx="110" cy="380" rx="30" ry="14" fill="${P.water}" opacity=".8"/>${[85,105,130,155,172].map(x=>`<path d="M${x},400 v-16 M${x+4},400 v-12 M${x-4},400 v-10" stroke="#3f7a5a" stroke-width="2"/>`).join('')}`;
+ // rail
+ o+=`<use href="#rd_rail" stroke="#5b4a3a" stroke-width="7" fill="none"/><use href="#rd_rail" stroke="#d4c3a0" stroke-width="3" stroke-dasharray="3 7" fill="none"/>`;
+ // roads
+ const road=(k,w)=>`<use href="#rd_${k}" stroke="#6f747b" stroke-width="${w}" fill="none"/>`;
+ o+=['north','west','eastw','east'].map(k=>road(k,7)).join('')+road('r9',11)+road('ns',14)+road('main',16);
+ o+=`<use href="#rd_main" stroke="#e8d36a" stroke-width="1.6" stroke-dasharray="12 10" fill="none"/><use href="#rd_ns" stroke="#e8d36a" stroke-width="1.4" stroke-dasharray="12 10" fill="none"/>`;
+ // bridges
+ o+=`<g transform="translate(480,360)"><rect x="-10" y="-22" width="20" height="44" fill="#8a8f96" stroke="#555"/><rect x="-10" y="-22" width="20" height="3" fill="#cfd4d8"/></g><g transform="translate(495,383) rotate(37)"><rect x="-8" y="-22" width="16" height="44" fill="#8a8f96" stroke="#555"/></g><g transform="translate(690,338)"><rect x="-8" y="-24" width="16" height="48" fill="#8a8f96" stroke="#555"/></g>`;
+ // street labels
+ o+=mapTxt(120,263,'MAIN STREET',9,'#f4f1e8')+mapTxt(560,255,'MAIN STREET',9,'#f4f1e8')+`<text transform="translate(487,60) rotate(90)" font-size="9" font-weight="700" fill="#f4f1e8" stroke="rgba(10,20,30,.55)" stroke-width="2.2" paint-order="stroke">CENTER AVENUE</text>`+`<text transform="translate(655,140) rotate(-51)" font-size="9" font-weight="700" fill="#f4f1e8" stroke="rgba(10,20,30,.55)" stroke-width="2.2" paint-order="stroke">ROUTE 9</text>`;
  // downtown
- for(let r=0;r<3;r++)for(let c=0;c<5;c++){const x=412+c*34+(c>2?10:0),y=222+r*30;if(Math.abs(y+14-268)<10)continue;o+=`<rect x="${x}" y="${y}" width="26" height="22" fill="${(r+c)%2?'#b9b4aa':'#a9a49a'}" stroke="#7a766e"/>`}
+ const dt=[[408,226,26,20,18,'#b9b4aa'],[438,226,26,20,28,'#a9a49a'],[498,226,26,20,22,'#c4bfb3'],[528,226,26,20,16,'#b0aca2'],[408,292,26,20,14,'#b9b4aa'],[438,292,26,20,20,'#bdb8ae'],[498,292,26,20,32,'#a9a49a'],[528,292,26,20,12,'#c4bfb3'],[558,226,22,20,14,'#b0aca2'],[372,226,24,20,12,'#bdb8ae'],[558,292,22,20,10,'#c4bfb3'],[372,292,24,20,12,'#b9b4aa']];
+ o+=dt.map(([x,y,w,h,ht,c])=>mapBlock(x,y,w,h,ht,c)).join('');
  // neighborhoods
- const nh=(x,y,col,roof,label)=>{let h='';for(let i=0;i<12;i++){h+=`<rect x="${x+(i%4)*18}" y="${y+Math.floor(i/4)*16}" width="12" height="10" fill="${col}" stroke="${roof}" stroke-width="1.5"/>`}return h+`<text x="${x+36}" y="${y+58}" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">${label}</text>`};
- o+=nh(395,75,'#f4efe6','#3d6a5a','Oak Park')+nh(190,215,'#e9d9b8','#a85a3a','Millbrook')+nh(560,330,'#b9ad94','#5d4a3e','East Side');
- // park
- o+=`<rect x="355" y="330" width="90" height="56" rx="8" fill="#7fc47a" stroke="#4c9a46"/><circle cx="380" cy="352" r="9" fill="${tree}"/><circle cx="418" cy="362" r="10" fill="${tree}"/><text x="400" y="400" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Riverside Park</text>`;
- // city hall
- o+=`<g transform="translate(480,268)"><rect x="-22" y="-14" width="44" height="28" fill="#f3ead2" stroke="#6b4a2b" stroke-width="2"/><path d="M-26,-14 L0,-32 L26,-14Z" fill="#a85a3a"/><rect x="-4" y="0" width="8" height="14" fill="#6b4a2b"/><text y="30" font-size="11" font-weight="800" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".5">CITY HALL</text></g>`;
- // schools
- const scl=schoolLoad(),sccol=scl>=110?'#e04646':scl>=98?'#e8a317':'#3fbf6a';
- [[395,205],[610,320]].forEach(([x,y],i)=>{o+=`<g transform="translate(${x},${y})"><rect x="-13" y="-10" width="26" height="20" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-16,-10 L0,-20 L16,-10Z" fill="#7a4a2a"/><text y="5" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">S</text><circle cx="15" cy="-18" r="5" fill="${sccol}" stroke="#fff"/>${i===0?`<text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Schools ${scl}%</text>`:''}</g>`});
- // infrastructure: sewer plant, landfill, substation, water tower
- const sl=sewerLoad(),slc=sl>=100?'#e04646':sl>=80?'#e8a317':'#3fbf6a',lp=trashPct(),lc=lp>=100?'#e04646':lp>=75?'#e8a317':'#3fbf6a',gl=gridLoad(),glc=gl>=88?'#e04646':gl>=72?'#e8a317':'#3fbf6a',wl=waterLoad(),wlc=wl>=90?'#e04646':wl>=75?'#e8a317':'#3fbf6a';
- o+=`<g transform="translate(175,470)"><circle cx="-14" cy="0" r="14" fill="#c9ced3" stroke="#6b7078"/><circle cx="16" cy="2" r="12" fill="#c9ced3" stroke="#6b7078"/><circle cx="0" cy="-22" r="5" fill="${slc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Sewer plant ${sl}%</text></g>`;
- o+=`<g transform="translate(890,452)"><path d="M-40,14 Q-10,-30 40,14Z" fill="#8a7a5a" stroke="#5d4a3e" stroke-width="2"/><circle cx="26" cy="-8" r="5" fill="${lc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Landfill ${lp}%</text></g>`;
- o+=`<g transform="translate(715,398)"><rect x="-16" y="-14" width="32" height="28" fill="none" stroke="#6b7078" stroke-width="2" stroke-dasharray="4 3"/><path d="M-3,-10 L6,-1 L0,-1 L4,10 L-6,0 L0,0Z" fill="#f2c200" stroke="#7a6a1a"/><circle cx="18" cy="-16" r="5" fill="${glc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Grid ${gl}%</text></g>`;
- o+=`<g transform="translate(345,205)"><path d="M-8,18 L-4,-6 H4 L8,18Z" fill="#9aa3ad" stroke="#6b7078"/><ellipse cx="0" cy="-12" rx="12" ry="9" fill="#c9ced3" stroke="#6b7078"/><circle cx="14" cy="-18" r="5" fill="${wlc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Water ${wl}%</text></g>`;
- // fire stations
- o+=`<g transform="translate(455,300)"><rect x="-11" y="-9" width="22" height="18" fill="#c0392b" stroke="#7a2a1a" stroke-width="1.5"/><rect x="-5" y="-1" width="10" height="10" fill="#f3ead2"/><text y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Fire ${fireRT().toFixed(1)} min</text></g>`;
- if(S.stations)o+=`<g transform="translate(790,262)"><rect x="-11" y="-9" width="22" height="18" fill="#c0392b" stroke="#7a2a1a" stroke-width="1.5"/><rect x="-5" y="-1" width="10" height="10" fill="#f3ead2"/><text y="24" font-size="10" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Station 2</text></g>`;
+ o+=`<rect x="395" y="68" width="125" height="86" rx="10" fill="${P.grass2}" opacity=".55"/>`+mapHouses(404,76,6,4,'#f4efe6','#3d6a5a',20,'rich')+[[420,70],[470,150],[510,90],[398,140]].map(([x,y],i)=>mapTree(x,y,6,P,i)).join('')+mapTxt(458,168,'OAK PARK',11)+mapTxt(458,180,'upscale',8,'#e8f1f8',undefined,600);
+ o+=`<rect x="166" y="203" width="165" height="56" rx="10" fill="${P.grass2}" opacity=".5"/>`+mapHouses(174,210,8,2,'#e9d9b8','#a85a3a',19,'mid')+mapTxt(250,270,'MILLBROOK',11)+mapTxt(250,282,'working families',8,'#f4ead0',undefined,600);
+ o+=`<rect x="560" y="286" width="140" height="48" rx="8" fill="${P.grass2}" opacity=".35"/>`+mapHouses(566,292,7,2,'#b9ad94','#5d4a3e',18,'poor')+mapTxt(630,344,'EAST SIDE',11)+mapTxt(630,356,'by the river',8,'#f1e8d0',undefined,600);
+ // riverside park
+ o+=`<rect x="360" y="398" width="96" height="48" rx="10" fill="#7fc47a" stroke="#4c9a46"/><ellipse cx="410" cy="418" rx="20" ry="9" fill="${P.water}" opacity=".85"/>${mapTree(378,408,6,P,1)}${mapTree(438,430,7,P,2)}${mapTree(380,436,5,P,3)}${mapTxt(408,458,'RIVERSIDE PARK',10)}`;
+ if(PF().trail)o+=`<path d="M-20,318 C140,350 230,268 350,318 S540,408 660,352 S880,410 990,370" stroke="#c9a24a" stroke-width="2.6" stroke-dasharray="2 5" fill="none"/>`;
+ if(PF().dog)o+=`<rect x="440" y="402" width="14" height="12" fill="none" stroke="#6b4a2b" stroke-width="1.5"/><circle cx="447" cy="408" r="2" fill="#8a5a2b"/>`;
+ if(PF().play)o+=`<path d="M368,424 l5,-7 l5,7z" fill="#e8791a"/><rect x="372" y="424" width="2" height="6" fill="#555"/>`;
+ // utilities: lines first so icons sit on top
+ const subst=[775,300],plant=[655,398],tower=[345,360],lfill=[905,455],dtc=[480,268];
+ const sites=Object.values(MAP_SITES);
+ const lineW=mode==='util'?3.2:1.4,lineO=mode==='util'?1:.5;
+ o+=`<g opacity="${lineO}">`;
+ [[480,268],[745,150],[850,200],[855,325],[625,225],[250,100]].forEach(([x,y])=>{o+=`<path d="M${subst[0]},${subst[1]} L${x},${y}" stroke="#f2c200" stroke-width="${lineW}" stroke-dasharray="${mode==='util'?'0':'5 4'}" fill="none"/>`});
+ [[480,268],[300,420],[250,100],[535,432]].forEach(([x,y])=>{o+=`<path d="M${tower[0]},${tower[1]} L${x},${y}" stroke="#4aa3ff" stroke-width="${lineW}" stroke-dasharray="2 4" fill="none"/>`});
+ [[480,268],[560,310],[300,420],[535,432]].forEach(([x,y])=>{o+=`<path d="M${x},${y} L${plant[0]},${plant[1]}" stroke="#a0703a" stroke-width="${lineW}" stroke-dasharray="8 3" fill="none"/>`});
+ o+=`</g>`;
+ // landmarks
+ const poi=(x,y,info,inner)=>`<g class="poi" data-info="${info.replace(/"/g,'&quot;')}" transform="translate(${x},${y})">${inner}</g>`;
+ o+=poi(480,268,'City Hall: where you preside. Council meets every other week.',`<rect x="-16" y="-9" width="32" height="20" fill="#f3ead2" stroke="#6b4a2b" stroke-width="2"/><path d="M-20,-9 L0,-24 L20,-9Z" fill="${P.roof}" stroke="#6b4a2b"/><rect x="-3" y="1" width="6" height="10" fill="#6b4a2b"/><rect x="-1" y="-34" width="1.6" height="12" fill="#888"/><path d="M0.6,-34 h8 v5 h-8z" fill="#2b4a8a">${anim?'<animate attributeName="d" values="M0.6,-34 h8 v5 h-8z;M0.6,-34 h8 v4 q-3,2 -8,1z;M0.6,-34 h8 v5 h-8z" dur="2.6s" repeatCount="indefinite"/>':''}</path>`+mapTxt(0,26,'CITY HALL',9));
+ o+=poi(440,240,'Library: Sunday hours are a perennial debate.',`<rect x="-9" y="-6" width="18" height="12" fill="#c9b48c" stroke="#7a6a4a"/><path d="M-11,-6 L0,-13 L11,-6Z" fill="#7a6a4a"/>`);
+ o+=poi(520,240,'Police station: Chief Delacroix.',`<rect x="-9" y="-6" width="18" height="12" fill="#3a5a8a" stroke="#1f3a6b"/><circle cx="0" cy="0" r="3" fill="#f2d28a"/>`);
+ o+=poi(330,180,'Millbrook Regional Hospital. Its maternity ward has been losing money.',`<rect x="-11" y="-12" width="22" height="24" fill="#f4f6f8" stroke="#8aa6bd" stroke-width="1.5"/><path d="M-2,-8 h4 v4 h4 v4 h-4 v4 h-4 v-4 h-4 v-4 h4z" fill="#d6293a"/>`+mapTxt(0,24,'HOSPITAL',8));
+ o+=poi(395,205,`Schools: ${scl}% of capacity. ${scl>=100?'Classrooms are overcrowded.':'Room to grow.'}`,`<rect x="-13" y="-10" width="26" height="20" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-16,-10 L0,-20 L16,-10Z" fill="#7a4a2a"/><text y="5" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">S</text><circle cx="15" cy="-18" r="5" fill="${sccol}" stroke="#fff"/>`+mapTxt(0,26,'School '+scl+'%',8));
+ o+=poi(590,278,'Elementary school on the east side.',`<rect x="-11" y="-8" width="22" height="16" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-14,-8 L0,-17 L14,-8Z" fill="#7a4a2a"/><text y="4" font-size="10" font-weight="800" text-anchor="middle" fill="#fff">S</text><circle cx="13" cy="-15" r="4" fill="${sccol}" stroke="#fff"/>`);
+ const fs=(x,y,lab,info)=>poi(x,y,info,`<rect x="-11" y="-9" width="22" height="18" fill="#c0392b" stroke="#7a2a1a" stroke-width="1.5"/><rect x="-5" y="-1" width="10" height="10" fill="#f3ead2"/><circle cx="12" cy="-10" r="4" fill="${rtc}" stroke="#fff"/>`+mapTxt(0,22,lab,8));
+ o+=fs(455,308,'Fire '+rt.toFixed(1)+' min','Fire Station 1. Average emergency response time is '+rt.toFixed(1)+' minutes.');
+ if(S.stations)o+=fs(790,262,'Station 2','Fire Station 2 on the east side. It shortens response times.');
+ o+=poi(345,360,`Water tower: system draw ${wl}%.`,`<path d="M-9,18 L-5,-6 H5 L9,18Z" fill="#9aa3ad" stroke="#6b7078"/><ellipse cx="0" cy="-12" rx="13" ry="10" fill="#c9ced3" stroke="#6b7078"/><circle cx="15" cy="-20" r="5" fill="${wlc}" stroke="#fff"/>`+mapTxt(0,32,'Water '+wl+'%',9));
+ o+=poi(775,300,`Substation: grid load ${gl}%.`,`<rect x="-17" y="-14" width="34" height="28" fill="rgba(255,255,255,.2)" stroke="#6b7078" stroke-width="2" stroke-dasharray="4 3"/><path d="M-3,-10 L6,-1 L0,-1 L4,10 L-6,0 L0,0Z" fill="#f2c200" stroke="#7a6a1a"/><circle cx="19" cy="-16" r="5" fill="${glc}" stroke="#fff"/>`+mapTxt(0,30,'Grid '+gl+'%',9));
+ o+=poi(655,398,`Sewer plant: ${sl}% of capacity.`,`<circle cx="-14" cy="0" r="14" fill="#c9ced3" stroke="#6b7078"/><circle cx="16" cy="2" r="12" fill="#c9ced3" stroke="#6b7078"/><circle cx="-14" cy="0" r="7" fill="${P.water}" opacity=".8">${anim?'<animate attributeName="r" values="5;8;5" dur="2.4s" repeatCount="indefinite"/>':''}</circle><circle cx="0" cy="-22" r="5" fill="${slc}" stroke="#fff"/>`+mapTxt(0,32,'Sewer '+sl+'%',9));
+ o+=poi(905,455,`Landfill: ${lp}% full. ${lp>=75?'Expansion needed soon.':''}`,`<path d="M-44,16 Q-10,-34 44,16Z" fill="#8a7a5a" stroke="#5d4a3e" stroke-width="2"/><path d="M-30,14 Q-8,-14 22,14" fill="none" stroke="rgba(0,0,0,.2)"/><circle cx="30" cy="-10" r="5" fill="${lc}" stroke="#fff"/>${anim?`<g><rect x="-30" y="12" width="9" height="5" rx="1" fill="#e8791a"><animate attributeName="x" values="-60;-14;-60" dur="9s" repeatCount="indefinite"/></rect></g>`:''}`+mapTxt(0,32,'Landfill '+lp+'%',9));
  // projects
  const bySite={};S.projects.forEach((p,i)=>{(bySite[p.site]=bySite[p.site]||[]).push([p,i])});
  const prop=(S.agenda&&S.agenda.stage===-1?S.agenda:null)||(S.pending&&S.pending.stage===-1?S.pending:null);
  if(prop)(bySite[prop.site]=bySite[prop.site]||[]).push([prop,-1]);
+ let heat='';
  for(const site in bySite){
   const base=MAP_SITES[site]||[480,300],list=bySite[site];
   list.forEach(([p,i],k)=>{
-   const ang=k*(2*Math.PI/Math.max(list.length,1))-1,rad=list.length>1?24:0,x=base[0]+Math.cos(ang)*rad,y=base[1]+Math.sin(ang)*rad,col=i<0?'#ffffff':STAGE_COL[clamp(p.stage,0,4)];
-   o+=`<g class="mk ${i<0?'prop':''}" data-i="${i}" transform="translate(${x.toFixed(0)},${y.toFixed(0)})"><circle r="28" fill="transparent"/><circle class="hit" r="15" fill="${col}" stroke="${i<0?'#e8791a':'#fff'}" stroke-width="3" ${i<0?'stroke-dasharray="4 3"':''}/><text y="6" font-size="16" text-anchor="middle">${p.type.icon}</text></g>`;
+   const ang=k*(2*Math.PI/Math.max(list.length,1))-1.2,rad=list.length>1?34:0,x=+(base[0]+Math.cos(ang)*rad).toFixed(0),y=+(base[1]+Math.sin(ang)*rad).toFixed(0),sc=.62+(p.sizeF||.3)*.5,col=i<0?'#e8791a':STAGE_COL[clamp(p.stage,0,4)];
+   const imp=i>=0&&p.stage>=2?impacts(p,p.conds||{}).env:0;
+   if(imp>.05)heat+=`<circle cx="${x}" cy="${y}" r="${30+imp*70}" fill="url(#glow${p.type.land?'B':'R'})" opacity="${.35+imp*.6}"/>`;
+   o+=`<g class="mk ${i<0?'prop':''}" data-i="${i}" transform="translate(${x},${y})"><title>${p.type.name} (${i<0?'proposed':STAGES[p.stage]})</title><circle r="34" fill="transparent"/><g transform="scale(${sc.toFixed(2)})">${projGlyph(p,i<0?99:i)}</g><circle cx="0" cy="-34" r="7" fill="${col}" stroke="#fff" stroke-width="2"/><text y="-30" font-size="9" text-anchor="middle">${p.type.icon}</text></g>`;
   });
  }
- return `<svg viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">${o}</svg>`;
+ // animated traffic
+ if(anim){
+  const car=(path,dur,begin,col)=>`<g><rect x="-6" y="-3" width="12" height="6" rx="2" fill="${col}" stroke="rgba(0,0,0,.4)" stroke-width=".6"/><animateMotion dur="${dur}s" begin="${begin}s" repeatCount="indefinite" rotate="auto"><mpath href="#rd_${path}"/></animateMotion></g>`;
+  o+=car('main',24,0,'#c0392b')+car('main',30,-11,'#2d6a9f')+car('main',36,-22,'#e8b923')+car('ns',22,-4,'#7a1f2b')+car('ns',28,-15,'#e8e8ee')+car('r9',26,-6,'#2e7d4f')+car('r9',32,-20,'#d9822b')+car('east',20,-3,'#5a6f8a')+car('north',20,-9,'#a33b2c');
+  o+=`<g>${[0,1,2,3,4,5].map(j=>`<rect x="${-j*13}" y="-3" width="11" height="6" rx="1" fill="${j===0?'#c0392b':'#6b6f73'}" stroke="rgba(0,0,0,.4)" stroke-width=".6"/>`).join('')}<animateMotion dur="26s" begin="-9s" repeatCount="indefinite"><mpath href="#rd_rail"/></animateMotion></g>`;
+  const bt=sn===3?'':`<g><ellipse cx="0" cy="0" rx="5" ry="2.4" fill="#fff" stroke="#8a6a3a"/><animateMotion dur="40s" repeatCount="indefinite" path="M-20,318 C140,345 230,262 350,312 S540,398 660,346 S880,402 990,364"/></g>`;
+  o+=bt;
+ }
+ // mode overlays
+ if(mode!=='map')o+=`<rect width="960" height="540" fill="rgba(12,20,30,.38)"/>`;
+ if(mode==='util'){
+  o+=`<g>${[[775,300,gl,'Power grid'],[345,360,wl,'Water system'],[655,398,sl,'Sewer plant'],[905,455,lp,'Landfill']].map(([x,y,v,n])=>`<circle cx="${x}" cy="${y}" r="${24+Math.min(v,120)*.22}" fill="none" stroke="${v>=90?'#e04646':v>=72?'#e8a317':'#3fbf6a'}" stroke-width="5" opacity=".9"/>`).join('')}</g>`;
+  o+=mapTxt(480,22,'UTILITIES: lines show power (yellow), water (blue) and sewer (brown). Rings show load.',12,'#fff');
+ }
+ if(mode==='serv'){
+  const R1=clamp(190-(rt-5)*14,90,230);
+  o+=`<circle cx="455" cy="308" r="${R1}" fill="${rtc}" opacity=".22" stroke="${rtc}" stroke-width="2" stroke-dasharray="6 5"/>`+(S.stations?`<circle cx="790" cy="262" r="${R1*.8}" fill="#3fbf6a" opacity=".22" stroke="#3fbf6a" stroke-width="2" stroke-dasharray="6 5"/>`:'')+`<circle cx="395" cy="205" r="82" fill="${sccol}" opacity=".22"/><circle cx="590" cy="278" r="70" fill="${sccol}" opacity=".22"/><circle cx="408" cy="422" r="${40+parksScore()*.4}" fill="#3fbf6a" opacity=".25"/>`;
+  o+=mapTxt(480,22,`SERVICES: fire response ${rt.toFixed(1)} min, schools ${scl}% full, parks score ${Math.round(parksScore())}`,12,'#fff');
+ }
+ if(mode==='nbhd'){
+  const hap=b=>clamp(S.trust*.6+(RENT()<115?20:RENT()<130?8:-6)+(STR()>60?10:STR()<40?-10:0)+b,0,100),col=h=>h>=65?'#3fbf6a':h>=45?'#e8c53a':'#e04646',lab=h=>h>=65?'Content':h>=45?'Mixed':'Unhappy';
+  const nb=[[395,68,125,86,'Oak Park',hap(8),'Rich. Quiet and wary of growth.'],[166,203,165,56,'Millbrook',hap(0),'Working families. Schools and parks matter.'],[560,286,140,48,'East Side',hap(-12)-(HOMELESS()>60?6:0),'By the river. Rents and street condition bite hardest here.']];
+  nb.forEach(([x,y,w,h,n,hp,inf])=>{o+=`<g class="poi" data-info="${n}: ${lab(hp)}. ${inf}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="${col(hp)}" opacity=".5" stroke="${col(hp)}" stroke-width="3"/>${mapTxt(x+w/2,y+h/2+4,`${n}: ${lab(hp)}`,12)}</g>`});
+  o+=mapTxt(480,22,`NEIGHBORHOODS: mood by district. Rent index ${Math.round(RENT())}, streets ${Math.round(STR())}/100`,12,'#fff');
+ }
+ if(mode==='env'){
+  o+=heat+`<circle cx="905" cy="455" r="${40+Math.min(lp,120)*.4}" fill="url(#glow${lp>=75?'R':'G'})"/><circle cx="655" cy="398" r="${34+Math.min(sl,120)*.3}" fill="url(#glow${sl>=80?'R':'G'})"/><ellipse cx="125" cy="388" rx="80" ry="44" fill="url(#glowG)"/><ellipse cx="410" cy="422" rx="60" ry="34" fill="url(#glowG)"/>`;
+  o+=mapTxt(480,22,`ENVIRONMENT ${Math.round(S.env)}: red glows are heavy impacts, green are healthy spaces, tan is land lost to energy`,12,'#fff');
+ }
+ // season and compass
+ o+=`<g transform="translate(920,36)"><circle r="16" fill="rgba(255,255,255,.85)" stroke="#456" /><path d="M0,-12 L4,2 L0,0 L-4,2Z" fill="#c0392b"/><path d="M0,12 L4,-2 L0,0 L-4,-2Z" fill="#456"/><text y="-17" font-size="8" font-weight="800" text-anchor="middle" fill="#234">N</text></g><g transform="translate(24,516)"><path d="M0,0 H60" stroke="#fff" stroke-width="3"/><path d="M0,-4 V4 M30,-3 V3 M60,-4 V4" stroke="#fff" stroke-width="2"/>${mapTxt(30,-8,'about 1 mile',8)}</g>`;
+ return `<svg id="mapSvg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">${o}</svg>`;
 }
 function lineChart(title,series,opts){
  const H=S.hist||[];if(H.length<2)return `<div class="chartbox"><h4>${title}</h4><div class="mut" style="padding:10px">Play a few more weeks to see this chart.</div></div>`;
@@ -3887,16 +4011,60 @@ function hofHTML(){
  const a=loadScores();if(!a.length)return '<p class="mut">No finished terms yet. Finish a term and it appears here.</p>';
  return `<table class="hof"><tr><th>#</th><th>Grade</th><th>Score</th><th>Result</th><th>Mayor</th><th>Pop.</th></tr>${a.slice(0,10).map((r,i)=>`<tr><td>${i+1}</td><td><b>${r.grade}</b></td><td>${r.score}</td><td>${r.met?'Re-elected':r.ok?'Term complete':r.t||'Ended early'}${r.weeks?` &middot; ${r.weeks} wk`:''}</td><td>${r.bg||'-'}${r.scen?` &middot; ${r.scen}`:''}${r.diff==='hard'?' &middot; Tough':r.diff==='easy'?' &middot; Relaxed':''}${r.daily?' &middot; Daily '+r.daily:''}${r.sandbox?' &middot; Endless':''}</td><td>${num(r.pop||0)}</td></tr>`).join('')}</table>`;
 }
+function mapInfoFor(el){
+ if(!el)return '';
+ if(el.classList.contains('mk')){
+  const i=+el.dataset.i,p=i<0?(S.agenda&&S.agenda.stage===-1?S.agenda:S.pending):S.projects[i];if(!p)return '';
+  const st=i<0?'Proposed: not yet approved.':`${STAGES[p.stage]}${p.stage<OPER?', '+p.stageLeft+' week'+(p.stageLeft===1?'':'s')+' left':''}`;
+  const pg=i<0?0:(p.stage>=OPER?100:Math.round(buildProgress(p)*100));
+  const e=eff(p,p.conds||{});
+  return `<b>${p.type.icon} ${p.type.name}</b> &middot; ${p.company} &middot; ${p.site}<div style="margin:6px 0;height:7px;background:#0b1019;border-radius:4px;overflow:hidden"><i style="display:block;height:100%;width:${pg}%;background:${STAGE_COL[clamp(p.stage,0,4)]}"></i></div>${st} &middot; ${money(p.cost)} &middot; ${num(Math.round(p.jobs))} jobs &middot; ${money(Math.round(p.tax))} tax a year<br><span class="mut">Water ${num(Math.round(e.water))} gal/day &middot; ${Math.round(e.db)} dB &middot; ${p.incidents} incident${p.incidents===1?'':'s'}${p.commRec&&p.commRec!=='none'?' &middot; Commission: '+({approve:'recommended approval',cond:'recommended conditions',deny:'recommended denial'}[p.commRec]):''}</span>`;
+ }
+ return el.dataset.info||'';
+}
+function mapInteract(){
+ const svg=document.getElementById('mapSvg');if(!svg)return;
+ const vb={x:0,y:0,w:960,h:540},ptrs=new Map();let down=null,pinch=0;
+ const apply=()=>{svg.setAttribute('viewBox',`${vb.x.toFixed(1)} ${vb.y.toFixed(1)} ${vb.w.toFixed(1)} ${vb.h.toFixed(1)}`);svg.style.touchAction=vb.w<940?'none':'pan-y'};
+ const toPt=(cx,cy)=>{const r=svg.getBoundingClientRect();return{x:vb.x+(cx-r.left)/r.width*vb.w,y:vb.y+(cy-r.top)/r.height*vb.h}};
+ const zoom=(f,cx,cy)=>{const nw=clamp(vb.w*f,240,960),nh=nw*540/960;vb.x=clamp(cx-(cx-vb.x)*nw/vb.w,0,960-nw);vb.y=clamp(cy-(cy-vb.y)*nh/vb.h,0,540-nh);vb.w=nw;vb.h=nh;apply()};
+ const wrap=svg.parentElement,isBig=()=>wrap.classList.contains('big');
+ svg.addEventListener('wheel',e=>{if(isBig())return;e.preventDefault();const p=toPt(e.clientX,e.clientY);zoom(e.deltaY<0?.85:1.18,p.x,p.y)},{passive:false});
+ svg.addEventListener('pointerdown',e=>{if(!isBig())svg.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});down={x:e.clientX,y:e.clientY,moved:0};if(ptrs.size===2){const a=[...ptrs.values()];pinch=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)}});
+ svg.addEventListener('pointermove',e=>{
+  const p=ptrs.get(e.pointerId);if(!p)return;
+  const r=svg.getBoundingClientRect();
+  if(ptrs.size===2){ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});const a=[...ptrs.values()],d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);if(pinch){const mid=toPt((a[0].x+a[1].x)/2,(a[0].y+a[1].y)/2);zoom(pinch/d,mid.x,mid.y)}pinch=d;if(down)down.moved=99;return}
+  const dx=e.clientX-p.x,dy=e.clientY-p.y;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(down)down.moved+=Math.abs(dx)+Math.abs(dy);
+  if(vb.w<940&&!isBig()){vb.x=clamp(vb.x-dx/r.width*vb.w,0,960-vb.w);vb.y=clamp(vb.y-dy/r.height*vb.h,0,540-vb.h);apply()}
+ });
+ const up=e=>{
+  const was=ptrs.has(e.pointerId);ptrs.delete(e.pointerId);if(ptrs.size<2)pinch=0;
+  if(!was||!down)return;
+  if(down.moved<8){const t=document.elementFromPoint(e.clientX,e.clientY),el=t&&t.closest?t.closest('.mk,.poi'):null,box=document.getElementById('mapInfo');if(box){if(el)box.innerHTML=mapInfoFor(el);}}
+  if(!ptrs.size)down=null;
+ };
+ svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+ const ctr=()=>({x:vb.x+vb.w/2,y:vb.y+vb.h/2});
+ const zi=document.getElementById('mz+'),zo=document.getElementById('mz-'),zr=document.getElementById('mz0');
+ if(zi)zi.onclick=()=>{const c=ctr();zoom(.7,c.x,c.y)};
+ if(zo)zo.onclick=()=>{const c=ctr();zoom(1.4,c.x,c.y)};
+ if(zr)zr.onclick=()=>{vb.x=0;vb.y=0;vb.w=960;vb.h=540;apply()};
+ const zb=document.getElementById('mzb');
+ if(zb)zb.onclick=()=>{wrap.classList.toggle('big');const b=isBig();zb.textContent=b?'Fit':'Larger';vb.x=0;vb.y=0;vb.w=960;vb.h=540;apply();if(b)svg.style.touchAction='auto'};
+ apply();
+}
 function showMap(tab){
  tab=tab||'map';
- const body=tab==='map'?`<div class="mapwrap">${mapSVG()}</div><div id="mapInfo" class="mut">Tap a project marker for details. Colors show the stage each project is in.</div><div class="legend">${['Permitting','Site prep','Construction','Commissioning','Operating'].map((n,i)=>`<span><i style="background:${STAGE_COL[i]}"></i>${n}</span>`).join('')}<span><i style="background:#fff;border:2px dashed #e8791a;box-sizing:border-box"></i>Proposed</span></div>`:tab==='hist'?historyHTML():hofHTML();
- modal(`<h2>${S.pop?'Clifton':'Clifton'}${S.maxWeeks?` &middot; week ${Math.min(S.week,S.maxWeeks)} of ${S.maxWeeks} &middot; ${SEASONS[seasonIdx()]}`:''}</h2><div class="tabs"><button data-t="map" class="${tab==='map'?'on':''}">City map</button><button data-t="hist" class="${tab==='hist'?'on':''}">History</button><button data-t="hof" class="${tab==='hof'?'on':''}">Hall of fame</button></div>${body}<div class="btnrow"><button id="mapClose">Close</button></div>`,'wide');
+ const chips=`<div class="chips">${MAP_MODES.map(([k,n])=>`<button data-m="${k}" class="${MAPMODE===k?'on':''}">${n}</button>`).join('')}</div>`;
+ const legend=`<div class="legend">${['Permitting','Site prep','Construction','Commissioning','Operating'].map((n,i)=>`<span><i style="background:${STAGE_COL[i]}"></i>${n}</span>`).join('')}<span><i style="background:#fff;border:2px dashed #e8791a;box-sizing:border-box"></i>Proposed</span></div>`;
+ const body=tab==='map'?`${chips}<div class="mapwrap">${mapSVG(MAPMODE)}<div class="mapctl"><button id="mzb" title="Larger map you can scroll">Larger</button><button id="mz+" title="Zoom in">+</button><button id="mz-" title="Zoom out">&minus;</button><button id="mz0" title="Reset view">Reset</button></div></div><div id="mapInfo" class="mut">Tap a project or landmark for details. Scroll or pinch to zoom, drag to pan. Use the buttons above to switch views.</div>${legend}`:tab==='hist'?historyHTML():hofHTML();
+ modal(`<h2>Clifton${S.maxWeeks?` &middot; ${S.sandbox?'week '+S.week:'week '+Math.min(S.week,S.maxWeeks)+' of '+S.maxWeeks} &middot; ${SEASONS[seasonIdx()]}`:''}</h2><div class="tabs"><button data-t="map" class="${tab==='map'?'on':''}">City map</button><button data-t="hist" class="${tab==='hist'?'on':''}">History</button><button data-t="hof" class="${tab==='hof'?'on':''}">Hall of fame</button></div>${body}<div class="btnrow"><button id="mapClose">Close</button></div>`,'wide');
  $('#mapClose').onclick=closeModal;
  $$('#modal .tabs button').forEach(b=>b.onclick=()=>showMap(b.dataset.t));
- $$('#modal .mk').forEach(g=>g.onclick=()=>{
-  const i=+g.dataset.i,p=i<0?(S.agenda&&S.agenda.stage===-1?S.agenda:S.pending):S.projects[i];if(!p)return;
-  $('#mapInfo').innerHTML=`<b>${p.type.icon} ${p.type.name}</b> &middot; ${p.company} &middot; ${p.site}<br>${i<0?'Proposed: not yet approved.':`${STAGES[p.stage]}${p.stage<OPER?', '+p.stageLeft+' week'+(p.stageLeft===1?'':'s')+' left':''}`} &middot; ${money(p.cost)} &middot; ${num(Math.round(p.jobs))} jobs &middot; ${p.incidents} incident${p.incidents===1?'':'s'}`;
- });
+ $$('#modal .chips button').forEach(b=>b.onclick=()=>{MAPMODE=b.dataset.m;showMap('map')});
+ if(tab==='map')mapInteract();
 }
 function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
