@@ -4,6 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Municipality Tycoon - City Council Simulator</title>
+<meta name="description" content="You are the mayor of Clifton. Hear developers, balance a budget, and decide what gets built. A city council simulator you can play in your browser.">
+<meta property="og:title" content="Municipality Tycoon">
+<meta property="og:description" content="Run a city council. Approve or block projects, set the budget, and survive the recall.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
 :root{--bg:#10151f;--panel:#1a2230;--panel2:#222c3e;--ink:#e9eef7;--mut:#93a1b8;--acc:#f2b84b;--good:#4cc38a;--bad:#ef5b5b}
 *{box-sizing:border-box}
@@ -197,8 +201,8 @@ td.bad{color:var(--bad)}
 #minutes{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto;font-size:12px;color:#b9c4d6}
 #minutes li{padding:3px 0;border-bottom:1px dashed #2a3750}
 #minutes li.b{color:#f59a9a}#minutes li.g{color:#8fe0b6}
-#overlay{position:fixed;inset:0;background:rgba(5,8,14,.93);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
-#overlay .box{max-width:620px;background:var(--panel);border-radius:16px;padding:26px 30px;border:2px solid #34425c}
+#overlay{position:fixed;inset:0;background:rgba(5,8,14,.93);z-index:100;display:flex;padding:20px;overflow-y:auto}
+#overlay .box{margin:auto;max-width:620px;background:var(--panel);border-radius:16px;padding:26px 30px;border:2px solid #34425c}
 #overlay h1{margin:0 0 8px;font-size:30px}
 #overlay p{line-height:1.5;color:#c6d0e0}
 .modes label{display:block;margin:6px 0;color:#c6d0e0;cursor:pointer}
@@ -224,6 +228,23 @@ td.bad{color:var(--bad)}
 #modal textarea,#modal select{width:100%;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:8px;margin:4px 0 6px;font:inherit}
 #modal textarea{min-height:58px}
 #overlay button{margin-top:14px;background:var(--acc);color:#2a1c05;font-weight:800;border:0;border-radius:10px;padding:11px 22px;font-size:16px;cursor:pointer}
+
+body.fit{overflow:hidden;height:100vh}
+body.fit #app{position:absolute;left:50%;top:50%;width:1440px;height:790px;max-width:none;margin:0;padding:8px 10px;transform:translate(-50%,-50%) scale(var(--fs,1));transform-origin:center center;overflow:hidden;display:flex;flex-direction:column}
+body.fit #hud{margin-bottom:6px;padding:5px 12px;gap:10px;flex:none}
+body.fit #hud .brand{font-size:15px;margin-right:0}
+body.fit .stat{min-width:70px}
+body.fit .stat b{font-size:14px}
+body.fit .ctl button{padding:5px 8px;font-size:12px}
+body.fit .ctl{gap:5px;flex-wrap:nowrap}
+body.fit .ctl input{width:60px}
+body.fit #main{flex:1;min-height:0;height:auto;align-items:stretch;grid-template-columns:1fr 310px}
+body.fit #left{min-height:0;overflow:hidden;position:relative}
+body.fit #side{overflow-y:auto;min-height:0;height:100%;padding-right:2px}
+body.fit #dlg{margin-top:8px;min-height:122px}
+body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;overflow:auto;z-index:15;margin:0;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+@media (max-height:640px){#overlay{padding:10px}#overlay .box{padding:14px 20px}#overlay h1{font-size:22px;margin-bottom:4px}#overlay p{font-size:13px;margin:6px 0;line-height:1.4}#overlay button{margin-top:8px;padding:8px 18px;font-size:14px}.modes label{margin:3px 0;font-size:13px}}
+.guide{color:var(--mut);font-size:12px;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -272,12 +293,13 @@ td.bad{color:var(--bad)}
 <div id="modal" class="hidden"></div>
 <div id="overlay"><div class="box">
  <h1>&#127963;&#65039; Municipality Tycoon</h1>
- <p>You are the mayor of Clifton. Every week the council meets in chambers: you read city business, hear one development proposal, listen to the public, draft conditions, and put it to a vote.</p>
+ <p>You are the mayor of Clifton. Every other week the council meets in chambers: you work through an agenda, hear a development proposal, listen to the public, draft conditions, and put it to a vote. On the off weeks you inspect sites, meet residents, and take private meetings.</p>
  <p>Approved projects move through Permitting, Site Prep, Construction, Commissioning and Operation. Expect wells drilled without permits, contaminated water, wasted water, noise, but also new roads, parks and donations. How you respond decides your term.</p>
  <p class="mut">You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
- <div class="modes"><label><input type="radio" name="mode" value="52" checked> Full term: 52 weeks (about an hour or more)</label><label><input type="radio" name="mode" value="12"> Quick term: 12 weeks (about 15 to 20 minutes)</label></div>
+ <div class="modes"><label><input type="radio" name="mode" value="12" checked> Quick term: 12 weeks (about an hour)</label><label><input type="radio" name="mode" value="52"> Full term: 52 weeks (several hours)</label></div>
  <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button> <button id="slotsBtn" class="alt hidden">Saved slots</button> <button id="licBtn" class="alt hidden">Enter license key</button>
  <p id="saveInfo" class="mut" style="margin-top:12px"></p>
+ <p><a class="guide" id="guideLink" href="how-to-play.html" target="_blank" rel="noopener">How to play (full guide)</a></p>
 </div></div>
 
 <script>
@@ -2468,12 +2490,14 @@ function showMenu(){
  modal(`<h2>Menu</h2><p class="mut">The game autosaves at the start of every week. "Save and quit" stores the start of this week, so you replay the week when you come back.</p>
  <div class="btnrow col"><button class="go" id="mSave" ${WEEK_SNAP?'':'disabled'}>Save and quit to title</button><button id="mResume">Resume game</button><button class="stop" id="mNew">Abandon this game and start over</button></div>${slots}
  <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?' (full version)':''}</option>`).join('')}</select></label>
+ <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="mFit" ${document.body.classList.contains('fit')?'checked':''}> Fit the game to the window (no page scrolling)</label>
  ${GATING&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
  $('#mResume').onclick=closeModal;
  $('#mSave').onclick=()=>{try{localStorage.setItem(SAVE_KEY,WEEK_SNAP)}catch(e){}location.reload()};
  let armed=false;
  $('#mNew').onclick=()=>{if(!armed){armed=true;$('#mMsg').textContent='This deletes your saved game. Click again to confirm.';return}clearSave();location.reload()};
  $('#mTheme').onchange=e=>{applyTheme(e.target.value)};
+ $('#mFit').onchange=e=>setFit(e.target.checked);
  if($('#mUnlock'))$('#mUnlock').onclick=showLicense;
  $$('[data-save]').forEach(b=>b.onclick=()=>{try{const d=JSON.parse(WEEK_SNAP);d.saved=Date.now();localStorage.setItem(SLOT_KEY+b.dataset.save,JSON.stringify(d));$('#mMsg').textContent=`Saved to slot ${b.dataset.save}.`;showMenu()}catch(e){$('#mMsg').textContent='Could not save.'}});
  $$('[data-load]').forEach(b=>b.onclick=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(readSlot(b.dataset.load)));sessionStorage.setItem('municipality-tycoon-autocontinue','1')}catch(e){}location.reload()});
@@ -2553,6 +2577,19 @@ function showFeedback(){
  $('#fbClose').onclick=closeModal;
 }
 
+
+/* ---------- portal and framing support ---------- */
+const FIT_KEY='municipality-tycoon-fit';
+const isFramed=(()=>{try{return window.self!==window.top}catch(e){return true}})();
+function fitScale(){if(!document.body.classList.contains('fit'))return;document.body.style.setProperty('--fs',Math.min(innerWidth/1460,innerHeight/800).toFixed(3))}
+function setFit(on){document.body.classList.toggle('fit',on);try{localStorage.setItem(FIT_KEY,on?'1':'0')}catch(e){}fitScale()}
+addEventListener('resize',fitScale);
+document.addEventListener('visibilitychange',()=>{if(AC){try{document.hidden?AC.suspend():AC.resume()}catch(e){}}});
+{
+ const q=/[?&]fit=(0|1)/.exec(location.search);let pref=null;try{pref=localStorage.getItem(FIT_KEY)}catch(e){}
+ setFit(q?q[1]==='1':pref!==null?pref==='1':isFramed);
+ if(isFramed){const g=document.getElementById('guideLink');if(g)g.parentElement.classList.add('hidden')}
+}
 buildHud();buildScene();hud();renderProjects();showAgenda(null);
 {
  const sv=readSave();

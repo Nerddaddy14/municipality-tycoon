@@ -16,6 +16,10 @@ Playtest build. Open the page and press "Call the meeting to order". The game au
 - City attorney advice that may be good or bad, staff reports, closed-door meetings, bribes and leaks
 - Developers with personalities and track records, council story arcs, seasonal festivals, quarterly priorities, and a pool of 16 non-repeating crises plus dozens of project events
 
+## Portals and embedding
+
+The game scales to fit any frame without page scrolling. It switches to fit mode automatically inside an iframe, and anywhere else you can toggle it in the Menu or add `?fit=1` to the URL. `how-to-play.html` is a full player guide, and `portal/SUBMISSION.md` has listing text, tags, technical facts and draft screenshots for portal submissions.
+
 ## Free and paid versions
 
 `index.html` ships fully unlocked (`const GATING=false`). Set `GATING=true` to enforce the split:

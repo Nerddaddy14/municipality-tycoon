@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>How to Play - Municipality Tycoon</title>
+<meta name="description" content="A complete guide to Municipality Tycoon: how a council meeting works, what the meters mean, and tips for surviving your term as mayor of Clifton.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Ctext y=%27.9em%27 font-size=%2790%27%3E%F0%9F%8F%9B%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#10151f;--panel:#1a2230;--ink:#e9eef7;--mut:#93a1b8;--acc:#f2b84b;--good:#4cc38a;--bad:#ef5b5b;--line:#2a3750}
+@media (prefers-color-scheme:light){:root:not([data-theme=dark]){--bg:#f4f1ea;--panel:#fffdf8;--ink:#1d2433;--mut:#5b6678;--acc:#a8680a;--good:#15803d;--bad:#b91c1c;--line:#d9d2c3}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Roboto,sans-serif;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto;padding:28px 16px 80px}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:8px}
+h1{margin:0;font-size:30px}
+.play{background:var(--acc);color:#2a1c05;font-weight:800;text-decoration:none;padding:10px 20px;border-radius:10px}
+.lede{color:var(--mut);font-size:17px;margin:6px 0 22px}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+nav a{background:var(--panel);border:1px solid var(--line);color:var(--ink);text-decoration:none;padding:6px 12px;border-radius:999px;font-size:14px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin:16px 0}
+h2{margin:0 0 8px;font-size:21px;color:var(--acc)}
+h3{margin:16px 0 4px;font-size:16px}
+p{margin:8px 0}
+ul{margin:8px 0;padding-left:22px}
+li{margin:4px 0}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--mut);font-weight:600;font-size:13px;text-transform:uppercase;letter-spacing:.5px}
+kbd{background:var(--bg);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 7px;font-size:13px}
+.tip{border-left:4px solid var(--good);padding:6px 12px;background:rgba(76,195,138,.08);border-radius:0 8px 8px 0;margin:10px 0}
+.warn{border-left:4px solid var(--bad);padding:6px 12px;background:rgba(239,91,91,.08);border-radius:0 8px 8px 0;margin:10px 0}
+footer{color:var(--mut);font-size:13px;margin-top:30px;text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+ <h1>How to Play</h1>
+ <a class="play" href="index.html">Play Municipality Tycoon</a>
+</header>
+<p class="lede">You are the mayor of Clifton. Every other week the city council meets. Developers want to build, residents want to be heard, and every decision you make shows up in your meters. Survive your term.</p>
+<nav>
+ <a href="#goal">Your goal</a><a href="#weeks">Meeting weeks and off weeks</a><a href="#meters">The meters</a><a href="#hearing">At the meeting</a><a href="#projects">After approval</a><a href="#city">The city</a><a href="#controls">Controls</a><a href="#tips">Tips</a><a href="#faq">FAQ</a>
+</nav>
+
+<section id="goal">
+ <h2>Your goal</h2>
+ <p>Finish your term as mayor with the city in good shape. You can play a <b>12-week quick term</b> (about an hour) or a <b>52-week full term</b> (several hours). There is no single way to win. A good term balances jobs and taxes against the environment, and keeps the public, the council and the developers from turning on you.</p>
+ <p>You lose if public trust collapses and voters recall you, the environment fails and the state steps in, or a corruption scandal puts you in court.</p>
+</section>
+
+<section id="weeks">
+ <h2>Meeting weeks and off weeks</h2>
+ <p>The calendar alternates. Odd weeks are <b>council meetings</b>. Even weeks are <b>off weeks</b>.</p>
+ <h3>On a meeting week</h3>
+ <ul>
+  <li>You read routine city business and hear from the council.</li>
+  <li>Planning reports on projects that are already building.</li>
+  <li>The agenda: a budget hearing every six weeks, smaller items (petitions, variances, small projects, and more), and one <b>main project</b> with a vote.</li>
+ </ul>
+ <h3>On an off week</h3>
+ <ul>
+  <li>Take a private meeting with a developer or lobbyist. This is where bribes and favors show up.</li>
+  <li>Choose <b>two activities</b>: inspect a site, hold office hours, walk the neighborhood, give a press interview, hold a work session, take a council member to lunch, or campaign if a recall is coming.</li>
+  <li>Projects keep moving and incidents can still happen. Urgent ones (blackouts, spills) call an emergency session. The rest wait for the next meeting.</li>
+ </ul>
+</section>
+
+<section id="meters">
+ <h2>The meters</h2>
+ <table>
+  <tr><th>Meter</th><th>What it means</th></tr>
+  <tr><td><b>Public Trust</b></td><td>How residents feel about you. Below 45, protesters gather outside city hall. Below 28, a recall petition is filed and challengers run for your job. You can campaign in the off weeks.</td></tr>
+  <tr><td><b>Environment</b></td><td>Wears down with heavy industry, water use and incidents. If it collapses, the state takes over permitting and your term ends.</td></tr>
+  <tr><td><b>Developer Relations</b></td><td>Decides how many conditions a developer will accept before walking away. Fines and tough conditions lower it.</td></tr>
+  <tr><td><b>Scandal Risk</b></td><td>Rises when you take bribes. Leaks, reporters and investigations follow. It slowly cools if you stay clean.</td></tr>
+  <tr><td><b>Treasury</b></td><td>Tax revenue and fines in, department costs out. Set the tax rate and funding at the quarterly budget hearing. A deficit costs interest and trust, and eventually brings state oversight.</td></tr>
+ </table>
+</section>
+
+<section id="hearing">
+ <h2>At the meeting: the main project</h2>
+ <p>Each meeting has one main project, from a small shop to a billion-dollar build. The developer pitches, <b>Zoning</b> and the <b>Fire Marshal</b> give staff comments, the <b>City Attorney</b> gives advice, the council discusses, and residents speak at the podium.</p>
+ <h3>Add conditions</h3>
+ <p>Then you propose conditions. The list is different for every project. A data center might offer a groundwater pumping cap, or a dedicated substation. A quarry might offer dust suppression or a blasting schedule.</p>
+ <ul>
+  <li><b>Good conditions</b> protect the city or win over council members, but cost the developer. Push too far and they walk away.</li>
+  <li><b>Developer-friendly conditions</b> ease their burden, but come with real downsides like more incidents or lost tax revenue.</li>
+  <li><b>Uncertain conditions</b> might pay off and might backfire. You find out after approval.</li>
+ </ul>
+ <h3>Your motion</h3>
+ <p>You can recommend approval, recommend denial, or <b>table</b> the item for a week. When you table, members ask for studies (hydrology, noise, traffic, fiscal and more). The reports come back next week and can change the numbers, the debate and what residents say. The council then votes: three of five members must say yes.</p>
+ <div class="tip">The council is not a rubber stamp. Dr. Chen cares about the environment, Bradley about business, Rodriguez about jobs, Wong about neighborhoods, and Jennings about the budget. Know who you are asking.</div>
+ <h3>The City Attorney</h3>
+ <p>The City Attorney gives advice that is sometimes sound and sometimes bad, and you are not told which. You can follow it, ignore it, or pay for a second opinion. The consequences show up later.</p>
+</section>
+
+<section id="projects">
+ <h2>After approval</h2>
+ <p>Projects move through <b>Permitting, Site Prep, Construction, Commissioning and Operating</b>, one stage at a time. As they do, things go wrong or right: unpermitted wells, contaminated or wasted water, noise, blackouts, water main breaks, but also new roads, parks and donations.</p>
+ <p>When something goes wrong you choose a response. Many incidents have their own options beyond a fine or a stop-work order. A strong response protects the city but costs you goodwill with the developer. Letting a developer off the hook brings angry residents to the podium.</p>
+ <p>Developers also remember. A company with a record of problems pitches differently from one with a record of good deeds, and some developers are simply slipperier than others.</p>
+</section>
+
+<section id="city">
+ <h2>The city</h2>
+ <ul>
+  <li><b>Council relationships:</b> each member has a standing with you. Votes that go their way build it. Take them to lunch, do favors, or ask for a promised vote on a big item. Members also have personal stories that unfold over your term.</li>
+  <li><b>Growth:</b> jobs bring residents. Build enough homes or rents rise and trust falls. Too many trucks cause congestion.</li>
+  <li><b>Ordinances:</b> every so often the council can adopt a rule that applies to all future projects, such as water recycling or local hire. It can also repeal one.</li>
+  <li><b>Crises:</b> heat waves, droughts, floods, a tornado, cyber attacks, strikes and scandals test you. Funding Public Works and Public Safety makes them cheaper to handle.</li>
+  <li><b>Budget:</b> the property tax rate and four departments (Public Works, Public Safety, Parks and Library, Inspections) each have a real effect on trust, incidents and costs.</li>
+  <li><b>Seasons and priorities:</b> festivals mark the seasons, and in the full term you pick a priority every quarter.</li>
+ </ul>
+ <div class="warn">Bribes are tempting and they pay well. Accepted bribes can leak to the press weeks later. A leak costs trust, and denying it can make it worse.</div>
+</section>
+
+<section id="controls">
+ <h2>Controls</h2>
+ <table>
+  <tr><th>Action</th><th>How</th></tr>
+  <tr><td>Advance dialogue</td><td>Click the dialogue box, or press <kbd>Space</kbd> or <kbd>Enter</kbd></td></tr>
+  <tr><td>Change text speed</td><td>The <b>Speed</b> button, or press <kbd>F</kbd> (1x, 2x, 4x, max)</td></tr>
+  <tr><td>Auto-advance dialogue</td><td>The <b>Auto</b> button, or press <kbd>A</kbd></td></tr>
+  <tr><td>Save and quit, themes, fit to window</td><td>The <b>Menu</b> button</td></tr>
+  <tr><td>Re-read the tutorial</td><td>The <b>Help</b> button</td></tr>
+  <tr><td>Send feedback</td><td>The <b>Feedback</b> button</td></tr>
+ </table>
+ <p>The game saves automatically at the start of every week, so you can close the tab and use <b>Continue</b> later. It is stored in your browser, so private or incognito windows cannot save.</p>
+</section>
+
+<section id="tips">
+ <h2>Tips for a new mayor</h2>
+ <ul>
+  <li>Do not approve everything. Water use and incidents add up, and a good project with a bad developer is still a bad project.</li>
+  <li>Table a project you are unsure about. A study can change the numbers in your favor, or save you from a mistake.</li>
+  <li>Use the off weeks. A site inspection can catch a problem before it becomes an incident, and a council lunch can win a vote you would otherwise lose.</li>
+  <li>Fund inspections if you approve a lot of projects. It lowers incident odds across the board.</li>
+  <li>Watch the City Systems panel. High grid load causes blackouts, and high water draw causes main breaks.</li>
+  <li>Keep a little cash. Crises arrive without warning, and they cost less with good public works and safety funding.</li>
+  <li>If trust is falling, get ahead of it: speak to protesters, fund a petition, or hold a listening session.</li>
+ </ul>
+</section>
+
+<section id="faq">
+ <h2>FAQ</h2>
+ <h3>How long does it take?</h3>
+ <p>A 12-week quick term takes about an hour. The 52-week full term takes several hours, and you can save and come back any time.</p>
+ <h3>Is there a way to speed it up?</h3>
+ <p>Yes. Use the <b>Speed</b> button or press <kbd>F</kbd>. Max speed advances dialogue on its own.</p>
+ <h3>Does the game need an internet connection?</h3>
+ <p>Only to load it. Once the page is open it runs entirely in your browser.</p>
+ <h3>Is my progress shared with anyone?</h3>
+ <p>No. Your save lives in your own browser and never leaves it.</p>
+ <h3>Where do I send ideas or bug reports?</h3>
+ <p>Use the <b>Feedback</b> button in the game. It copies your notes along with your current week and meters.</p>
+</section>
+
+<footer>Municipality Tycoon &middot; a city council simulator</footer>
+</div>
+</body>
+</html>
