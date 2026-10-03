@@ -809,7 +809,7 @@ function showAgenda(p){
  a.innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${p.type.icon} ${p.type.name}</div><div class="mut">${p.company} at ${p.site}</div>
  <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>${p.units?`<tr><td>New homes</td><td>${num(p.units)}</td></tr>`:''}
  <tr><td>Water use</td><td class="${e.water>=2e5?'bad':''}">${num(e.water)} gal/day</td></tr><tr><td>Noise</td><td class="${e.db>=70?'bad':''}">${Math.round(e.db)} dB</td></tr>
- <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
+ <tr><td>Workers hired</td><td>${num(Math.round(p.jobs))}</td></tr><tr><td>Sewer load</td><td>+${sewOf(p,p.conds).toFixed(1)} pts</td></tr><tr><td>Trash</td><td>+${((p.jobs/260+.25)).toFixed(1)} pts/wk</td></tr><tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
 const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
@@ -825,7 +825,7 @@ function gridEv(p,gl){
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
  const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
- $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
 }
 function renderProjects(){
  const el=$('#projs');
@@ -1139,6 +1139,11 @@ async function projectUpdates(mode){
   const ops=S.projects.filter(p=>loadOf(p)>0).sort((a,b)=>loadOf(b)-loadOf(a));
   if(ops.length)pending.push([ops[0],{bad:1,make:p=>gridEv(p,gl)},false]);
  }
+ const sl=sewerLoad();
+ if(bad<2&&sl>=85&&Math.random()<(sl-78)/60){
+  const ops=S.projects.filter(p=>sewLoadOf(p)>0).sort((a,b)=>sewLoadOf(b)-sewLoadOf(a));
+  if(ops.length)pending.push([ops[0],{bad:1,make:p=>sewerEv(p,sl)},false]);
+ }
  if(changes.length)sfx.chime();
  if(off){
   if(changes.length)await say('office','Planning Department memo: '+changes.join('; ')+'.');
@@ -1153,7 +1158,7 @@ async function projectUpdates(mode){
 }
 async function runEvent(p,evDef,promised,mode){
  const ev=evDef.pre||evDef.make(p);if(evDef.id)p.seen[evDef.id]=1;
- const urgent=/Blackout|Brownout|Water main|spill|contamination/i.test(ev.title||'');
+ const urgent=/Blackout|Brownout|Water main|spill|contamination|Sewer/i.test(ev.title||'');
  if(mode==='off'&&!(evDef.bad&&urgent)){S.queue.push([p,{good:evDef.good,bad:evDef.bad,pre:ev,id:evDef.id},promised]);return}
  if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
  if(evDef.good){
@@ -1953,16 +1958,76 @@ function trafficIdx(){
  });
  return clamp(Math.round(c),0,150);
 }
+/* ---------- sewer and trash ---------- */
+const LFD=()=>S.lf||(S.lf={used:38,cap:100,haul:0,rec:0,fee:0,cd:0,warn:0});
+const workers=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
+const sewOf=(p,c)=>Math.min(22,Math.sqrt(eff(p,c||{}).water)/150+p.jobs/60);
+const sewLoadOf=p=>p.stage===OPER&&!(p.curtail>0)?sewOf(p,p.conds)*(p.pre?.6:1):0;
+const sewerLoad=()=>Math.max(8,Math.round(34-(S.sewerBoost||0)-S.fund.pw*3-(S.prio&&S.prio.k==='infra'?4:0)+(S.pop-12000)/260+S.projects.reduce((a,p)=>a+sewLoadOf(p),0)));
+const trashPct=()=>Math.round(LFD().used/LFD().cap*100);
+const trashRate=()=>{const L=LFD();return(S.pop/12000*2+workers()/260+S.projects.filter(p=>p.stage===2).length*.25)*(L.haul?.45:1)*(L.rec?.8:1)};
+const weeksToFull=()=>{const L=LFD(),r=trashRate();return r>0?Math.max(0,Math.round((L.cap-L.used)/r)):99};
+function weeklyUtilities(){
+ const L=LFD();L.used=Math.min(L.cap*1.2,L.used+trashRate());if(L.cd>0)L.cd--;
+ if(L.fee)S.budget+=6000;
+ const pc=trashPct(),sl=sewerLoad();
+ if(pc>=75&&!L.warn){L.warn=1;minutes('The county landfill is three-quarters full.','b');toast('The landfill is 75% full',false)}
+ if(pc<60)L.warn=0;
+ if(pc>=100){S.trust=clamp(S.trust-.6);S.env=clamp(S.env-.3)}else if(pc>=90){S.trust=clamp(S.trust-.15);S.env=clamp(S.env-.08)}
+ if(sl>=100){S.trust=clamp(S.trust-.3);S.env=clamp(S.env-.2)}else if(sl>=90)S.env=clamp(S.env-.08);
+}
+function sewerEv(p,sl){
+ const hh=ri(2,9)*100;
+ return{title:'Sewer overflow',
+  text:`The wastewater plant is running at ${sl}% of capacity, and the line serving the ${p.type.name} backed up. Raw sewage reached a creek and ${num(hh)} homes had backups. The ${p.type.name} is the largest single user on that line.`,
+  dev:'Our discharge stayed within our permit. The plant simply cannot keep up with everything the city has approved.',
+  env:4,fine:90000,topic:'water',
+  extra:{label:'Require an on-site pretreatment system',sub:'Cuts their sewer load by 40%.',dev:-6,trust:2,mult:.4,apply:p=>{p.pre=true},label2:'a pretreatment system'}};
+}
+async function landfillItem(){
+ const L=LFD(),pc=trashPct(),wk=weeksToFull();
+ showAgendaCard('Landfill expansion',`Clifton Regional Landfill is ${pc}% full`,[['Capacity used',pc+'%'],['Weeks to full',wk>=60?'60+':String(wk)],['Weekly trash',trashRate().toFixed(1)+' pts']]);
+ await say('mayor',fresh('lf-i',['Next, the landfill. Staff says we are running out of room.','The next item concerns solid waste. Our landfill is filling up faster than anyone planned.','Item: the landfill. Please give this the attention it deserves, which is a great deal.']));
+ const H={name:'Marv Dumpwell',role:'Prairie Waste Services',color:'#5a6a3a',...lookPro(),suit:'#4b5a2e'};
+ await showSpeaker(H);
+ await say(H,pc>=90?`Mayor, the landfill is ${pc} percent full. At the current rate we have about ${wk} weeks before trucks have nowhere to go. After that, trash goes on the curb, and then the curb goes on the news.`:`Mayor, every new home, store, and plant adds trash and more workers who bring lunches with them. At the current rate the landfill fills in about ${wk} weeks. We need a plan now, not then.`);
+ await hideSpeaker();
+ const A={...lookR(),sign:'NOT IN MY BACKYARD',mood:'angry'},B={...lookR(),sign:'WHERE DOES IT GO?',mood:'neutral'};
+ showCrowd([{...A,stance:'opp'},{...B,stance:'sup'}]);await sleep(AUTO?10:300);
+ await showSpeaker(A);await say(A,fresh('lf-a',['I can smell that landfill from my porch already. Do not make it bigger.','Every few years it is a new pit, and every few years it is next to my house.','Seagulls. Thousands of them. They have formed a union.']));heckle('BOO!','no');await hideSpeaker();
+ await showSpeaker(B);await say(B,fresh('lf-b',['I like my trash picked up. I also like not having it on my lawn. Pick one, Mayor.','If the dump is full, where does my garbage go? Does it just live with me now?','Fine, nobody wants a dump. But somebody has to take the trash. Fix this.']));heckle('YEAH!','yes');await hideSpeaker();
+ await hideCrowd();
+ await say('chen','Every option here costs us something. I would like us to choose the least bad one, and fund recycling alongside it.');
+ await say('bradley','Growth makes trash. Trash needs a home. Build the cell and keep the economy moving.');
+ await silly(.4);
+ const opts=[];
+ if(S.budget>=250000)opts.push({k:'cell',label:'Expand the existing landfill ($250K)',sub:'Adds 70 points of capacity. Smell and traffic near the site. Some neighbors will be angry.'});
+ opts.push({k:'site',label:'Approve a new regional landfill site',sub:'Adds 120 points of capacity and about $6K a week in fees. Environment and trust take a hit.'});
+ opts.push({k:'haul',label:'Contract to haul trash to a regional landfill',sub:'Cuts what stays in Clifton by 55%. Costs $9K every week.'});
+ if(S.budget>=120000&&!L.rec)opts.push({k:'rec',label:'Fund a recycling program ($120K)',sub:'Permanently cuts trash by 20%. Helps the environment. Not enough alone.',cls:'go'});
+ opts.push({k:'table',label:'Table it',sub:`Come back later. At ${pc}% full, delay has a price.`,cls:'stop'});
+ const k=await ask('Landfill expansion',opts);
+ if(k==='cell'){addBudget(-250000,'landfill cell');L.cap+=70;adj('env',-2,'landfill expansion');adj('trust',-2);adjRel('wong',-5,'landfill next door');adjRel('bradley',3,'');await say('mayor','The new cell is approved. The crews start next month, and the neighbors will want a word.')}
+ else if(k==='site'){L.cap+=120;L.fee=1;adj('env',-3,'new landfill');adj('trust',-4);adj('dev',3);adjRel('chen',-6,'a new dump');adjRel('wong',-6,'');adjRel('bradley',4,'');await say('mayor','A new regional site is approved. Prairie Waste will pay a fee for every ton.')}
+ else if(k==='haul'){L.haul=1;adj('trust',-1);adjRel('jennings',-3,'$9K a week');adjRel('chen',2,'');await say('mayor','We will truck our waste to the regional landfill. It is not free, but it is not a hill in our backyard either.')}
+ else if(k==='rec'){addBudget(-120000,'recycling program');L.rec=1;adj('env',2,'recycling');adj('trust',2);adjRel('chen',5,'recycling program');await say('mayor','Blue bins for every home. Please do not put the pizza boxes in them.')}
+ else{adj('trust',-1);await say('mayor','We will table this. Staff, please keep counting the days.')}
+ L.cd=k==='table'?4:6;
+ minutes(k==='table'?'Landfill expansion tabled.':'Landfill plan adopted.',k==='table'?'b':'g');
+ hud();showAgenda(null);
+}
 function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  S.popPrev=S.pop;
- const target=12000+jobs*1.8+(S.housing-4800)*.6,room=housingRatio()<.9?.4:1;
+ const target=12000+jobs*1.8+(S.housing-4800)*.6,room=(housingRatio()<.9?.4:1)*(sewerLoad()>=100?.5:1);
  const grow=(target-S.pop)*.05*room*(S.prio&&S.prio.k==='jobs'?1.5:1);
  const why=[];let leave=0;
  if(S.trust<35){leave+=(35-S.trust)*.0003;why.push('low public trust')}
  if(S.env<35){leave+=(35-S.env)*.0002;why.push('a damaged environment')}
  if(housingRatio()<.88){leave+=(.88-housingRatio())*.02;why.push('housing costs')}
  if(S.budget<0){leave+=.001;why.push('city finances')}
+ if(sewerLoad()>=100){leave+=.002;why.push('sewage backups')}
+ if(trashPct()>=105){leave+=.0015;why.push('garbage piling up')}
  S.popWhy=why;
  S.pop=Math.max(4000,Math.round((S.pop+grow)*(1-leave)));
  const short=Math.max(0,.95-housingRatio());
@@ -2051,7 +2116,7 @@ const DEPTS=[
 const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
 function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
  const k=S.pop/12000,rev=Math.round(2e8*k*rate/100/52+33000*k*(.9+S.trust/500));
- const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200;
+ const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200+(S.lf&&S.lf.haul?9000:0);
  const pk=S.prio&&S.prio.k;const exp2=Math.round(exp*(pk==='fiscal'?.93:1)+(pk==='infra'?12000:0));
  return{rev,exp:exp2,net:rev-exp2};
 }
@@ -2488,6 +2553,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:FESTIVALS[Math.floor((S.week-1)/13)%4].t})}
  const NEWITEMS=[{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
   if(r<.34){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
@@ -2632,6 +2698,7 @@ async function adjourn(meeting=true){
  }
  weeklyFinance();
  weeklyGrowth();
+ weeklyUtilities();
  const d={trust:S.trust-snap.trust,env:S.env-snap.env,dev:S.dev-snap.dev,budget:S.budget-snap.budget};
  // weekly drift
  S.env=clamp(S.env-Math.min(1.2,S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+impacts(p,p.conds).env*.12*(p.conds.monitor?.6:1),0)));
@@ -2738,6 +2805,8 @@ async function actSession(ap){
  const opts=[];
  if(S.budget>=150000)opts.push({k:'grid',label:'Fund a substation upgrade ($150K)',sub:'Permanently lowers grid load by 12 points.'});
  if(S.budget>=120000)opts.push({k:'water',label:'Fund water main renewal ($120K)',sub:'Lowers water system draw and prevents main breaks on current projects.'});
+ if(S.budget>=180000)opts.push({k:'sewer',label:'Fund a sewer plant upgrade ($180K)',sub:`Permanently lowers sewer load by 14 points. Plant is at ${sewerLoad()}%.`});
+ if(S.budget>=90000&&trashPct()>=55)opts.push({k:'compact',label:'Fund landfill compaction and gas capture ($90K)',sub:`Adds 12 points of landfill capacity. Landfill is ${trashPct()}% full.`});
  if(S.budget>=30000)opts.push({k:'cleanup',label:'Fund an environmental cleanup ($30K)',sub:'Restores part of the environment: creek cleanup and tree planting.'});
  if(S.budget>=25000)opts.push({k:'report',label:`Commission an early report on the ${ap.type.name} ($25K)`,sub:'A study on its biggest risk lands before the meeting.'});
  opts.push({k:'skip',label:'Skip the work session'});
@@ -2745,6 +2814,8 @@ async function actSession(ap){
  const k=await ask('Work session: how do you spend your time?',opts);
  if(k==='grid'){addBudget(-150000,'substation upgrade');S.gridBoost=(S.gridBoost||0)+12;adj('trust',1);await say(U,'The upgrade will take the pressure off the grid.')}
  else if(k==='water'){addBudget(-120000,'water main renewal');S.waterBoost=(S.waterBoost||0)+15;S.projects.forEach(p=>p.fixedMain=true);adj('trust',1);await say(U,'The renewal will stabilize pressure across the system.')}
+ else if(k==='sewer'){addBudget(-180000,'sewer plant upgrade');S.sewerBoost=(S.sewerBoost||0)+14;adj('trust',1);await say(U,'The new clarifier tanks go in this spring. The creek will thank us.')}
+ else if(k==='compact'){addBudget(-90000,'landfill compaction');LFD().cap+=12;adj('env',1);await say(U,'Heavier compactors and a gas capture line. We squeeze a little more out of the same hole.')}
  else if(k==='cleanup'){addBudget(-30000,'environmental cleanup');adj('env',4,'cleanup');adj('trust',1);await say(U,'The volunteers have already filled forty trash bags. The creek looks better already.')}
  else if(k==='report'){
   addBudget(-25000,'early report');
