@@ -301,6 +301,19 @@ body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;over
 @media (max-height:640px){#overlay{padding:10px}#overlay .box{padding:14px 20px}#overlay h1{font-size:22px;margin-bottom:4px}#overlay p{font-size:13px;margin:6px 0;line-height:1.4}#overlay button{margin-top:8px;padding:8px 18px;font-size:14px}.modes label{margin:3px 0;font-size:13px}}
 .ctl .coffee{border-color:#7a5a1c;color:#f2d28a}
 .guide{color:var(--mut);font-size:12px;text-decoration:underline}
+/* ---------- one Menu button, larger stats ---------- */
+.ctl button:not(#menuBtn),.ctl input#vol{display:none}
+#menuBtn{padding:9px 20px;font-size:15px;font-weight:700}
+#hud{gap:22px;padding:10px 18px}
+#hud .brand{font-size:20px}
+.stat{min-width:128px;font-size:13px}
+.stat b{font-size:24px;line-height:1.15}
+.stat .bar{height:10px;margin:4px 0 2px}
+body.fit #hud{padding:8px 16px;gap:20px}
+body.fit #hud .brand{font-size:18px}
+body.fit .stat{min-width:126px}
+body.fit .stat b{font-size:22px}
+body.fit .ctl button{padding:8px 18px;font-size:15px}
 /* ---------- phone layout: only active when body.mob is set (narrow screens); desktop is untouched ---------- */
 body.mob{--ms:.38;-webkit-text-size-adjust:100%;touch-action:manipulation}
 html:has(body.mob){height:100%;overflow:hidden}
@@ -315,7 +328,7 @@ body.mob #hud{position:relative}
 body.mob .ctl{position:absolute;top:5px;right:8px;margin:0;display:flex;gap:6px}
 body.mob .ctl button{display:none}
 body.mob .ctl #menuBtn{display:block;flex:none;min-height:30px;padding:4px 14px;font-size:12px;text-align:center}
-body.mob #mTools{margin-top:22px}
+#mTools{margin-top:22px}
 body.mob #mTools button{text-align:center}
 body.mob .ctl input#vol{display:none}
 body.mob #main{display:block}
@@ -3165,7 +3178,7 @@ function showMenu(){
  <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?' (full version)':''}</option>`).join('')}</select></label>
  <label style="display:flex;gap:8px;align-items:center;margin-top:10px"><input type="checkbox" id="mFit" ${document.body.classList.contains('fit')?'checked':''}> Fit the game to the window (no page scrolling)</label>
  ${GATING&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
- if(document.body.classList.contains('mob')){
+ {
   const tools=document.createElement('div');tools.className='btnrow col';tools.id='mTools';
   const defs=[['helpBtn','Help',0],['fbBtn','Feedback',0],['spd','',1],['auto','',1],['mute','',1],['coffee','',0]];
   defs.forEach(([id,name,live])=>{
@@ -3175,7 +3188,12 @@ function showMenu(){
    tools.appendChild(b);
   });
   const first=document.querySelector('#modal .btnrow');if(first)first.after(tools);
-  const fl=$('#mFit');if(fl)fl.closest('label').remove();
+  const fl=$('#mFit');if(fl&&document.body.classList.contains('mob'))fl.closest('label').remove();
+  if(!document.body.classList.contains('mob')&&$('#vol')){
+   const vl=document.createElement('label');vl.style.cssText='display:flex;gap:10px;align-items:center;margin-top:4px';vl.innerHTML='Volume <input type="range" min="0" max="100" style="flex:1">';
+   const vi=vl.querySelector('input'),vs=$('#vol');vi.value=vs.value;vi.oninput=()=>{vs.value=vi.value;vs.oninput({target:vs})};
+   tools.appendChild(vl);
+  }
  }
  $('#mResume').onclick=closeModal;
  $('#mSave').onclick=()=>{try{localStorage.setItem(SAVE_KEY,WEEK_SNAP)}catch(e){}location.reload()};
