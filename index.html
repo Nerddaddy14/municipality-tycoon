@@ -727,8 +727,8 @@ async function say(speaker,text,opts={}){
  $('#dlgText').textContent='';$('#dlgNext').style.visibility='hidden';
  speak(sp,true);
  await new Promise(r=>{
-  let i=0;typer={finish(){clearInterval(this.t);$('#dlgText').textContent=text;typer=null;r()}};
-  typer.t=setInterval(()=>{i+=SPD>=4?2:1;$('#dlgText').textContent=text.slice(0,i);if(i%3<(SPD>=4?2:1)&&SPD<8)sfx.tick(sp);if(i>=text.length){clearInterval(typer.t);typer=null;r()}},(opts.speed||SPEED)/Math.min(SPD,4));
+  let i=0;const my={finish(){clearInterval(my.t);$('#dlgText').textContent=text;if(typer===my)typer=null;r()}};typer=my;
+  my.t=setInterval(()=>{i+=SPD>=4?2:1;$('#dlgText').textContent=text.slice(0,i);if(i%3<(SPD>=4?2:1)&&SPD<8)sfx.tick(sp);if(i>=text.length){clearInterval(my.t);if(typer===my)typer=null;r()}},(opts.speed||SPEED)/Math.min(SPD,4));
  });
  speak(sp,false);
  if(opts.auto)await sleep(AUTO?20:opts.auto);
@@ -739,6 +739,7 @@ function ask(title,opts,note=''){
   $('#dlg').classList.add('hidden');const b=$('#choices');b.classList.remove('hidden');
   b.innerHTML=`<div class="cTitle">${title}</div>${note?`<div class="mut">${note}</div>`:''}<div class="btnrow col">${opts.map(o=>`<button class="${o.cls||''}" data-k="${o.k}"><b>${o.label}</b>${o.sub?`<small>${o.sub}</small>`:''}</button>`).join('')}</div>`;
   b.onclick=e=>{const t=e.target.closest('button');if(!t)return;b.classList.add('hidden');$('#dlg').classList.remove('hidden');res(t.dataset.k)};
+  if(document.body.classList.contains('mob'))setTimeout(()=>{try{b.scrollIntoView({block:'end',behavior:'smooth'})}catch(e){}},60);
  });
 }
 const SPEEDS=[1,2,4,8];
@@ -2925,6 +2926,10 @@ function openField(kind,label,vis,sp,pg0,pg1){
  return om;
 }
 async function officeMeeting(p){
+ try{await officeMeeting0(p)}catch(e){console.error(e);if(typeof typer!=='undefined'&&typer)typer=null}
+ closeOverlay('office');
+}
+async function officeMeeting0(p){
  if(Math.random()>clamp(.35+S.corrupt/200+p.sizeF*.15,.3,.9))return;
  const bribeP=clamp(.1+S.corrupt/130+(p.cost>=1e7?.12:0)+(p.style==='slippery'?.1:0),.08,.75);
  const kind=Math.random()<bribeP?'bribe':pick(['offer','offer','waiver']);
