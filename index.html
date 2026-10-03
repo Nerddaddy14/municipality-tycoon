@@ -176,6 +176,21 @@ body.ts2 #dlg,body.ts2 #choices,body.ts2 #side,body.ts2 #modal .box{zoom:1.3}
 body.cb{--good:#4aa8ff;--bad:#ff9f1a}
 body.cb .tag.yes{background:#4aa8ff;color:#021a33}body.cb .tag.no{background:#ff9f1a}
 body.rm *,body.rm *:before,body.rm *:after{animation-duration:.001s!important;animation-iteration-count:1!important;transition:none!important}
+#modal .box.wide{max-width:1020px;width:min(96vw,1020px)}
+.tabs{display:flex;gap:6px;margin:0 0 10px;flex-wrap:wrap}
+.tabs button{background:#151d2c;color:var(--ink);border:1px solid #2a3750;border-radius:8px;padding:7px 14px;cursor:pointer;font-size:13px}
+.tabs button.on{background:#2a3a55;border-color:var(--acc);color:#f2d28a}
+.mapwrap{border:2px solid #2a3750;border-radius:12px;overflow:hidden;background:#0b1019}
+.mapwrap svg{display:block;width:100%;height:auto}
+.mk{cursor:pointer}.mk circle.hit{transition:r .15s}.mk:hover circle.hit{r:19}
+@keyframes mkp{0%,100%{opacity:.55}50%{opacity:1}}.mk.prop circle.hit{animation:mkp 1.6s infinite}
+#mapInfo{margin-top:8px;min-height:48px;font-size:14px;color:#c6d0e0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.chartbox{background:#0b1019;border:1px solid #2a3750;border-radius:10px;padding:8px;margin-bottom:10px}
+.chartbox svg{display:block;width:100%;height:auto}
+.chartbox h4{margin:0 0 4px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--acc)}
+.hof{width:100%;border-collapse:collapse;font-size:13px}.hof td,.hof th{padding:5px 6px;border-bottom:1px solid #2a3750;text-align:left}.hof th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase}
 @property --pg{syntax:'<number>';inherits:true;initial-value:0}
 .site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
 .site-svg .band{transition:none}
@@ -318,7 +333,8 @@ body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;over
 .ctl .coffee{border-color:#7a5a1c;color:#f2d28a}
 .guide{color:var(--mut);font-size:12px;text-decoration:underline}
 /* ---------- one Menu button, larger stats ---------- */
-.ctl button:not(#menuBtn),.ctl input#vol{display:none}
+.ctl button:not(#menuBtn):not(#mapBtn),.ctl input#vol{display:none}
+#mapBtn{padding:9px 18px;font-size:15px;font-weight:700}
 #menuBtn{padding:9px 20px;font-size:15px;font-weight:700}
 #hud{gap:22px;padding:10px 18px}
 #hud .brand{font-size:20px}
@@ -343,6 +359,7 @@ body.mob .stat .bar{height:5px;margin:2px 0 0}
 body.mob #hud{position:relative}
 body.mob .ctl{position:absolute;top:5px;right:8px;margin:0;display:flex;gap:6px}
 body.mob .ctl button{display:none}
+body.mob .ctl #mapBtn{display:block;flex:none;min-height:30px;padding:4px 12px;font-size:12px;text-align:center}
 body.mob .ctl #menuBtn{display:block;flex:none;min-height:30px;padding:4px 14px;font-size:12px;text-align:center}
 #mTools{margin-top:22px}
 body.mob #mTools button{text-align:center}
@@ -637,11 +654,11 @@ function buildHud(){
  <div class="stat hidden" id="hRecall"><span>Recall election</span><b></b></div>
  <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
  ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
- <div class="ctl"><button id="coffee" class="coffee ${TIP_URL&&!isFramed?'':'hidden'}" title="Support the developer">&#9749; Buy the Dev a Coffee</button><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="${speedUnlocked()?'Dialogue speed (F)':'Faster speeds unlock after your first 12-week term'}">Speed 1x${speedUnlocked()?'':' (locked)'}</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
+ <div class="ctl"><button id="mapBtn" title="City map and history">Map</button><button id="coffee" class="coffee ${TIP_URL&&!isFramed?'':'hidden'}" title="Support the developer">&#9749; Buy the Dev a Coffee</button><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="${speedUnlocked()?'Dialogue speed (F)':'Faster speeds unlock after your first 12-week term'}">Speed 1x${speedUnlocked()?'':' (locked)'}</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
  $('#mute').onclick=()=>{MUTE=!MUTE;$('#mute').textContent='Sound: '+(MUTE?'off':'on');setVol();if(MUTE)ambience(false)};
  $('#vol').oninput=e=>{VOL=e.target.value/100;setVol()};
  $('#spd').onclick=cycleSpeed;$('#auto').onclick=toggleAuto;
- $('#coffee').onclick=()=>{if(TIP_URL)window.open(TIP_URL,'_blank','noopener')};$('#menuBtn').onclick=()=>showMenu();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
+ $('#coffee').onclick=()=>{if(TIP_URL)window.open(TIP_URL,'_blank','noopener')};$('#menuBtn').onclick=()=>showMenu();$('#mapBtn').onclick=()=>showMap();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
 }
 function hud(){
  S.stats.minTrust=Math.min(S.stats.minTrust===undefined?100:S.stats.minTrust,S.trust);
@@ -2852,6 +2869,7 @@ function weeklyStreets(){
 }
 function weeklyUtilities(){
  weeklyStreets();
+ recordHist();
  chamberWeekly();
  const nc=S.projects.filter(p=>p.stage===OPER&&isSurv(p)&&!(p.curtail>0)).length;if(nc)S.trust=clamp(S.trust+Math.min(.3,.1*nc));
  const L=LFD();L.used=Math.min(L.cap*1.2,L.used+trashRate());if(L.cd>0)L.cd--;
@@ -2949,8 +2967,100 @@ function titlePickers(){
  const d=document.createElement('div');d.className='modes';d.style.margin='10px 0';
  d.innerHTML=`<label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Your background <select id="bgSel"><option value="rand">Surprise me</option>${Object.entries(BACKGROUNDS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}</select></label><label style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">Starting scenario <select id="scSel">${Object.entries(SCENARIOS).map(([k,v])=>`<option value="${k}">${v.name}</option>`).join('')}<option value="rand">Surprise me</option></select></label><div class="mut" id="pickDesc" style="margin-top:6px"></div>`;
  host.parentNode.insertBefore(d,host);
+ const sc=loadScores();if(sc.length){const hb=document.createElement('button');hb.className='alt';hb.id='hofBtn';hb.textContent='Hall of fame';host.parentNode.insertBefore(hb,host.nextSibling);hb.onclick=()=>showMap('hof');const bn=document.createElement('p');bn.className='mut';bn.textContent=`Best result: grade ${sc[0].grade}, score ${sc[0].score}${sc[0].met?' (re-elected)':''}.`;host.parentNode.insertBefore(bn,d)}
  const upd=()=>{const b=BACKGROUNDS[$('#bgSel').value],c=SCENARIOS[$('#scSel').value];$('#pickDesc').textContent=[b?b.desc:'A random background.',c?c.desc:'A random scenario (not the standard one).'].join(' ')};
  $('#bgSel').onchange=upd;$('#scSel').onchange=upd;upd();
+}
+/* ---------- the city map, history charts and hall of fame ---------- */
+const SCORES_KEY='municipality-tycoon-scores';
+function loadScores(){try{return JSON.parse(localStorage.getItem(SCORES_KEY)||'[]')}catch(e){return []}}
+function saveScore(r){const a=loadScores();a.push(r);a.sort((x,y)=>y.score-x.score);try{localStorage.setItem(SCORES_KEY,JSON.stringify(a.slice(0,12)))}catch(e){}}
+function recordHist(){
+ const H=S.hist||(S.hist=[]);
+ H.push({w:S.week,t:Math.round(S.trust),e:Math.round(S.env),d:Math.round(S.dev),c:Math.round(S.corrupt),p:Math.round(S.pop),b:Math.round(S.budget/1000),s:Math.round(STR())});
+ if(H.length>120)H.shift();
+}
+const MAP_SITES={'Harlan Road':[260,115],'the old Dunmore farm':[115,195],'Riverside Industrial Park':[300,430],'the Route 9 corridor':[700,200],'the edge of Millbrook wetlands':[135,385],'Cedar Hill':[645,95],'the former Henley rail yard':[500,435],'Quarry Lane':[835,330],'Eastgate Business Park':[815,150],'the Pinecrest subdivision edge':[585,255]};
+const STAGE_COL=['#9aa3ad','#a9835a','#e8791a','#f2c200','#3fbf6a'];
+function mapSVG(){
+ const sn=seasonIdx(),grass=['#8fbf74','#79b45f','#c9a45a','#e4eaee'][sn],grass2=['#9ccb82','#86c06b','#d6b56e','#f4f7f9'][sn],tree=['#4c9a46','#3f8a3a','#d9822b','#8aa0ad'][sn];
+ let o=`<rect width="960" height="540" fill="${grass}"/>`;
+ // farmland patchwork
+ [[20,110,150,110],[60,120,0,0],[860,60,80,70],[880,250,70,90],[30,300,90,60]].forEach(([x,y,w,h],i)=>{if(w)o+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${grass2}" opacity=".8"/>`});
+ // river
+ o+=`<path d="M-20,310 C150,345 210,255 340,305 S530,380 650,335 S870,385 990,352" stroke="#5aa3d1" stroke-width="38" fill="none"/><path d="M-20,310 C150,345 210,255 340,305 S530,380 650,335 S870,385 990,352" stroke="#8cc6e8" stroke-width="22" fill="none" opacity=".7"/>`;
+ // wetlands
+ o+=`<ellipse cx="135" cy="388" rx="70" ry="38" fill="#6fae8c" opacity=".85"/>${[100,128,150,172].map(x=>`<path d="M${x},398 v-18 M${x+4},398 v-14" stroke="#3f7a5a" stroke-width="2"/>`).join('')}`;
+ // roads and rail
+ o+=`<path d="M0,268 H960" stroke="#7a7f86" stroke-width="16"/><path d="M0,268 H960" stroke="#e8d36a" stroke-width="2" stroke-dasharray="14 12"/><path d="M480,0 V540" stroke="#7a7f86" stroke-width="14"/><path d="M380,540 L760,40" stroke="#7a7f86" stroke-width="11"/><path d="M0,455 H960" stroke="#5b4a3a" stroke-width="5"/><path d="M0,455 H960" stroke="#c9b48c" stroke-width="3" stroke-dasharray="3 7"/>`;
+ [[250,0,250,268],[690,268,690,540],[0,160,330,160],[620,160,960,160]].forEach(([a,b,c,d])=>{o+=`<path d="M${a},${b} L${c},${d}" stroke="#9a9fa6" stroke-width="7"/>`});
+ // trees
+ for(let i=0;i<34;i++){const x=(i*277+60)%940+10,y=(i*131+40)%500+10;if(Math.abs(y-268)<24||Math.abs(x-480)<20||(y>290&&y<340)||(y>440&&y<470))continue;o+=`<circle cx="${x}" cy="${y}" r="${5+i%4}" fill="${tree}" opacity=".8"/>`}
+ // downtown
+ for(let r=0;r<3;r++)for(let c=0;c<5;c++){const x=412+c*34+(c>2?10:0),y=222+r*30;if(Math.abs(y+14-268)<10)continue;o+=`<rect x="${x}" y="${y}" width="26" height="22" fill="${(r+c)%2?'#b9b4aa':'#a9a49a'}" stroke="#7a766e"/>`}
+ // neighborhoods
+ const nh=(x,y,col,roof,label)=>{let h='';for(let i=0;i<12;i++){h+=`<rect x="${x+(i%4)*18}" y="${y+Math.floor(i/4)*16}" width="12" height="10" fill="${col}" stroke="${roof}" stroke-width="1.5"/>`}return h+`<text x="${x+36}" y="${y+58}" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">${label}</text>`};
+ o+=nh(395,75,'#f4efe6','#3d6a5a','Oak Park')+nh(190,215,'#e9d9b8','#a85a3a','Millbrook')+nh(560,330,'#b9ad94','#5d4a3e','East Side');
+ // park
+ o+=`<rect x="355" y="330" width="90" height="56" rx="8" fill="#7fc47a" stroke="#4c9a46"/><circle cx="380" cy="352" r="9" fill="${tree}"/><circle cx="418" cy="362" r="10" fill="${tree}"/><text x="400" y="400" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Riverside Park</text>`;
+ // city hall
+ o+=`<g transform="translate(480,268)"><rect x="-22" y="-14" width="44" height="28" fill="#f3ead2" stroke="#6b4a2b" stroke-width="2"/><path d="M-26,-14 L0,-32 L26,-14Z" fill="#a85a3a"/><rect x="-4" y="0" width="8" height="14" fill="#6b4a2b"/><text y="30" font-size="11" font-weight="800" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".5">CITY HALL</text></g>`;
+ // schools
+ [[395,205],[610,320]].forEach(([x,y])=>{o+=`<g transform="translate(${x},${y})"><rect x="-13" y="-10" width="26" height="20" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-16,-10 L0,-20 L16,-10Z" fill="#7a4a2a"/><text y="5" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">S</text></g>`});
+ // infrastructure: sewer plant, landfill, substation, water tower
+ const sl=sewerLoad(),slc=sl>=100?'#e04646':sl>=80?'#e8a317':'#3fbf6a',lp=trashPct(),lc=lp>=100?'#e04646':lp>=75?'#e8a317':'#3fbf6a',gl=gridLoad(),glc=gl>=88?'#e04646':gl>=72?'#e8a317':'#3fbf6a',wl=waterLoad(),wlc=wl>=90?'#e04646':wl>=75?'#e8a317':'#3fbf6a';
+ o+=`<g transform="translate(175,470)"><circle cx="-14" cy="0" r="14" fill="#c9ced3" stroke="#6b7078"/><circle cx="16" cy="2" r="12" fill="#c9ced3" stroke="#6b7078"/><circle cx="0" cy="-22" r="5" fill="${slc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Sewer plant ${sl}%</text></g>`;
+ o+=`<g transform="translate(890,452)"><path d="M-40,14 Q-10,-30 40,14Z" fill="#8a7a5a" stroke="#5d4a3e" stroke-width="2"/><circle cx="26" cy="-8" r="5" fill="${lc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Landfill ${lp}%</text></g>`;
+ o+=`<g transform="translate(715,398)"><rect x="-16" y="-14" width="32" height="28" fill="none" stroke="#6b7078" stroke-width="2" stroke-dasharray="4 3"/><path d="M-3,-10 L6,-1 L0,-1 L4,10 L-6,0 L0,0Z" fill="#f2c200" stroke="#7a6a1a"/><circle cx="18" cy="-16" r="5" fill="${glc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Grid ${gl}%</text></g>`;
+ o+=`<g transform="translate(345,205)"><path d="M-8,18 L-4,-6 H4 L8,18Z" fill="#9aa3ad" stroke="#6b7078"/><ellipse cx="0" cy="-12" rx="12" ry="9" fill="#c9ced3" stroke="#6b7078"/><circle cx="14" cy="-18" r="5" fill="${wlc}" stroke="#fff"/><text y="32" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Water ${wl}%</text></g>`;
+ // projects
+ const bySite={};S.projects.forEach((p,i)=>{(bySite[p.site]=bySite[p.site]||[]).push([p,i])});
+ const prop=(S.agenda&&S.agenda.stage===-1?S.agenda:null)||(S.pending&&S.pending.stage===-1?S.pending:null);
+ if(prop)(bySite[prop.site]=bySite[prop.site]||[]).push([prop,-1]);
+ for(const site in bySite){
+  const base=MAP_SITES[site]||[480,300],list=bySite[site];
+  list.forEach(([p,i],k)=>{
+   const ang=k*(2*Math.PI/Math.max(list.length,1))-1,rad=list.length>1?24:0,x=base[0]+Math.cos(ang)*rad,y=base[1]+Math.sin(ang)*rad,col=i<0?'#ffffff':STAGE_COL[clamp(p.stage,0,4)];
+   o+=`<g class="mk ${i<0?'prop':''}" data-i="${i}" transform="translate(${x.toFixed(0)},${y.toFixed(0)})"><circle r="28" fill="transparent"/><circle class="hit" r="15" fill="${col}" stroke="${i<0?'#e8791a':'#fff'}" stroke-width="3" ${i<0?'stroke-dasharray="4 3"':''}/><text y="6" font-size="16" text-anchor="middle">${p.type.icon}</text></g>`;
+  });
+ }
+ return `<svg viewBox="0 0 960 540" preserveAspectRatio="xMidYMid meet">${o}</svg>`;
+}
+function lineChart(title,series,opts){
+ const H=S.hist||[];if(H.length<2)return `<div class="chartbox"><h4>${title}</h4><div class="mut" style="padding:10px">Play a few more weeks to see this chart.</div></div>`;
+ const W=480,Ht=170,L=34,R=10,T=10,B=22,x0=H[0].w,x1=H[H.length-1].w;
+ let lo=opts.min!==undefined?opts.min:Math.min(...series.flatMap(s=>H.map(h=>h[s.k]))),hi=opts.max!==undefined?opts.max:Math.max(...series.flatMap(s=>H.map(h=>h[s.k])));
+ if(opts.goal!==undefined){hi=Math.max(hi,opts.goal);lo=Math.min(lo,opts.goal)}
+ if(hi===lo)hi=lo+1;const pad=(hi-lo)*.08;if(opts.min===undefined)lo-=pad;if(opts.max===undefined)hi+=pad;
+ const X=w=>L+(w-x0)/Math.max(1,x1-x0)*(W-L-R),Y=v=>T+(1-(v-lo)/(hi-lo))*(Ht-T-B);
+ let g='';for(let i=0;i<=4;i++){const v=lo+(hi-lo)*i/4,y=Y(v);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#2a3750" stroke-width="1"/><text x="${L-4}" y="${y+3}" font-size="9" text-anchor="end" fill="#8a96ab">${opts.fmt?opts.fmt(v):Math.round(v)}</text>`}
+ g+=`<text x="${L}" y="${Ht-6}" font-size="9" fill="#8a96ab">Week ${x0}</text><text x="${W-R}" y="${Ht-6}" font-size="9" text-anchor="end" fill="#8a96ab">Week ${x1}</text>`;
+ if(opts.goal!==undefined){const y=Y(opts.goal);g+=`<line x1="${L}" x2="${W-R}" y1="${y}" y2="${y}" stroke="#f2c200" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${W-R}" y="${y-4}" font-size="9" text-anchor="end" fill="#f2c200">Goal</text>`}
+ series.forEach(sr=>{g+=`<polyline points="${H.map(h=>X(h.w).toFixed(1)+','+Y(h[sr.k]).toFixed(1)).join(' ')}" fill="none" stroke="${sr.c}" stroke-width="2.2" stroke-linejoin="round"/>`});
+ const lg=series.map(sr=>`<span style="color:${sr.c};margin-right:12px;font-size:12px"><i style="display:inline-block;width:12px;height:3px;background:${sr.c};vertical-align:middle;margin-right:4px"></i>${sr.n}</span>`).join('');
+ return `<div class="chartbox"><h4>${title}</h4><div>${lg}</div><svg viewBox="0 0 ${W} ${Ht}">${g}</svg></div>`;
+}
+function historyHTML(){
+ const f=document.body.classList.contains('cb');
+ return lineChart('Public mood',[{k:'t',n:'Trust',c:f?'#4aa8ff':'#4ade80'},{k:'e',n:'Environment',c:'#38bdf8'},{k:'d',n:'Developer goodwill',c:'#f2c200'},{k:'c',n:'Scandal risk',c:f?'#ff9f1a':'#f87171'}],{min:0,max:100})
+  +lineChart('Population',[{k:'p',n:'Residents',c:'#c4b5fd'}],{goal:POPGOAL(),fmt:v=>Math.round(v/100)*100})
+  +lineChart('Treasury ($ thousands)',[{k:'b',n:'Treasury',c:'#fbbf24'}],{})
+  +lineChart('Street condition',[{k:'s',n:'Streets',c:'#94a3b8'}],{min:0,max:100});
+}
+function hofHTML(){
+ const a=loadScores();if(!a.length)return '<p class="mut">No finished terms yet. Finish a term and it appears here.</p>';
+ return `<table class="hof"><tr><th>#</th><th>Grade</th><th>Score</th><th>Result</th><th>Mayor</th><th>Pop.</th></tr>${a.slice(0,10).map((r,i)=>`<tr><td>${i+1}</td><td><b>${r.grade}</b></td><td>${r.score}</td><td>${r.met?'Re-elected':r.ok?'Term complete':r.t||'Ended early'}${r.weeks?` &middot; ${r.weeks} wk`:''}</td><td>${r.bg||'-'}${r.scen?` &middot; ${r.scen}`:''}</td><td>${num(r.pop||0)}</td></tr>`).join('')}</table>`;
+}
+function showMap(tab){
+ tab=tab||'map';
+ const body=tab==='map'?`<div class="mapwrap">${mapSVG()}</div><div id="mapInfo" class="mut">Tap a project marker for details. Colors show the stage each project is in.</div><div class="legend">${['Permitting','Site prep','Construction','Commissioning','Operating'].map((n,i)=>`<span><i style="background:${STAGE_COL[i]}"></i>${n}</span>`).join('')}<span><i style="background:#fff;border:2px dashed #e8791a;box-sizing:border-box"></i>Proposed</span></div>`:tab==='hist'?historyHTML():hofHTML();
+ modal(`<h2>${S.pop?'Clifton':'Clifton'}${S.maxWeeks?` &middot; week ${Math.min(S.week,S.maxWeeks)} of ${S.maxWeeks} &middot; ${SEASONS[seasonIdx()]}`:''}</h2><div class="tabs"><button data-t="map" class="${tab==='map'?'on':''}">City map</button><button data-t="hist" class="${tab==='hist'?'on':''}">History</button><button data-t="hof" class="${tab==='hof'?'on':''}">Hall of fame</button></div>${body}<div class="btnrow"><button id="mapClose">Close</button></div>`,'wide');
+ $('#mapClose').onclick=closeModal;
+ $$('#modal .tabs button').forEach(b=>b.onclick=()=>showMap(b.dataset.t));
+ $$('#modal .mk').forEach(g=>g.onclick=()=>{
+  const i=+g.dataset.i,p=i<0?(S.agenda&&S.agenda.stage===-1?S.agenda:S.pending):S.projects[i];if(!p)return;
+  $('#mapInfo').innerHTML=`<b>${p.type.icon} ${p.type.name}</b> &middot; ${p.company} &middot; ${p.site}<br>${i<0?'Proposed: not yet approved.':`${STAGES[p.stage]}${p.stage<OPER?', '+p.stageLeft+' week'+(p.stageLeft===1?'':'s')+' left':''}`} &middot; ${money(p.cost)} &middot; ${num(Math.round(p.jobs))} jobs &middot; ${p.incidents} incident${p.incidents===1?'':'s'}`;
+ });
 }
 function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
@@ -3876,6 +3986,7 @@ function ending(code){
  const have=loadAch(),earned=ok?ACHS.filter(a=>{try{return a.test()}catch(e){return false}}):[];
  const fresh_=earned.filter(a=>!have[a.k]);earned.forEach(a=>{have[a.k]=1});if(earned.length)saveAch(have);
  const hl=epiHeadline(t,met);
+ saveScore({score:sc2,grade,pop:Math.round(S.pop),ok,met,t,weeks:Math.min(S.week,S.maxWeeks),bg:(BACKGROUNDS[S.bg]||{}).name,scen:(SCENARIOS[S.scen]||{}).name,at:Date.now()});
  const counts={};S.projects.forEach(p=>{counts[p.type.name]=(counts[p.type.name]||0)+1});
  const plist=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>`${c>1?c+' × ':''}${n}`).join(', ')||'none';
  const bgName=(BACKGROUNDS[S.bg]||{}).name,scName=(SCENARIOS[S.scen]||{}).name;
@@ -4210,7 +4321,7 @@ function openTitleExtras(){
  const full=document.querySelector('input[name=mode][value="52"]');
  if(full&&!feature('full')){full.disabled=true;full.parentElement.append(FVL);document.querySelector('input[name=mode][value="12"]').checked=true}
 }
-function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
+function modal(html,cls){const m=$('#modal');m.innerHTML=`<div class="box ${cls||''}">${html}</div>`;m.classList.remove('hidden')}
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
 const HELP=[
  {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p><b>Your goal:</b> keep your seat until the end of the term and grow the city past its <b>population target</b>. Collapse in trust, the environment or a scandal ends your term early.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
