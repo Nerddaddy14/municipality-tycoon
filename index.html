@@ -203,6 +203,17 @@ td.bad{color:var(--bad)}
 #overlay p{line-height:1.5;color:#c6d0e0}
 .modes label{display:block;margin:6px 0;color:#c6d0e0;cursor:pointer}
 #overlay button.alt{background:#2a3a55;color:#e9eef7}
+#scene.t-historic{background:linear-gradient(#5b3a2a 0,#4a2f22 30%,#2c1b12 30%,#24160e 54%,#1f4a36 54%,#173a2a 100%)}
+#scene.t-historic .desk{background:linear-gradient(#5a3420,#3d2214 60%,#2b160c);border-top-color:#a8793a}
+#scene.t-historic .seal{background:radial-gradient(#e9d79a 55%,#7a5a1c 56%,#4a350e 62%,#c9a24a 63%);color:#3b2a10}
+#scene.t-historic .plate{background:#c9a24a;color:#2b1c06;border-color:#7a5a1c}
+#scene.t-modern{background:linear-gradient(#cfe3f2 0,#e8f1f8 30%,#9fb4c4 30%,#8da4b6 54%,#33506b 54%,#274059 100%)}
+#scene.t-modern .desk{background:linear-gradient(#eef1f4,#c5ccd3 60%,#a5adb6);border-top-color:#fff}
+#scene.t-modern .seal{background:radial-gradient(#fff 55%,#6aa 56%,#3a7a7a 62%,#cfe 63%);color:#2a5a5a}
+#scene.t-modern .plate{background:#fff;color:#234;border-color:#9ab}
+#scene.t-modern .aud:before{background:#33506b}
+.ctlb{background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:4px 8px;cursor:pointer;font-size:12px}
+.ctlb:disabled{opacity:.4;cursor:default}
 .conds select{width:100%;margin-top:4px;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:6px;padding:4px}
 .conds input[type=range]{margin-top:6px}
 #modal{position:fixed;inset:0;background:rgba(5,8,14,.88);z-index:110;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -265,7 +276,7 @@ td.bad{color:var(--bad)}
  <p>Approved projects move through Permitting, Site Prep, Construction, Commissioning and Operation. Expect wells drilled without permits, contaminated water, wasted water, noise, but also new roads, parks and donations. How you respond decides your term.</p>
  <p class="mut">You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
  <div class="modes"><label><input type="radio" name="mode" value="52" checked> Full term: 52 weeks (about an hour or more)</label><label><input type="radio" name="mode" value="12"> Quick term: 12 weeks (about 15 to 20 minutes)</label></div>
- <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button>
+ <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button> <button id="slotsBtn" class="alt hidden">Saved slots</button> <button id="licBtn" class="alt hidden">Enter license key</button>
  <p id="saveInfo" class="mut" style="margin-top:12px"></p>
 </div></div>
 
@@ -288,9 +299,11 @@ const AUTO=/[?&]auto=1/.test(location.search);
 const SPEED=AUTO?1:16;
 
 /* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
-const GATING=false,LICENSE_KEY='municipality-tycoon-license';
+const GATING=false,LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
 const FREE_FEATURES=['quick'];
-function licensed(){try{return !!localStorage.getItem(LICENSE_KEY)}catch(e){return false}}
+const fnv=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36).toUpperCase()};
+function validKey(k){const m=/^MT-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{1,8})$/.exec((k||'').trim().toUpperCase());return !!m&&fnv(m[1]+'-'+m[2]+LICENSE_SALT)===m[3]}
+function licensed(){try{return validKey(localStorage.getItem(LICENSE_KEY))}catch(e){return false}}
 function feature(k){return !GATING||FREE_FEATURES.includes(k)||licensed()}
 
 /* ---------- audio ---------- */
@@ -465,13 +478,26 @@ const TYPES=[
  {k:'chem',name:'Chemical Processing Plant',icon:'&#9879;&#65039;',min:5e7,max:1e9,water:60000,noise:70,jobs:3,tax:.015,traffic:7,power:6,tags:['chem']},
  {k:'mall',name:'Strip Mall',icon:'&#128717;&#65039;',min:1e6,max:6e7,water:3000,noise:52,jobs:8,tax:.03,traffic:8,power:2,tags:[]}
 ];
+const PACKS={
+ entertainment:{name:'Entertainment pack',types:[
+  {k:'stadium',name:'Sports Stadium',icon:'&#127967;&#65039;',min:5e7,max:1e9,water:25000,noise:78,jobs:5,tax:.01,traffic:10,power:6,tags:[]},
+  {k:'casino',name:'Casino Resort',icon:'&#127920;',min:3e7,max:6e8,water:30000,noise:65,jobs:9,tax:.04,traffic:9,power:5,tags:[]},
+  {k:'themepark',name:'Amusement Park',icon:'&#127906;',min:2e7,max:5e8,water:50000,noise:72,jobs:12,tax:.025,traffic:9,power:5,tags:[]},
+  {k:'arena',name:'Concert Arena',icon:'&#127908;',min:2e7,max:3e8,water:12000,noise:80,jobs:4,tax:.02,traffic:9,power:4,tags:[]}]},
+ energy:{name:'Energy pack',types:[
+  {k:'wind',name:'Wind Farm',icon:'&#127788;&#65039;',min:1e7,max:4e8,water:100,noise:55,jobs:.8,tax:.009,traffic:2,power:-3,tags:[]},
+  {k:'gasplant',name:'Natural Gas Plant',icon:'&#128293;',min:8e7,max:1e9,water:80000,noise:72,jobs:2,tax:.02,traffic:4,power:-6,tags:['chem']},
+  {k:'hydro',name:'Hydroelectric Dam',icon:'&#127754;',min:1e8,max:1e9,water:5000,noise:50,jobs:1.5,tax:.015,traffic:3,power:-4,tags:[]}]}
+};
+const packTypes=()=>Object.values(PACKS).flatMap(p=>p.types);
+const activeTypes=()=>feature('packs')?TYPES.concat(packTypes()):TYPES;
 const SITES=['Harlan Road','the old Dunmore farm','Riverside Industrial Park','the Route 9 corridor','the edge of Millbrook wetlands','Cedar Hill','the former Henley rail yard','Quarry Lane','Eastgate Business Park','the Pinecrest subdivision edge'];
 const DEVS=['Apex Meridian','Northgate Capital','BlueRidge Development','Titan Ventures','Summit & Stone','Vantage Build Group','Clearwater Holdings','Ironwood Partners'];
 const REPS=['Brad Kensington','Linda Marsh','Chad Whitcomb','Priya Nair','Greg Dunleavy','Marcus Holt'];
 
 function genProject(){
  let cost=Math.pow(10,rnd(Math.log10(5e4),9));const m=Math.pow(10,Math.floor(Math.log10(cost))-1);cost=Math.round(cost/m)*m;
- const pool=[];TYPES.filter(t=>cost>=t.min&&cost<=t.max&&!(S.ords.includes('dcban')&&t.k==='datacenter')).forEach(t=>{for(let i=0;i<(t.k==='datacenter'?3:1);i++)pool.push(t)});
+ const pool=[];activeTypes().filter(t=>cost>=t.min&&cost<=t.max&&!(S.ords.includes('dcban')&&t.k==='datacenter')).forEach(t=>{for(let i=0;i<(t.k==='datacenter'?3:1);i++)pool.push(t)});
  const t=pick(pool),mm=cost/1e6,sizeF=clamp((Math.log10(cost)-4.7)/4.3,0,1);
  const p={id:++S.pid,type:t,company:pick(DEVS),site:pick(SITES),cost,sizeF,
   water:Math.round(t.water*Math.pow(mm,.8)),db:t.noise+3*Math.log10(mm+1),jobs:Math.max(2,Math.round(t.jobs*Math.pow(mm,.75))),
@@ -519,7 +545,7 @@ function score(m,p,c,ctx){
  return s;
 }
 function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.water)).replace(/\{noise\}/g,Math.round(e.db)).replace(/\{jobs\}/g,num(p.jobs)).replace(/\{tax\}/g,money(p.tax)).replace(/\{name\}/g,p.type.name).replace(/\{site\}/g,p.site).replace(/\{cost\}/g,money(p.cost))}
-const dots=n=>'&#9679;'.repeat(Math.round(n/2))+'<span class="mut">'+'&#9675;'.repeat(5-Math.round(n/2))+'</span>';
+const dots=n=>{const k=clamp(Math.round(n/2),0,5);return '&#9679;'.repeat(k)+'<span class="mut">'+'&#9675;'.repeat(5-k)+'</span>'};
 function showAgenda(p){
  const a=$('#agenda');
  if(!p){a.innerHTML='<h3>Agenda</h3><div class="mut">No project under consideration.</div>'+agendaList();return}
@@ -530,7 +556,7 @@ function showAgenda(p){
  <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
-const gridLoad=()=>Math.round(50-S.gridBoost+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0));
+const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
 const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.temp.water-S.fund.pw*6+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
@@ -1931,6 +1957,7 @@ async function offWeek(){
  showAgenda(ap);
 }
 async function runGame(){
+ applyDialoguePacks();
  try{
   while(true){
    snap={trust:S.trust,env:S.env,dev:S.dev,budget:S.budget};
@@ -1980,27 +2007,75 @@ function autosave(){
 function readSave(){try{const r=localStorage.getItem(SAVE_KEY);return r?JSON.parse(r):null}catch(e){return null}}
 function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
 function restore(d){
- const hyd=c=>({...c,type:TYPES.find(t=>t.k===c.type)});
+ const hyd=c=>({...c,type:TYPES.concat(packTypes()).find(t=>t.k===c.type)});
  const projects=d.S.projects.map(hyd);
  const queue=(d.S.queue||[]).map(q=>[projects.find(p=>p.id===q.pid),q.def,q.pr]).filter(x=>x[0]);
  Object.assign(S,d.S,{projects,pending:d.S.pending?hyd(d.S.pending):null,agenda:d.S.agenda?hyd(d.S.agenda):null,queue});
 }
+const THEMES={classic:'Classic Council Chambers',historic:'Historic Town Hall',modern:'Modern Glass Chamber'},THEME_KEY='municipality-tycoon-theme',SLOT_KEY='municipality-tycoon-slot-',SLOTS=3;
+function applyTheme(k){
+ if(!THEMES[k]||(k!=='classic'&&!feature('themes')))k='classic';
+ const s=$('#scene');s.classList.remove('t-historic','t-modern');if(k!=='classic')s.classList.add('t-'+k);
+ try{localStorage.setItem(THEME_KEY,k)}catch(e){}
+ return k;
+}
+function readSlot(i){try{const r=localStorage.getItem(SLOT_KEY+i);return r?JSON.parse(r):null}catch(e){return null}}
+function slotLabel(i){const d=readSlot(i);return d?`Week ${d.S.week} of ${d.S.maxWeeks} · ${d.saved?new Date(d.saved).toLocaleDateString():''}`:'Empty'}
 function showMenu(){
- modal(`<h2>Menu</h2><p class="mut">The game autosaves at the start of every week into one save slot. "Save and quit" stores the start of this week, so you replay the week when you come back.</p>
- <div class="btnrow col"><button class="go" id="mSave" ${WEEK_SNAP?'':'disabled'}>Save and quit to title</button><button id="mResume">Resume game</button><button class="stop" id="mNew">Abandon this game and start over</button></div><div id="mMsg" class="mut" style="margin-top:8px"></div>`);
+ let curTheme='classic';try{curTheme=localStorage.getItem(THEME_KEY)||'classic'}catch(e){}
+ const slots=feature('saves')?`<h3 style="margin:14px 0 4px;font-size:13px;color:var(--acc);letter-spacing:1px;text-transform:uppercase">Save slots</h3>${Array.from({length:SLOTS},(_,i)=>`<div style="display:flex;gap:6px;align-items:center;margin:4px 0"><span style="flex:1;font-size:13px">Slot ${i+1}: ${slotLabel(i+1)}</span><button class="ctlb" data-save="${i+1}" ${WEEK_SNAP?'':'disabled'}>Save here</button><button class="ctlb" data-load="${i+1}" ${readSlot(i+1)?'':'disabled'}>Load</button></div>`).join('')}`:`<p class="mut" style="margin-top:12px">Free version: one save slot (the autosave). Unlock the full game for 3 manual save slots.</p>`;
+ modal(`<h2>Menu</h2><p class="mut">The game autosaves at the start of every week. "Save and quit" stores the start of this week, so you replay the week when you come back.</p>
+ <div class="btnrow col"><button class="go" id="mSave" ${WEEK_SNAP?'':'disabled'}>Save and quit to title</button><button id="mResume">Resume game</button><button class="stop" id="mNew">Abandon this game and start over</button></div>${slots}
+ <label>Chamber theme<select id="mTheme">${Object.entries(THEMES).map(([k,n])=>`<option value="${k}" ${k===curTheme?'selected':''} ${k!=='classic'&&!feature('themes')?'disabled':''}>${n}${k!=='classic'&&!feature('themes')?' (full version)':''}</option>`).join('')}</select></label>
+ ${GATING&&!licensed()?'<div class="btnrow"><button id="mUnlock" class="go">Unlock the full game</button></div>':''}<div id="mMsg" class="mut" style="margin-top:8px"></div>`);
  $('#mResume').onclick=closeModal;
  $('#mSave').onclick=()=>{try{localStorage.setItem(SAVE_KEY,WEEK_SNAP)}catch(e){}location.reload()};
  let armed=false;
  $('#mNew').onclick=()=>{if(!armed){armed=true;$('#mMsg').textContent='This deletes your saved game. Click again to confirm.';return}clearSave();location.reload()};
+ $('#mTheme').onchange=e=>{applyTheme(e.target.value)};
+ if($('#mUnlock'))$('#mUnlock').onclick=showLicense;
+ $$('[data-save]').forEach(b=>b.onclick=()=>{try{const d=JSON.parse(WEEK_SNAP);d.saved=Date.now();localStorage.setItem(SLOT_KEY+b.dataset.save,JSON.stringify(d));$('#mMsg').textContent=`Saved to slot ${b.dataset.save}.`;showMenu()}catch(e){$('#mMsg').textContent='Could not save.'}});
+ $$('[data-load]').forEach(b=>b.onclick=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(readSlot(b.dataset.load)));sessionStorage.setItem('municipality-tycoon-autocontinue','1')}catch(e){}location.reload()});
+}
+function showLicense(){
+ modal(`<h2>Unlock the full game</h2><p class="mut">The full game adds the 52-week term, recall elections, chamber themes, project packs, dialogue packs, and 3 save slots. Enter your license key.</p><label>License key<input id="lkIn" placeholder="MT-XXXX-XXXX-XXXXX" style="width:100%;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:8px;margin-top:4px"></label><div class="btnrow"><button class="go" id="lkOk">Unlock</button><button id="lkCancel">Cancel</button></div><div id="lkMsg" class="mut" style="margin-top:8px"></div>`);
+ $('#lkCancel').onclick=closeModal;
+ $('#lkOk').onclick=()=>{const k=$('#lkIn').value.trim().toUpperCase();if(validKey(k)){try{localStorage.setItem(LICENSE_KEY,k)}catch(e){}$('#lkMsg').textContent='Unlocked! Reloading...';setTimeout(()=>location.reload(),600)}else $('#lkMsg').textContent='That key is not valid.'};
+}
+let DPACKS=false;
+function applyDialoguePacks(){
+ if(DPACKS||!feature('packs'))return;DPACKS=true;
+ const extra={
+  chen:['I once apologized to a houseplant on behalf of the entire city.','Do ducks pay taxes? Asking for the pond.','I have named every pigeon on the courthouse steps. Gerald is the troublemaker.'],
+  bradley:['I want to pitch a smart city: a city so smart it votes for itself.','Every empty storefront is just a startup that has not met its destiny.','I once networked at a funeral. It was very tasteful.'],
+  rodriguez:['I believe the lunch break is the foundation of civilization.','If we put a union card in the time capsule, future archaeologists will respect us.','I once won an argument with a vending machine. It still owes me a dollar.'],
+  wong:['I think the town clock should chime a different song each hour. Surprise is a public good.','I have heard rumors that the goose in the pond is smarter than this council.','My dream is a bench every ten feet. Everyone deserves to sit and judge people.'],
+  jennings:['I tried to expense a sandwich once. It was denied. By me.','If you squint, a budget is just a very sad poem.','I carry a calculator the way other men carry hope.']
+ };
+ Object.entries(extra).forEach(([k,v])=>SILLY[k].push(...v));
+ BUSINESS.push(
+  {t:'The Clifton Historical Society is asking residents to stop painting the old mill pink.',w:'wong',q:'It was pink when I was a girl, and I will hear no more about it.'},
+  {t:'The city pool opens Memorial Day weekend, with a new diving board.',w:'rodriguez',q:'I want it noted I will be cannonballing at the ribbon cutting.'},
+  {t:'Public Works will repaint crosswalks on Main Street, in a color best described as "hopeful yellow."',w:'jennings',q:'Is hopeful yellow more expensive than regular yellow?'},
+  {t:'The farmers market returns Saturday, now with a cheese vendor and a goat.',w:'chen',q:'I am only interested in the goat.'},
+  {t:'A resident reports a very large, very calm raccoon in the library parking lot.',w:'bradley',q:'I support the raccoon, as long as it has a business license.'},
+  {t:'The senior bingo tournament has been moved to the community center because of a scheduling dispute.',w:'wong',q:'I have seen this dispute escalate before. Please send security.'}
+ );
+}
+function openTitleExtras(){
+ const lic=$('#licBtn');if(lic){if(GATING&&!licensed())lic.classList.remove('hidden');else lic.classList.add('hidden')}
+ const full=document.querySelector('input[name=mode][value="52"]');
+ if(full&&!feature('full')){full.disabled=true;full.parentElement.append(' (full version)');document.querySelector('input[name=mode][value="12"]').checked=true}
 }
 function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
 const HELP=[
  {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
- {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. At 10 you are recalled.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: tax revenue and fines in, department costs out. Every six weeks the quarterly <b>budget hearing</b> lets you set the property tax rate and fund Public Works, Public Safety, Parks and Library, and Inspections. Run a deficit and interest and unpaid bills hurt trust.</li></ul>'},
+ {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. Below 28 a recall petition is filed against you and challengers run for your job. You can campaign in the off weeks. Lose the election and your term ends.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: tax revenue and fines in, department costs out. Every six weeks the quarterly <b>budget hearing</b> lets you set the property tax rate and fund Public Works, Public Safety, Parks and Library, and Inspections. Run a deficit and interest and unpaid bills hurt trust.</li></ul>'},
  {t:'At the meeting',h:'<p>Use the <b>conditions</b> list to win over members: water recycling, noise caps, a park, local hire, a cleanup bond and more. Every condition costs the developer. Push too far and they walk away.</p><p>You can <b>table</b> an item once. Members ask for studies, and next week the reports come back and can change the numbers and the debate. The city attorney gives advice that is sometimes good and sometimes bad. You can pay for a second opinion.</p>'},
  {t:'After approval',h:'<p>Projects move through Permitting, Site Prep, Construction, Commissioning and Operating. Expect incidents: unpermitted wells, contaminated or wasted water, noise, blackouts, main breaks. You can <b>fine</b>, issue a <b>stop-work order</b>, or <b>forgive</b>, and some incidents offer a fix the developer pays for.</p><p>Watch the <b>City Systems</b> panel. Too much power or water demand causes blackouts and main breaks.</p>'},
- {t:'Controls',h:'<ul><li><b>Space / Enter / click</b> advances dialogue.</li><li><b>F</b> cycles speed (1x, 2x, 4x, max). <b>A</b> toggles auto-advance.</li><li>Your game <b>autosaves every other week</b>. Close the tab and use Continue later.</li><li>The <b>Feedback</b> button sends your thoughts any time.</li></ul>'}
+ {t:'The city',h:'<ul><li><b>Council relationships:</b> each member has a relationship with you. Votes you win them over on build goodwill. Take them to lunch in an off week, do favors, or ask for a vote on the next big item.</li><li><b>City Growth:</b> jobs bring residents. Build enough homes or rents rise and trust falls. Too many trucks cause congestion.</li><li><b>Ordinances:</b> every so often the council can adopt rules that apply to every future project, like water recycling or local hire.</li><li><b>Crises:</b> heat waves, droughts, floods, cyber attacks and scandals test you. Funding Public Works and Public Safety makes them cheaper.</li></ul>'},
+ {t:'Controls',h:'<ul><li><b>Space / Enter / click</b> advances dialogue.</li><li><b>F</b> cycles speed (1x, 2x, 4x, max). <b>A</b> toggles auto-advance.</li><li>Your game <b>autosaves every week</b>. Close the tab and use Continue later.</li><li>The <b>Feedback</b> button sends your thoughts any time.</li></ul>'}
 ];
 function showHelp(){
  return new Promise(res=>{
@@ -2043,6 +2118,18 @@ buildHud();buildScene();hud();renderProjects();showAgenda(null);
  if(sv&&sv.S){const b=$('#contBtn');b.textContent=`Continue saved game (week ${sv.S.week} of ${sv.S.maxWeeks})`;b.classList.remove('hidden');$('#saveInfo').textContent=`Saved game found: week ${sv.S.week} of ${sv.S.maxWeeks}. Starting a new game replaces it.`;
   b.onclick=()=>{restore(sv);$('#overlay').classList.add('hidden');hud();renderProjects();runGame()}}
  else $('#saveInfo').textContent='No saved game yet. The game autosaves at the start of every week.';
+ applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)||'classic'}catch(e){return 'classic'}})());
+ openTitleExtras();
+ $('#licBtn').onclick=showLicense;
+ if(feature('saves')&&[1,2,3].some(readSlot)){
+  const sb=$('#slotsBtn');sb.classList.remove('hidden');
+  sb.onclick=()=>{
+   modal(`<h2>Saved slots</h2>${[1,2,3].map(i=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><span style="flex:1">Slot ${i}: ${slotLabel(i)}</span><button class="ctlb" data-load="${i}" ${readSlot(i)?'':'disabled'}>Load</button></div>`).join('')}<div class="btnrow"><button id="slClose">Close</button></div>`);
+   $('#slClose').onclick=closeModal;
+   $$('[data-load]').forEach(b=>b.onclick=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(readSlot(b.dataset.load)));sessionStorage.setItem('municipality-tycoon-autocontinue','1')}catch(e){}location.reload()});
+  };
+ }
+ try{if(sessionStorage.getItem('municipality-tycoon-autocontinue')&&sv&&sv.S){sessionStorage.removeItem('municipality-tycoon-autocontinue');setTimeout(()=>$('#contBtn').click(),100)}}catch(e){}
 }
 $('#startBtn').onclick=async()=>{
  const m=document.querySelector('input[name=mode]:checked');S.maxWeeks=m?+m.value:52;
