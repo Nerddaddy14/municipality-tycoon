@@ -43,3 +43,7 @@ Faster text speeds (2x, 4x, max) stay locked until a player finishes their first
 ## Feedback
 
 Itch.io pages have comments and devlogs. Link the playtest notes you gather from friends into the first devlog post, and ask players to use the in-game Feedback button.
+
+## Animated preview
+
+`portal/courier-animation.gif` shows the Courier front page spinning onto the screen. Upload it as an itch.io screenshot or the cover image (about 2 MB). To re-record it after changing the newspaper, start `python -m http.server 8765` in the repo root and run `python tools/make_courier_gif.py` (needs `pip install playwright pillow` and Chrome).

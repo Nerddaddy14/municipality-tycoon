@@ -928,8 +928,8 @@ function showAgenda(p){
  <tr><td>Workers hired</td><td>${num(Math.round(p.jobs))}</td></tr><tr><td>Sewer load</td><td>+${sewOf(p,p.conds).toFixed(1)} pts</td></tr><tr><td>Trash</td><td>+${((p.jobs/260+.25)).toFixed(1)} pts/wk</td></tr><tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr>${p.power<0?`<tr><td>Grid output</td><td style="color:var(--good)">-${Math.round(-p.power*(.4+p.sizeF*2.5))} pts of load</td></tr>`:`<tr><td>Power demand</td><td>${dots(p.power)}</td></tr>`}${p.type.land?`<tr><td>Land and habitat</td><td class="bad">${dots(p.type.land*(.3+p.sizeF*.7)*10)}</td></tr>`:''}</table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
-const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
-const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.temp.water-S.fund.pw*6-(S.prio&&S.prio.k==='infra'?6:0)+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
+const gridLoad=()=>Math.max(10,Math.round(50+[0,6,0,4][seasonIdx()]-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
+const waterLoad=()=>Math.max(5,Math.round(20+[0,6,1,0][seasonIdx()]-S.waterBoost+S.temp.water-S.fund.pw*6-(S.prio&&S.prio.k==='infra'?6:0)+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
  return{title:black?'Blackout':'Brownouts',
@@ -1192,6 +1192,7 @@ async function leakScene(l){
   else{await say('mayor','These records are fabricated.');await say('clerk','Mayor, the reporter just posted the bank statements.');bad=true;adj('trust',-18,'caught lying');adj('corrupt',12);adj('dev',-8)}
  }else{await say('mayor','It is true, and I am sorry. I will cooperate fully with any investigation.');bad=true;adj('trust',-10);adj('corrupt',-25,'came clean');adj('dev',-5)}
  minutes(`Scandal: leak that ${p.company} paid the mayor ${money(l.amt)}.`,'b');
+ queueStory({h:'BRIBE SCANDAL ROCKS CITY HALL',sub:`Records show ${p.company} routed ${money(l.amt)} toward the mayor around the ${p.type.name} vote.`,who:'mayor',mood:'angry',trust:-2,min:'The Courier ran the bribe records on the front page.'});
  if(bad){
   await say('chen','This is disgraceful. The public deserves better than this.');
   const T=TOPICS.bribe,cs=[0,1].map(()=>({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:'#8a3b3b',...look(),stance:'opp',sign:pick(T.sign),mood:'angry',text:pick(T.opp)}));
@@ -1276,7 +1277,7 @@ async function projectUpdates(mode){
  for(const p of S.projects){
   if(p.curtail>0)p.curtail--;
   if(p.watch>0)p.watch--;
-  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(p.units){S.housing+=p.units;minutes(`${num(p.units)} new homes opened.`,'g')}}}}
+  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(Math.random()<(p.cost>=5e6?.8:.25))queueStory({h:`${p.type.name.toUpperCase()} OPENS IN CLIFTON`,sub:`${p.company} cut the ribbon on a ${money(p.cost)} project. ${num(Math.round(p.jobs))} workers are on the payroll.`,who:'mayor',mood:'happy',trust:1,dev:1,kind:'opening',min:`The Courier covered the opening of the ${p.type.name}.`});if(p.units){S.housing+=p.units;minutes(`${num(p.units)} new homes opened.`,'g')}}}}
   else rev+=p.tax/52*S.rate*.12;
   const c=p.conds;
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
@@ -1345,6 +1346,7 @@ async function runEvent(p,evDef,promised,mode){
  const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
  const r=k==='extra'?ev.extra:baseResp.find(x=>x.k===k);
  const soft=custom&&k!=='extra'?!!r.soft:k==='forgive';
+ if(soft&&mode!=='early'&&Math.random()<.55)queueStory({h:`${p.type.name.toUpperCase()} INCIDENT "BRUSHED OFF"`,sub:`Residents say the mayor let ${p.company} off with a warning after "${ev.title.toLowerCase()}". Critics are not impressed.`,who:'mayor',mood:'angry',trust:-2,min:'The Courier ran an exposé on a forgiven incident.'});
  adj('env',-Math.round(ev.env*(r.mult===undefined?1:r.mult)*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*(p.envMult||1)*.6),ev.title);adj('dev',r.dev||0);adj('trust',r.trust||0);
  if(custom&&k!=='extra'){
   if(r.cost)addBudget(-r.cost,'response');if(r.gain)addBudget(r.gain,'penalty');
@@ -1982,15 +1984,17 @@ async function actCampaign(){
 
 /* ---------- crises ---------- */
 const CRISES=[
- {k:'heat',name:'Heat wave',w:()=>1+(gridLoad()>70?2:0),make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A record heat wave has settled over Clifton. Demand on the power grid is spiking and elderly residents are at risk.',apply:()=>{S.temp.grid=18;S.temp.weeks=3},
+ {k:'heat',name:'Heat wave',w:()=>(seasonIdx()===1?3:.3)+(gridLoad()>70?2:0),make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A record heat wave has settled over Clifton. Demand on the power grid is spiking and elderly residents are at risk.',apply:()=>{S.temp.grid=18;S.temp.weeks=3},
   opts:[{k:'centers',label:'Open cooling centers ($30K)',sub:'Protects residents. Trust up.',cost:30000,trust:3},{k:'appeal',label:'Ask residents to conserve power',sub:'Free, but it might not be enough.',risk:.35,bad:{trust:-4}},{k:'none',label:'Wait it out',sub:'Cheapest, and the riskiest.',trust:-4}]})},
- {k:'drought',name:'Drought',w:()=>1+(waterLoad()>60?2:0),make:()=>({who:{name:'Priya Shah',role:'Utility Director'},text:'The region is in a severe drought. Reservoirs are dropping and water demand is far above supply.',apply:()=>{S.temp.water=20;S.temp.weeks=4},
+ {k:'drought',name:'Drought',w:()=>(seasonIdx()===1?2:.6)+(waterLoad()>60?2:0),make:()=>({who:{name:'Priya Shah',role:'Utility Director'},text:'The region is in a severe drought. Reservoirs are dropping and water demand is far above supply.',apply:()=>{S.temp.water=20;S.temp.weeks=4},
   opts:[{k:'restrict',label:'Impose mandatory water restrictions',sub:'Residents grumble. Demand drops a lot.',trust:-2,temp:{water:8}},{k:'truck',label:'Truck in emergency water ($60K)',sub:'Expensive, and residents notice.',cost:60000,trust:2,temp:{water:12}},{k:'ask',label:'Ask the biggest water users to cut back',sub:'Developers will not love it.',dev:-4,trust:1,temp:{water:12}}]})},
- {k:'flood',name:'Flooding',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Heavy rain has flooded low-lying streets and the Cedar Creek bridge. Basements are underwater across the south side.',
+ {k:'blizzard',name:'Blizzard',w:()=>seasonIdx()===3?4:0,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A blizzard has buried Clifton under eighteen inches of snow. Roads are impassable and a thousand homes have lost power.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,8);S.temp.weeks=Math.max(S.temp.weeks,2)},
+  opts:[{k:'fleet',label:'Call in every plow and a salt crew ($45K)',sub:'Roads open fast. Residents are grateful.',cost:45000,trust:4},{k:'priority',label:'Plow the priority routes only ($15K)',sub:'Cheaper. Side streets stay buried.',cost:15000,trust:0,risk:.35,bad:{trust:-4}},{k:'wait',label:'Wait for it to melt',sub:'Free. Very unpopular.',trust:-5}]})},
+ {k:'flood',name:'Flooding',w:()=>seasonIdx()===0?3:.4,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Heavy rain has flooded low-lying streets and the Cedar Creek bridge. Basements are underwater across the south side.',
   opts:[{k:'repair',label:'Emergency repairs ($120K)',sub:'Fast and thorough.',cost:120000,trust:3},{k:'patch',label:'Patch what we can ($50K)',sub:'Cheaper. It may not hold.',cost:50000,trust:-1,risk:.4,bad:{trust:-4}},{k:'aid',label:'Wait for state aid',sub:'Free, but slow and unpopular.',trust:-4,risk:.5,bad:{cost:100000}}]})},
  {k:'storm',name:'Windstorm',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A windstorm has knocked down power lines across the east side. About six thousand homes are in the dark.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,10);S.temp.weeks=Math.max(S.temp.weeks,1)},
   opts:[{k:'crews',label:'Authorize emergency overtime crews ($40K)',sub:'Power comes back sooner.',cost:40000,trust:3},{k:'utility',label:'Leave it to the utility',sub:'Free. Residents will be angry.',trust:-2}]})},
- {k:'smoke',name:'Wildfire smoke',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Wildfire smoke has blanketed the region. The air quality index is in the unhealthy range and asthma calls are climbing.',apply:()=>{adj('env',-2,'smoke')},
+ {k:'smoke',name:'Wildfire smoke',w:()=>seasonIdx()===1||seasonIdx()===2?2:.3,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Wildfire smoke has blanketed the region. The air quality index is in the unhealthy range and asthma calls are climbing.',apply:()=>{adj('env',-2,'smoke')},
   opts:[{k:'advisory',label:'Issue a public health advisory',sub:'Free and sensible.',trust:1},{k:'close',label:'Close schools and outdoor events ($10K)',sub:'Cautious. Costs a little.',cost:10000,trust:2},{k:'none',label:'Carry on as normal',sub:'People will remember.',trust:-3}]})},
  {k:'cyber',name:'Cyber attack',w:()=>1,make:()=>({who:{name:'Nora Whitaker',role:'Finance Director'},text:'Hackers have locked the city\'s computers and are demanding a $100,000 ransom. Payroll and permits are frozen.',
   opts:[{k:'pay',label:'Pay the ransom ($100K)',sub:'Fast. It looks bad if it leaks.',cost:100000,corrupt:3,risk:.35,bad:{trust:-5}},{k:'refuse',label:'Refuse and rebuild ($60K)',sub:'Slower, but principled.',cost:60000,trust:-1},{k:'state',label:'Call the state cyber team',sub:'Free, but slow.',trust:-2,risk:.3,bad:{cost:40000}}]})},
@@ -2074,6 +2078,9 @@ async function crisisCheck(mode){
  const pool=[];avail.forEach(c=>{const w=c.w();for(let i=0;i<w;i++)pool.push(c)});
  if(!pool.length)return;
  const chosen=pick(pool);S.crisisSeen.push(chosen.k);
+ const PV={flood:'flood',heat:'cool',blizzard:'plow'};
+ S.prep=S.prep||{};
+ if(PV[chosen.k]&&S.prep[PV[chosen.k]]){S.prep[PV[chosen.k]]=0;minutes(`Preparation paid off: ${chosen.name.toLowerCase()} did little damage.`,'g');adj('trust',2,'preparation paid off');toast(`${chosen.name}: your preparation paid off`,true);S.crisisCd=2;return}
  await runCrisis(chosen,mode);
  S.crisisCd=2;
 }
@@ -2181,7 +2188,36 @@ async function showPaper(g,tone,counts,N){
  el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.paper();
  return el;
 }
-async function newsStep(){
+function queueStory(st){const L=S.stories||(S.stories=[]);L.push({...st,week:S.week});if(L.length>6)L.shift()}
+function lettersStory(){
+ if(S.trust>=74)return{h:'READERS: "BEST MAYOR IN YEARS"',sub:'Letters to the editor run three to one in the mayor\'s favor. One reader asks, with respect, for a parking space.',who:'mayor',mood:'happy',trust:1,min:'Readers wrote in to praise the mayor.'};
+ if(S.trust<=36)return{h:'READERS DEMAND NEW LEADERSHIP',sub:'The Courier\'s letters page ran out of room. One reader submitted a poem, and it was not kind.',who:'mayor',mood:'angry',trust:-1,min:'Readers wrote in angrily about the mayor.'};
+ return null;
+}
+function paperCard(h,sub,who,mood,note,label){
+ const m=CAST[who]||CAST.mayor;
+ const el=document.createElement('div');el.id='paper';
+ el.innerHTML=`<div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Clifton edition</span><span>Week ${S.week} · ${label||'Special Edition'}</span><span>50&cent;</span></div><div class="npHead">${h}</div><div class="npSub">${sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...m,mood:mood||'neutral'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div>${note?`<div class="npPoll">${note}</div>`:''}</div>`;
+ el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.paper();
+ return el;
+}
+async function storyPaper(){
+ S.stories=(S.stories||[]).filter(x=>S.week-x.week<=8);
+ let st=S.stories.shift();
+ if(!st&&Math.random()<.2)st=lettersStory();
+ if(!st)return;
+ const el=paperCard(st.h,st.sub,st.who,st.mood,st.note||'<b>Courier staff report</b>',st.label);
+ S.stats.paper=(S.stats.paper||0)+1;S.stats.stories=(S.stats.stories||0)+1;
+ if(st.kind==='opening')S.stats.openings=(S.stats.openings||0)+1;
+ await say('office',fresh('news-s',['The Courier lands on porches across Clifton.','A copy of the Courier waits on your seat.','The front page is hard to miss this morning.']));
+ el.classList.add('out');await sleep(AUTO?10:500);el.remove();
+ if(st.trust)adj('trust',st.trust,'the Courier front page');if(st.dev)adj('dev',st.dev);
+ if(st.rel)for(const id in st.rel)if(st.rel[id])adjRel(id,st.rel[id],'');
+ S.newsMood=st.trust<0?'angry':'happy';
+ if(st.min)minutes(st.min,st.trust<0?'b':'g');
+ await say('clerk',st.trust<0?fresh('news-sc',['Mayor, expect questions about that one.','Mayor, the phones are ringing about the Courier again.']):fresh('news-sg',['Mayor, that front page is a nice change.','Mayor, the office has been getting kind calls.']));
+}
+async function gaffePaper(){
  const G=S.gaffes||[];if(!G.length)return;S.gaffes=[];
  const RK={demeaning:3,silly:2,praise:1};const g=G.reduce((a,b)=>((RK[b.kind]||1)>(RK[a.kind]||1)||((b.kind===a.kind)&&Math.random()<.5))?b:a);
  const N=20,counts={outrage:0,laugh:0,shrug:0,cheer:0};
@@ -2207,6 +2243,12 @@ async function newsStep(){
  else{adj('trust',-1.5,'the Courier front page');if(!mayor)adjRel(g.who,-1,'');S.newsMood='happy'}
  S.lastPaper={kind:g.kind,who:g.who,handled:false,tone:top};minutes(`The Courier ran a front page about ${mayor?'the mayor':CAST[g.who].short}. ${counts[top]} of ${N} residents ${top==='outrage'?'were offended':'laughed'}.`,'b');
  await say('clerk',mayor?fresh('news-cm',['Mayor, the phones have been ringing about the Courier since breakfast.','Mayor, you may want to address that front page tonight.']):fresh('news-cc',[`Mayor, I would not bring up ${CAST[g.who].short}'s remarks tonight.`,'Mayor, the gallery has read the Courier. Expect a full house.']));
+}
+async function newsStep(){
+ const before=S.stats.paper||0;
+ await gaffePaper();
+ if((S.stats.paper||0)>before)return;
+ await storyPaper();
 }
 async function sunQuip(chance){
  if(Math.random()>=(chance===undefined?.35:chance))return;
@@ -2358,6 +2400,7 @@ function weeklyGrowth(){
  if(sewerLoad()>=100){leave+=.002;why.push('sewage backups')}
  if(trashPct()>=105){leave+=.0015;why.push('garbage piling up')}
  S.popWhy=why;
+ { const mi=Math.floor(S.pop/1000);if(S.popMile===undefined)S.popMile=12;if(mi>S.popMile){S.popMile=mi;queueStory({h:`CLIFTON PASSES ${num(mi*1000)} RESIDENTS`,sub:'City planners say new jobs and homes are drawing families to town.',who:'mayor',mood:'happy',trust:1,min:`The Courier marked ${num(mi*1000)} residents.`})}else if(mi<S.popMile-1){S.popMile=mi;queueStory({h:`CLIFTON LOSES RESIDENTS: ${num(S.pop)} AND FALLING`,sub:'Residents cite jobs, housing and the city\'s direction.',who:'mayor',mood:'angry',trust:-1.5,min:'The Courier reported population losses.'})} }
  S.pop=Math.max(4000,Math.round((S.pop+grow)*(1-leave)));
  const short=Math.max(0,.95-housingRatio());
  if(short>0)S.trust=clamp(S.trust-short*3);
@@ -2674,17 +2717,107 @@ const FESTIVALS=[
   {label:'Keep it simple ($4K)',cost:4000,trust:1,lines:['A tidy little tree and a warm cup of cocoa for everybody.','Nobody expected much, and everybody went home happy.']},
   {label:'Skip it to save money',trust:-3,lines:['The square stays dark, and the Courier runs a sad photo of an empty bench.','Someone strung lights on the town square statue overnight. Nobody will admit to it.']}]}
 ];
-const festKey=()=>{const s=Math.floor((S.week-1)/13),i=((S.week-1)%13);return i>=4?`${Math.floor(s/4)}-${s%4}`:null};
+const SEASONS=['Spring','Summer','Autumn','Winter'];
+const FEST2=[
+ {t:'Egg hunt on the green',intro:'The Parks and Library committee wants to know how to run the spring egg hunt this year.',opts:[
+  {label:'Hide five thousand eggs ($10K)',cost:10000,trust:3,lines:['Children swarmed the green. A very serious six-year-old won with a basket the size of a bathtub.','The mayor was ambushed by a toddler and handed an egg, with ceremony.']},
+  {label:'Keep it small ($3K)',cost:3000,trust:1,lines:['A tidy hunt, and a rabbit costume that has seen better decades.','A dog found most of the eggs before the children did.']},
+  {label:'Let the church group run it',trust:0,lines:['The church group did a lovely job, and nobody needed the city.','It rained, and the eggs became interesting.']}]},
+ {t:'Fourth of July picnic',intro:'The Fourth of July is coming, and there is a question about the annual picnic and fireworks.',opts:[
+  {label:'Full picnic and fireworks ($30K)',cost:30000,trust:4,env:-1,lines:['The fireworks were spectacular and the dog under the porch is still not speaking to anyone.','A record crowd sang along, mostly in tune.']},
+  {label:'Picnic only ($8K)',cost:8000,trust:1,lines:['Hot dogs, folding chairs, and a speech nobody remembers.','The potato salad was the true star of the day.']},
+  {label:'Cancel it for safety',trust:-3,lines:['Fire danger was high, and residents agree with the decision, mostly. A few wrote the Courier anyway.','The fourth passed quietly.']}]},
+ {t:'Trunk-or-treat',intro:'The Halloween committee wants to hold a trunk-or-treat in the city hall lot.',opts:[
+  {label:'Fund it and open the council chambers ($6K)',cost:6000,trust:3,lines:['Hammerstein wore a hard hat as a costume, and said it was not a costume.','Ledgerwood handed out raisins and was not invited back next year.']},
+  {label:'Let parents run it',trust:1,lines:['Cars, candy, and one inflatable pumpkin with a mind of its own.','The parking lot was spooky enough on its own.']},
+  {label:'Stay out of it',trust:-1,lines:['Some neighborhoods did their own thing, and one porch was egged.','Nobody organized a thing, and some kids went home with only toothbrushes.']}]},
+ {t:'Winter carnival',intro:'A group of residents wants to hold a winter carnival with ice sculptures and a chili cookoff.',opts:[
+  {label:'Sponsor the whole weekend ($18K)',cost:18000,trust:3,lines:['The ice sculpture of the mayor was flattering for about an hour and then began to melt in an unfortunate way.','Four hundred bowls of chili, and one fire extinguisher incident.']},
+  {label:'Provide the park and nothing else',trust:1,lines:['Residents did it themselves, and it was better for it.','The chili cookoff ended in a recount.']},
+  {label:'Decline it',trust:-2,lines:['Residents grumble that nothing fun happens in January.','The park stayed empty, and so did the cookoff.']}]}
+];
+function festList(s){return [FESTIVALS[s],FEST2[s]]}
+const SEAS=[
+ [{t:'Flood watch',intro:'The creek is rising and the National Weather Service has issued a flood watch for the south side.',opts:[
+   {label:'Fund sandbags and temporary barriers ($25K)',cost:25000,trust:2,set:'flood',lines:['Volunteers filled four thousand sandbags in a single Saturday.','Crews lined the creek with barriers. The Courier ran a photo of Ledgerwood holding a shovel.']},
+   {label:'Warn residents and hope',trust:-1,lines:['An advisory went out. Most people did not read it.','The creek rose, then fell, and nobody was sure what to think.']},
+   {label:'Ignore it',trust:-3,lines:['A neighbor posted a photo of the creek in a basement.','Nobody was ready, and everybody noticed.']}]},
+  {t:'Pothole season',intro:'The thaw has opened potholes across Clifton, and the phones at Public Works are ringing nonstop.',opts:[
+   {label:'Send an emergency repaving crew ($30K)',cost:30000,trust:3,lines:['A crew worked all weekend, and a resident baked them a pie.','The worst potholes on Elm Street are finally gone.']},
+   {label:'Patch the worst ones ($10K)',cost:10000,trust:1,lines:['Most of the potholes got a patch, and it held for about a week.','The patched potholes are now a slightly different shape.']},
+   {label:'Wait for the budget',trust:-3,lines:['A resident named a pothole after the mayor.','A hubcap was left on the council steps with a note.']}]},
+  {t:'Arbor Day tree planting',intro:'Arbor Day is coming. The schools want to plant trees, and the Parks committee wants to know how big to go.',opts:[
+   {label:'Plant two hundred trees ($8K)',cost:8000,trust:1,env:2,lines:['Kindergartners planted saplings, and one kindergartner planted a sandwich.','Dr. Pondwater cried a little, and denied it.']},
+   {label:'One ceremonial tree',env:.5,lines:['A single tree and a very long speech.','The tree is doing well. The speech did not age as well.']},
+   {label:'Skip it',trust:-1,lines:['Arbor Day passed with no trees and a faint sense of guilt.','A school group wrote a sad letter to the Courier.']}]}],
+ [{t:'Heat advisory plan',intro:'Forecasters expect a stretch of ninety-five-degree days. Emergency Management wants a plan.',opts:[
+   {label:'Pre-open cooling centers ($20K)',cost:20000,trust:2,set:'cool',lines:['The library and the senior center stayed open late, and the air conditioning held.','Residents lined up for free ice cream at the cooling center, which was not in the plan.']},
+   {label:'Call for conservation',lines:['A press release asked people to turn their thermostats up. Most did not.','The mayor was photographed in short sleeves, looking sympathetic.']},
+   {label:'Do nothing',trust:-1,lines:['It was hot. Everybody noticed.','A fan shortage has become a local story.']}]},
+  {t:'Pool and splash pad',intro:'The municipal pool cannot hire enough lifeguards, and the schedule is in jeopardy.',opts:[
+   {label:'Raise lifeguard pay ($12K)',cost:12000,trust:3,lines:['Lifeguards signed up within a week, and the pool opened on time.','The pool is full, loud, and delightful.']},
+   {label:'Open half the hours',trust:-1,lines:['The pool is open noon to four, and everyone is mad at four.','Parents rage on the neighborhood forum.']},
+   {label:'Close it for the season ($0)',trust:-3,lines:['A line of kids watches an empty pool through the fence.','A petition has four hundred signatures and a drawing.']}]},
+  {t:'Fireworks permits',intro:'A fireworks vendor wants a permit for a large stand, and the fire marshal has concerns.',opts:[
+   {label:'Allow the stand ($10K in fees and inspectors)',cost:10000,trust:3,env:-1,lines:['The stand sold out of everything, and a roof caught fire only briefly.','The block party was loud and bright.']},
+   {label:'Fund a drone light show ($25K)',cost:25000,trust:4,lines:['Two hundred drones spelled CLIFTON, then something that looked like a duck.','Nobody got hurt, and everyone got photos.']},
+   {label:'Ban fireworks',trust:-2,env:1,lines:['Dogs rejoice, and a few residents grumble loudly.','A porch lit something illegal, and the fire marshal was not amused.']}]}],
+ [{t:'Back-to-school traffic',intro:'School starts Monday, and the streets around three schools are about to turn into parking lots.',opts:[
+   {label:'Hire crossing guards and add signals ($15K)',cost:15000,trust:3,lines:['The guards wore orange vests and rapped on car hoods with tremendous authority.','Drop-off went smoothly for the first time in years.']},
+   {label:'Stagger the bell times',trust:1,lines:['Bell times are now spread by fifteen minutes. Parents are suspicious but willing.','The schedule change cut the lines in half.']},
+   {label:'Ignore it',trust:-2,lines:['A traffic jam stretched for half a mile by Tuesday.','A bus stuck in traffic became a local meme.']}]},
+  {t:'Friday night football',intro:'The high school stadium lights keep going out, and the boosters have a request.',opts:[
+   {label:'Upgrade the lights ($40K)',cost:40000,trust:3,env:-1,lines:['The new lights are bright enough to be seen from space, and the neighbors have noticed.','The team won, and the town forgave the glare.']},
+   {label:'Keep the current lights',lines:['The lights flickered, and a punter kicked into the dark.','Fans brought flashlights, and it was oddly charming.']},
+   {label:'Charge a facility fee',gain:8000,trust:-2,lines:['The booster club paid the fee and posted about it for a week.','The fee paid for new bleachers, and parents grumbled.']}]},
+  {t:'Leaf burning ban',intro:'Leaf season is here. Some residents burn piles in their yards and the air quality is suffering.',opts:[
+   {label:'Ban burning and fund leaf pickup ($15K)',cost:15000,env:2,trust:1,lines:['The leaf trucks were popular, and so was the compost giveaway.','The smell of woodsmoke finally went away.']},
+   {label:'Allow burning with a permit',env:-2,trust:1,lines:['Residents are happy, and the air is a bit hazy.','The permit office was busy and slightly smoky.']},
+   {label:'Do nothing',trust:-1,lines:['Neighbors are feuding about smoke.','The Courier ran a photo of a very large pile.']}]}],
+ [{t:'Snow plow budget',intro:'The first snowfall is forecast and Public Works wants direction on the plow budget.',opts:[
+   {label:'Full fleet and salt ($35K)',cost:35000,trust:2,set:'plow',lines:['The plow crews were out before dawn, and the roads were clear by breakfast.','A resident handed the crew a thermos, and the crew handed it back, with reverence.']},
+   {label:'Priority routes only ($12K)',cost:12000,lines:['Main roads are clear. Side streets are a matter of opinion.','Residents shoveled their own streets and grumbled.']},
+   {label:'Contract it out cheap',trust:-2,gain:5000,lines:['The contractor was late, and the snow was not.','The plow trucks hit a mailbox on Cedar Lane.']}]},
+  {t:'Warming shelter',intro:'The overnight lows are dropping below zero, and the church hall can serve as a warming shelter if the city helps.',opts:[
+   {label:'Open it with city support ($10K)',cost:10000,trust:3,lines:['Fifty people slept warm that night, and the volunteers made cocoa.','The shelter was a quiet success.']},
+   {label:'Rely on the county',trust:-1,lines:['The county shelter was across town and full by nine.','A resident wrote an angry letter, and another wrote a better one.']}]},
+  {t:'Frozen pipes',intro:'A deep freeze has cracked pipes across the older neighborhoods and the phones at Public Works are melting.',opts:[
+   {label:'Fund thaw crews and a repair rebate ($25K)',cost:25000,trust:2,water:4,lines:['Crews thawed forty lines in three days.','A resident named a plumber a local hero.']},
+   {label:'Open a hotline and nothing else',trust:-1,lines:['The hotline rang for nine hours straight.','The hold music has become a local joke.']}]}]
+];
+async function seasonalEvent(){
+ const s=seasonIdx();S.seasonSeen=S.seasonSeen||[];
+ let pool=SEAS[s].filter(x=>!S.seasonSeen.includes(x.t));if(!pool.length)pool=SEAS[s];
+ const f=pick(pool);S.seasonSeen.push(f.t);
+ showAgendaCard(f.t,'Seasonal matter',[['Season',SEASONS[s]]]);
+ await say('clerk',f.intro);
+ const k=await ask(f.t,f.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.cost?`Costs ${money(o.cost)}.`:o.gain?`Brings in ${money(o.gain)}.`:''})));
+ const o=f.opts[+k];
+ if(o.cost)addBudget(-o.cost,f.t.toLowerCase());if(o.gain)addBudget(o.gain,'fees');
+ adj('trust',o.trust||0);if(o.env)adj('env',o.env);if(o.dev)adj('dev',o.dev);
+ if(o.set){S.prep=S.prep||{};S.prep[o.set]=1}
+ if(o.water)S.waterBoost=(S.waterBoost||0)+o.water;
+ await say('clerk',pick(o.lines));S.stats.fests=(S.stats.fests||0)+1;
+ minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);
+ showAgenda(null);
+}
+
+
+const seasonIdx=()=>clamp(Math.floor((S.week-1)*4/S.maxWeeks),0,3);
+const seasonPos=()=>{const L=S.maxWeeks/4;return (S.week-1)-seasonIdx()*L};
+const festKey=()=>{const s=seasonIdx(),L=S.maxWeeks/4;if(S.week<2)return null;if(S.maxWeeks<=20&&s%2===1)return null;return seasonPos()>=Math.floor(L*.3)?'f'+s:null};
+const seasonalKey=()=>{const s=seasonIdx(),L=S.maxWeeks/4,i=seasonPos();if(S.week<3||(S.maxWeeks<=20&&s%2===0))return null;const seen=S.fests||[];if(i>=Math.floor(L*.55)&&!seen.includes('s'+s+'a'))return 's'+s+'a';if(L>=10&&i>=Math.floor(L*.85)&&!seen.includes('s'+s+'b'))return 's'+s+'b';return null};
 async function festival(){
- const s=Math.floor((S.week-1)/13)%4,f=FESTIVALS[s];
- showAgendaCard(f.t,'Seasonal event',[['Season',['Spring','Summer','Autumn','Winter'][s]]]);
+ const s=seasonIdx(),fl=festList(s);S.festN=(S.festN||0)+1;const f=fl[(S.festN+(S.week>26?1:0))%2===0&&S.maxWeeks>20?1:0];
+ showAgendaCard(f.t,'Seasonal event',[['Season',SEASONS[s]]]);
  await say('mayor',f.intro);
  const k=await ask(f.t,f.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.cost?`Costs ${money(o.cost)}.`:o.gain?`Brings in ${money(o.gain)}.`:''})));
  const o=f.opts[+k];
  if(o.cost)addBudget(-o.cost,f.t.toLowerCase());if(o.gain)addBudget(o.gain,'fees');
  adj('trust',o.trust||0);if(o.dev)adj('dev',o.dev);if(o.env)adj('env',o.env);
  await say('clerk',pick(o.lines));
- minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);
+ minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);S.stats.fests=(S.stats.fests||0)+1;
+ if(o.trust>=3&&Math.random()<.6)queueStory({h:`${f.t.toUpperCase()} DRAWS BIG CROWD`,sub:'Residents turned out in force, and the mayor was spotted with a very large pretzel.',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the festival.'});
  showAgenda(null);
 }
 
@@ -2729,10 +2862,75 @@ const ARCS=[
  {who:'jennings',n:2,at:.8,title:'Retirement',text:'I am seventy-one, Mayor. I have been thinking that it might be time.',opts:[
   {label:'Honor his service with a plaque ($5K)',sub:'Heartfelt. He deserves it.',rel:10,trust:1,cost:5000,say:'You have given this town more than anyone knows. We will honor it.',reply:'I am speechless, which my wife says is a first.'},
   {label:'Ask him to stay through the term',sub:'You still need him.',rel:6,commit:.25,say:'Stay through the end of this term. This council needs you.',reply:'For you, Mayor, I will stay.'},
-  {label:'Start looking for a successor',sub:'Practical. A little cold.',rel:-4,say:'Perhaps we should start thinking about a transition.',reply:'Of course. I am not indispensable.'}]}
+  {label:'Start looking for a successor',sub:'Practical. A little cold.',rel:-4,say:'Perhaps we should start thinking about a transition.',reply:'Of course. I am not indispensable.'}]},
+ {who:'chen',n:3,at:.85,title:'The creek study',text:'My students finished the creek study. It says the water is better than it was, and also that it will not stay that way without protections. I wanted you to hear it first.',opts:[
+  {label:'Fund a permanent monitoring program ($20K)',sub:'Costly. She will be deeply grateful.',rel:10,env:3,cost:20000,say:'Let us fund it permanently. The creek deserves a watchdog.',reply:'You have no idea what this means to my students.'},
+  {label:'Publish the study as is',sub:'Transparent. Some developers will wince.',rel:6,trust:2,dev:-3,say:'Publish it. People should know.',reply:'Thank you for trusting the data.'},
+  {label:'Sit on it until after the vote',sub:'Convenient. She will notice.',rel:-8,trust:-1,say:'Let us hold it until after the vote.',reply:'I will wait. I do not like it.'}]},
+ {who:'chen',n:4,at:.93,title:'The offer from the state',text:'The state environmental agency has offered me a position. It is a good one. But I would have to resign from the council.',opts:[
+  {label:'Encourage her to take it',sub:'Selfless. You lose a loyal vote.',rel:8,env:2,say:'Take it. Clifton will be fine, and the state needs you.',reply:'I will think about it. Thank you for saying so.'},
+  {label:'Ask her to finish the term',sub:'Practical. A bit selfish.',rel:3,commit:.3,say:'Please finish the term. This council needs your voice.',reply:'I will stay, for now.'},
+  {label:'Tell her it is her decision',sub:'Neutral.',rel:1,say:'It is your call, Doctor.',reply:'Thank you for not making it harder.'}]},
+ {who:'bradley',n:3,at:.85,title:'The Courier ad',text:'Mayor, my company wants to buy a full-page ad in the Courier thanking the council for being business friendly. I would love for you to appear in it.',opts:[
+  {label:'Appear in the ad',sub:'He will be thrilled. It will look cozy.',rel:8,dev:3,trust:-3,corrupt:2,say:'I would be glad to appear.',reply:'This will be great for everyone.'},
+  {label:'Decline politely',sub:'Safe.',rel:-2,trust:1,say:'I think it is better if I stay out of it.',reply:'Understood. I will run it without you.'},
+  {label:'Insist the ad be run on the public record',sub:'Fair and a little cold.',rel:1,trust:2,say:'If the ad runs, it goes on the public record.',reply:'Fine. I have nothing to hide.'}]},
+ {who:'bradley',n:4,at:.93,title:'The tax break',text:'Mayor, my company would benefit from the tax abatement ordinance. I would recuse myself from the vote, of course. I just wanted you to know.',opts:[
+  {label:'Insist on a recusal in writing',sub:'Clean. He will grumble.',rel:2,trust:2,corrupt:-2,say:'Put the recusal in writing, and file it before the vote.',reply:'Of course. I will have it to you tomorrow.'},
+  {label:'Say nothing',sub:'Easy. It could come back.',rel:3,corrupt:2,say:'I appreciate the heads up.',reply:'Always a pleasure, Mayor.'},
+  {label:'Tell him not to sponsor it',sub:'Strong. He will be offended.',rel:-6,trust:3,say:'I would rather you did not sponsor it at all.',reply:'I see. That is a surprise.'}]},
+ {who:'rodriguez',n:3,at:.85,title:'The injured worker',text:'One of my guys got hurt on a site last week. Nobody wants to talk about it. The company says it was his fault.',opts:[
+  {label:'Open an inspection into the site',sub:'Strong signal. A developer will be annoyed.',rel:9,trust:2,dev:-4,say:'Open an inspection. I want to see the records.',reply:'Thank you. It is the first time anyone listened.'},
+  {label:'Meet with the worker and his family',sub:'Kind, and the least you can do.',rel:6,trust:1,say:'I would like to meet him and his family.',reply:'That will mean everything to them.'},
+  {label:'Refer it to the state',sub:'Hands off.',rel:-4,say:'That is a matter for the state labor office.',reply:'Of course it is.'}]},
+ {who:'rodriguez',n:4,at:.93,title:'The pension vote',text:'The retirement fund for city workers is short. The union wants a raise in the contribution rate. I know it will not be popular.',opts:[
+  {label:'Support the raise ($30K a year)',sub:'Labor will love it. Ledgerwood will frown.',rel:9,trust:1,dev:-2,say:'I will support the raise.',reply:'My members will not forget it.'},
+  {label:'Phase it in over three years',sub:'A compromise.',rel:3,say:'Let us phase it in over three years.',reply:'Better than nothing.'},
+  {label:'Vote no',sub:'Fiscally careful. Labor will be furious.',rel:-9,say:'I cannot support this right now.',reply:'Then I will remember it at election time.'}]},
+ {who:'wong',n:3,at:.85,title:'Back in chambers',text:'I am back. The doctors say I am doing well. I wanted to thank you for covering for me.',opts:[
+  {label:'Hold a small welcome-back event',sub:'A warm gesture.',rel:8,trust:1,say:'We would like to welcome you back with a small party.',reply:'You are going to make me cry in public.'},
+  {label:'Ask how she is doing, and leave it there',sub:'Respectful.',rel:4,say:'Welcome back. Take it easy.',reply:'I will try. Thank you.'},
+  {label:'Hand her the backlog of hard votes',sub:'A little cold.',rel:-4,say:'There are a few items waiting for you.',reply:'Of course there are.'}]},
+ {who:'wong',n:4,at:.93,title:'The neighborhood plan',text:'I have been working on a neighborhood plan for the east side. Parks, sidewalks, traffic calming. I need the mayor\'s support to get it on the agenda.',opts:[
+  {label:'Put it on the agenda ($15K study)',sub:'A big win for her.',rel:9,trust:2,cost:15000,say:'We will put it on the agenda and fund a study.',reply:'I have waited years for this.'},
+  {label:'Promise to review it after the term',sub:'Vague and safe.',rel:-1,say:'Let us revisit it after the term.',reply:'I will hold you to that.'},
+  {label:'Say it is premature',sub:'Cold.',rel:-7,trust:-1,say:'I think it is premature.',reply:'Premature. After all this time.'}]},
+ {who:'jennings',n:3,at:.85,title:'The spreadsheet',text:'I have built a spreadsheet that models every project the council has approved. It shows that the city will lose money on two of them.',opts:[
+  {label:'Review it with him and finance staff',sub:'Practical. He will glow.',rel:8,trust:1,say:'Let us go through it together, line by line.',reply:'I have never been so happy to be asked.'},
+  {label:'Share it with the council',sub:'Open and a little awkward.',rel:4,trust:1,dev:-2,say:'Share it with the full council.',reply:'I will print thirty copies.'},
+  {label:'File it away',sub:'Dismissive.',rel:-7,say:'We have a lot on the agenda. File it for now.',reply:'File it. Where? There is a bin, I assume.'}]},
+ {who:'jennings',n:4,at:.93,title:'The portrait',text:'The historical society wants to hang a portrait of every long-serving councilmember. I am told I am being included. It is embarrassing, and I am secretly delighted.',opts:[
+  {label:'Unveil it at a council meeting',sub:'A warm, silly moment.',rel:8,trust:1,say:'We will unveil it at the next meeting, with a ribbon.',reply:'A ribbon. Oh, goodness.'},
+  {label:'Send him a framed copy ($1K)',sub:'Thoughtful.',rel:5,cost:1000,say:'I will have a framed print sent to your house.',reply:'My wife will insist on the best wall.'},
+  {label:'Tell the society it is not a priority',sub:'Dismissive.',rel:-4,say:'The city has bigger priorities.',reply:'I understand. I will hang it myself.'}]},
+
 ];
+const FEUDS=[
+ {a:'bradley',b:'chen',topic:'THE AQUIFER',title:'The aquifer fight',lines:[['bradley','Every time I propose something, she calls it a threat to the aquifer. The aquifer does not pay property taxes.'],['chen','And every time I propose a study, he calls it an obstruction. The aquifer does not vote, either, but it is why we are all here.']],ask:'Two council members are at each other\'s throats. What do you do?'},
+ {a:'rodriguez',b:'jennings',topic:'PREVAILING WAGE',title:'The wage fight',lines:[['rodriguez','He wants to cut the wage rate to save four percent. My guys will lose four percent of their lives.'],['jennings','I have audited the numbers, and four percent is the difference between a surplus and a bond. It is arithmetic, not cruelty.']],ask:'Hammerstein and Ledgerwood are not speaking. What do you do?'},
+ {a:'wong',b:'bradley',topic:'THE MALL BY THE SCHOOL',title:'The mall fight',lines:[['wong','He wants a mall next to the elementary school. Another thing for my neighbors to put up with.'],['bradley','It is a retail center that employs two hundred people, and it is next to a school because there is a road.']],ask:'Doris and Chad are shouting in the hallway. What do you do?'},
+ {a:'chen',b:'jennings',topic:'THE CLEANUP FUND',title:'The cleanup fund fight',lines:[['chen','I want twenty thousand a year for creek monitoring. It is the cheapest insurance this city could buy.'],['jennings','Every department says that. I have a spreadsheet that says they cannot all be right.']],ask:'The doctor and the accountant are arguing about money. What do you do?'}
+];
+async function feudCheck(){
+ if(S.feud||S.week<Math.round(S.maxWeeks*.35)||Math.random()>.35)return false;
+ S.feud=1;
+ const f=pick(FEUDS),A=CAST[f.a],B=CAST[f.b];
+ openRoom('A WORD WITH '+A.short.toUpperCase(),{...A});
+ await say('office',`${A.name} and ${B.name} corner you after the meeting, and neither of them is smiling.`);
+ for(const [who,t] of f.lines)await say(who,t);
+ const k=await ask(f.title,[{k:'a',label:`Side with ${A.short}`,sub:`${A.short} will be pleased. ${B.short} will not.`},{k:'b',label:`Side with ${B.short}`,sub:`${B.short} will be pleased. ${A.short} will not.`},{k:'both',label:'Bring them together to find a compromise',sub:'Takes time. Both respect it.'},{k:'out',label:'Stay out of it',sub:'Both are annoyed.'}]);
+ if(k==='a'){adjRel(f.a,8,'took their side');adjRel(f.b,-8,'');await say('mayor',`I think ${A.short} has the better argument here.`)}
+ else if(k==='b'){adjRel(f.b,8,'took their side');adjRel(f.a,-8,'');await say('mayor',`I think ${B.short} has the better argument here.`)}
+ else if(k==='both'){adjRel(f.a,2);adjRel(f.b,2);adj('trust',1);await say('mayor','You are both right about something, and both wrong about something else. Let us sit down together.')}
+ else{adjRel(f.a,-3);adjRel(f.b,-3);await say('mayor','I am going to stay out of this one.')}
+ minutes(`${A.short} and ${B.short} feuded over ${f.topic.toLowerCase()}.`);
+ if(k!=='both'&&Math.random()<.55)queueStory({h:`${lastName(f.a)} AND ${lastName(f.b)} CLASH OVER ${f.topic}`,sub:`Sources say the dispute spilled into the hallway after Tuesday's meeting. ${k==='out'?'The mayor declined to take a side.':'The mayor took a side.'}`,who:k==='b'?f.b:f.a,mood:'angry',trust:-1,rel:k==='a'?{[f.a]:0}:null,min:'The Courier reported on a council feud.'});
+ closeOverlay('office');
+ return true;
+}
 async function arcCheck(){
  S.arcs=S.arcs||{};
+ if(await feudCheck())return;
  const order=shuffle(COUNCIL);
  for(const m of order){
   const done=S.arcs[m.id]||0;
@@ -2880,7 +3078,8 @@ async function variance(v){
 function buildExtras(){
  const n=S.week<=3?1:(S.maxWeeks>20&&S.week>=15?(Math.random()<.55?2:3):(Math.random()<.5?2:1)),out=[],canOrd=ORDS.some(o=>!S.ords.includes(o.k));
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
- const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:FESTIVALS[Math.floor((S.week-1)/13)%4].t})}
+ const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
+ const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
  const NEWITEMS=[{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
@@ -3071,6 +3270,9 @@ const ACHS=[
  {k:'wastenot',name:'Waste Not',desc:'Adopt a recycling program or a hauling contract.',test:()=>!!(S.lf&&(S.lf.rec||S.lf.haul))},
  {k:'bigbro',name:'Big Brother',desc:'Have a camera network operating at the end of your term.',test:()=>S.projects.some(p=>p.stage===OPER&&isSurv(p))},
  {k:'builder',name:'Master Builder',desc:'Get twelve projects approved.',test:()=>S.stats.approved>=12},
+ {k:'ribbon',name:'Ribbon Cutter',desc:'See three projects open to a Courier headline.',test:()=>(S.stats.openings||0)>=3},
+ {k:'festive',name:'Crowd Pleaser',desc:'Host four festivals or seasonal events.',test:()=>(S.stats.fests||0)>=4},
+ {k:'regular',name:'Courier Regular',desc:'Appear on the Courier front page four times.',test:()=>(S.stats.paper||0)>=4},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
