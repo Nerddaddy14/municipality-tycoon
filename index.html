@@ -1,0 +1,1439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Municipality Tycoon - City Council Simulator</title>
+<style>
+:root{--bg:#10151f;--panel:#1a2230;--panel2:#222c3e;--ink:#e9eef7;--mut:#93a1b8;--acc:#f2b84b;--good:#4cc38a;--bad:#ef5b5b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Roboto,sans-serif}
+.hidden{display:none!important}
+.mut{color:var(--mut);font-size:13px}
+#app{max-width:1300px;margin:0 auto;padding:10px}
+#hud{display:flex;gap:14px;flex-wrap:wrap;align-items:center;background:var(--panel);padding:8px 14px;border-radius:12px;margin-bottom:10px}
+#hud .brand{font-size:18px;margin-right:6px}
+.stat{display:flex;flex-direction:column;font-size:11px;color:var(--mut);min-width:88px;transition:background .3s;border-radius:6px;padding:2px 4px}
+.stat b{font-size:16px;color:var(--ink)}
+.stat .bar{height:7px;background:#0b1019;border-radius:4px;overflow:hidden;margin:3px 0 1px}
+.stat .bar i{display:block;height:100%;background:var(--good);transition:width .5s}
+.stat[data-k=corrupt] .bar i{background:var(--bad)}
+.stat.flashg{background:#1f4d3a}.stat.flashb{background:#5a2323}
+.ctl{margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.ctl button{background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:13px}
+.ctl button:hover{border-color:var(--acc)}
+.ctl input{width:80px}
+#main{display:grid;grid-template-columns:1fr 310px;gap:10px}
+@media(max-width:1000px){#main{grid-template-columns:1fr}}
+#scene{position:relative;height:540px;border-radius:14px;overflow:hidden;border:3px solid #2a1c10;
+ background:linear-gradient(#cfb68c 0,#bb9d71 30%,#7a5230 30%,#5f3e24 54%,#34405a 54%,#27324a 100%)}
+#scene.shake{animation:shk .3s}
+@keyframes shk{0%,100%{transform:translate(0)}25%{transform:translate(-3px,2px)}50%{transform:translate(3px,-2px)}75%{transform:translate(-2px,-1px)}}
+.seal{position:absolute;left:50%;top:-30px;width:210px;height:210px;margin-left:-105px;border-radius:50%;background:radial-gradient(#f3e3b8 55%,#c49a3c 56%,#8a6a22 62%,#e3c374 63%);opacity:.9;display:flex;align-items:flex-start;justify-content:center;padding-top:96px;font-size:11px;font-weight:700;letter-spacing:2px;color:#5a431a}
+.flag{position:absolute;top:18px;width:62px;height:90px}
+.flag:before{content:'';position:absolute;left:0;top:0;width:4px;height:150px;background:#caa24a}
+.flag i{position:absolute;left:4px;top:4px;width:56px;height:40px;background:repeating-linear-gradient(#b22234 0 5px,#fff 5px 10px);animation:wave 3s ease-in-out infinite;transform-origin:left}
+.flag i:after{content:'';position:absolute;left:0;top:0;width:24px;height:22px;background:#3c3b6e}
+.flag.cityf i{background:linear-gradient(90deg,#1f4a8a 50%,#f2b84b 50%)}.flag.cityf i:after{display:none}
+@keyframes wave{0%,100%{transform:skewY(0)}50%{transform:skewY(5deg) scaleX(.96)}}
+.ch{position:absolute;width:76px;margin-left:-38px;z-index:3;transform:scale(.8);transform-origin:50% 100%}
+.ch.mayor{z-index:4;transform:scale(.92)}
+.aud{position:absolute;width:76px;margin-left:-38px;transform:scale(.8);transform-origin:50% 100%;z-index:2}
+.aud:before{content:'';position:absolute;left:8px;top:58px;width:60px;height:48px;background:#5a2d2d;border-radius:8px 8px 0 0;z-index:5;box-shadow:inset 0 3px 0 rgba(255,255,255,.12)}
+.aud .fig{z-index:2}
+.aud .eye,.aud .mouth,.aud .gl,.aud .tie{display:none}
+.aud .hair{top:8px!important;left:22px!important;width:32px!important;height:35px!important;border-radius:50% 50% 46% 46%!important}
+.aud .hair.long:before,.aud .hair.long:after{top:22px;height:22px}
+#aud.angry .fig{animation:angry .3s infinite}
+#aud.angry .arm.r{transform:rotate(-160deg)}
+#aud.happy .fig{animation:tbob .5s infinite}
+#aud.happy .arm.l{transform:rotate(160deg)}
+.ch.clerk{transform:scale(.78)}
+.fig{position:relative;width:76px;height:98px;animation:idle 3.4s ease-in-out infinite;animation-delay:var(--d,0s)}
+@keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.head{position:absolute;left:22px;top:8px;width:32px;height:35px;border-radius:50% 50% 46% 46%;background:var(--skin);z-index:3}
+.hair{position:absolute;left:19px;top:2px;width:38px;height:22px;border-radius:50% 50% 12% 12%;background:var(--hair);z-index:4}
+.hair.long:before,.hair.long:after{content:'';position:absolute;top:8px;width:7px;height:30px;background:var(--hair);border-radius:0 0 7px 7px}
+.hair.long:before{left:-3px}.hair.long:after{right:-3px}
+.hair.bald{height:11px;top:10px;border-radius:40% 40% 0 0;width:40px;left:18px}
+.eye{position:absolute;top:15px;width:4px;height:4px;border-radius:50%;background:#222}
+.eye:nth-child(1){left:8px}.eye:nth-child(2){right:8px}
+.mouth{position:absolute;left:11px;bottom:6px;width:10px;height:3px;border-radius:0 0 7px 7px;background:#7a2b2b}
+.gl{position:absolute;left:3px;top:11px;width:26px;height:10px;border:2px solid #222;border-radius:6px;opacity:.85}
+.body{position:absolute;left:11px;top:42px;width:54px;height:58px;border-radius:20px 20px 4px 4px;background:var(--suit);z-index:2}
+.tie{position:absolute;left:23px;top:0;width:8px;height:30px;background:linear-gradient(#fff 0 8px,#b22 8px);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
+.arm{position:absolute;top:48px;width:12px;height:36px;border-radius:8px;background:var(--suit);transform-origin:50% 5px;z-index:2;transition:transform .25s}
+.arm:after{content:'';position:absolute;bottom:-4px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--skin)}
+.arm.l{left:4px}.arm.r{right:4px}
+.speaking .mouth{animation:talk .22s infinite}
+.speaking .fig{animation:tbob .38s infinite}
+@keyframes talk{0%,100%{height:3px}50%{height:9px;border-radius:50%}}
+@keyframes tbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.aye .arm.r{transform:rotate(180deg)}
+.nay .head{animation:nod .35s 3}
+@keyframes nod{0%,100%{transform:translateX(0)}30%{transform:translateX(-4px)}70%{transform:translateX(4px)}}
+.mayor.bang .arm.r{animation:bang .26s}
+@keyframes bang{0%{transform:rotate(0)}45%{transform:rotate(-120deg)}100%{transform:rotate(0)}}
+.tag{position:absolute;left:50%;top:-22px;transform:translateX(-50%) scale(0);padding:2px 9px;border-radius:12px;font-weight:800;font-size:13px;background:#fff;color:#222;z-index:9;white-space:nowrap;pointer-events:none}
+.tag.show{animation:tagpop .35s forwards}
+.tag.yes{background:var(--good);color:#05261a}.tag.no{background:var(--bad);color:#2a0707}
+@keyframes tagpop{0%{transform:translateX(-50%) scale(0)}70%{transform:translateX(-50%) scale(1.2)}100%{transform:translateX(-50%) scale(1)}}
+.desk{position:absolute;background:linear-gradient(#a06a3a,#7b4e29 60%,#5e3a1d);border-top:4px solid #c68a52;box-shadow:0 6px 12px rgba(0,0,0,.4);z-index:5}
+#mdesk{left:50%;margin-left:-75px;width:150px;top:200px;height:82px;border-radius:10px 10px 0 0;z-index:6}
+#cdesk{left:1%;right:1%;top:236px;height:46px;border-radius:8px 8px 0 0}
+.plate{position:absolute;z-index:6;transform:translateX(-50%);background:#e9d79a;color:#3b2a10;font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid #8a6a22;white-space:nowrap}
+#gavel{position:absolute;left:calc(50% + 40px);top:190px;z-index:8;width:34px;height:22px;z-index:7;transform-origin:100% 100%}
+#gavel:before{content:'';position:absolute;left:0;top:0;width:16px;height:12px;background:#3a2410;border-radius:2px}
+#gavel:after{content:'';position:absolute;left:12px;top:5px;width:22px;height:4px;background:#7a4a22}
+#gavel.hit{animation:ghit .26s}
+@keyframes ghit{0%{transform:rotate(0)}45%{transform:rotate(-45deg)}100%{transform:rotate(0)}}
+#podium{position:absolute;left:50%;margin-left:-65px;top:384px;width:130px;height:70px;z-index:8;background:linear-gradient(#6e4524,#46301a);border-radius:10px 10px 0 0;border-top:5px solid #a8713f;box-shadow:inset 0 0 0 4px rgba(0,0,0,.18)}
+#podium:before{content:'';position:absolute;top:-26px;left:61px;width:6px;height:22px;background:#222;border-radius:3px}
+#podium:after{content:'';position:absolute;top:-30px;left:56px;width:16px;height:7px;border-radius:4px;background:#111}
+#podium span{display:none}
+#speaker .eye,#speaker .mouth,#speaker .gl,#speaker .tie{display:none}
+#speaker .hair{top:8px!important;left:22px!important;width:32px!important;height:35px!important;border-radius:50% 50% 46% 46%!important}
+#speaker .hair.long:before,#speaker .hair.long:after{top:22px;height:22px}
+#speaker{position:absolute;left:50%;margin-left:-38px;bottom:94px;width:76px;z-index:9;transform:scale(1.05) translateY(40px);opacity:0;transform-origin:50% 100%}
+#speaker.in{opacity:1;animation:pup .5s forwards cubic-bezier(.2,1.3,.4,1)}
+#speaker.out{opacity:1;animation:pout .35s forwards}
+@keyframes pup{0%{transform:scale(1.05) translateY(40px);opacity:0}100%{transform:scale(1.05) translateY(0);opacity:1}}
+@keyframes pout{0%{transform:scale(1.05) translateY(0);opacity:1}100%{transform:scale(1.05) translateY(40px);opacity:0}}
+.sign{position:absolute;left:50%;top:-52px;margin-left:-42px;width:84px;z-index:8;transform-origin:50% 100%;animation:wob .9s ease-in-out infinite}
+.sign span{display:block;background:#fff8e1;color:#a11;border:3px solid #333;border-radius:3px;font:900 11px/1.1 Impact,system-ui,sans-serif;text-align:center;padding:4px 3px;text-transform:uppercase}
+.sign:after{content:'';position:absolute;left:50%;margin-left:-2px;top:100%;width:4px;height:26px;background:#7a5a30}
+.happy .sign span{color:#0a5a2a}
+@keyframes wob{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+#speaker .arm.r,.cm .arm.r{transform:rotate(-155deg)}
+#speaker .arm.l,.cm .arm.l{transform:rotate(155deg)}
+.cm{position:absolute;bottom:var(--b,6px);width:76px;margin-left:-38px;z-index:6;transform:scale(.85);transform-origin:50% 100%;animation:pup2 .55s var(--dl,0s) backwards cubic-bezier(.2,1.4,.4,1)}
+.cm.angry .fig{animation:angry .28s infinite}
+.cm.happy .fig{animation:tbob .6s infinite}
+.cm.leave{animation:sink .4s forwards}
+@keyframes pup2{0%{transform:translateY(180%) scale(.5)}100%{transform:translateY(0) scale(.85)}}
+@keyframes sink{from{transform:scale(.85)}to{transform:translateY(190%) scale(.85)}}
+#office,#hall{position:absolute;inset:0;z-index:20;display:none;overflow:hidden}
+#office.show,#hall.show{display:block}
+#office{background:linear-gradient(#d9c7a3 0 64%,#4e3524 64%)}
+#office .win{position:absolute;left:6%;top:36px;width:150px;height:120px;border:8px solid #6b4a2b;background:linear-gradient(#8ec9f0,#cfe9f7);border-radius:4px}
+#office .win:after{content:'';position:absolute;left:50%;top:0;bottom:0;width:6px;background:#6b4a2b;margin-left:-3px}
+#office .frame{position:absolute;top:50px;width:70px;height:52px;border:5px solid #6b4a2b;background:#f3ead2;color:#6b4a2b;font-size:9px;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:700}
+#office .shelf{position:absolute;right:5%;top:30px;width:110px;height:150px;background:#5b3b22;border:4px solid #3e2713}
+#office .shelf:before{content:'';position:absolute;inset:6px;background:repeating-linear-gradient(#5b3b22 0 30px,#2b1a0c 30px 34px)}
+#office .lock{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 12px system-ui;letter-spacing:3px;color:#7a1f1f}
+#office .odesk{position:absolute;left:14%;width:56%;bottom:46px;height:84px;z-index:3;background:linear-gradient(#a06a3a,#6e4524);border-top:5px solid #c68a52;border-radius:6px 6px 0 0;box-shadow:0 6px 12px rgba(0,0,0,.4)}
+#office .och{position:absolute;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
+#office .chair{position:absolute;width:70px;height:90px;margin-left:-35px;background:#3a2318;border-radius:14px 14px 4px 4px;z-index:1}
+#office .nameplate{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#e9d79a;color:#3b2a10;font-size:11px;font-weight:700;padding:2px 10px;border-radius:3px}
+#office .prop{position:absolute;z-index:4;font-size:30px}
+#office .prop.env{left:62%;bottom:128px;animation:slideenv 1s forwards}
+@keyframes slideenv{from{left:78%;bottom:100px}to{left:44%;bottom:126px}}
+#field{position:absolute;inset:0;z-index:20;display:none;overflow:hidden}
+#field.show{display:block}
+#field.site{background:linear-gradient(#a8d4f2 0 50%,#b99b6b 50%)}
+#field.street{background:linear-gradient(#a8d4f2 0 48%,#7fb26a 48%)}
+#field .och{position:absolute;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
+.flabel{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 13px system-ui;letter-spacing:3px;color:#5a3a10;text-shadow:0 1px 0 #fff;z-index:2}
+.hardhat{position:absolute;left:21px;top:3px;width:34px;height:14px;background:#f2c200;border-radius:17px 17px 3px 3px;z-index:6;box-shadow:0 3px 0 #c89c00}
+.crane{position:absolute;left:14%;bottom:50%;width:12px;height:200px;background:#f2a900}
+.crane i{position:absolute;left:-90px;top:-6px;width:260px;height:10px;background:#f2a900;transform-origin:96px 5px;animation:jib 6s ease-in-out infinite}
+@keyframes jib{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+.fence{position:absolute;left:0;right:0;bottom:calc(50% - 4px);height:26px;background:repeating-linear-gradient(90deg,#e8791a 0 22px,#fff 22px 30px)}
+.trailer{position:absolute;right:8%;bottom:calc(50% + 4px);width:130px;height:60px;background:#dfe3e8;border:3px solid #8a8f98;font:700 10px system-ui;display:flex;align-items:center;justify-content:center;color:#444}
+.pile{position:absolute;left:48%;bottom:calc(50% - 10px);width:150px;height:50px;background:#8a6a42;clip-path:polygon(0 100%,35% 10%,60% 40%,100% 100%)}
+.house{position:absolute;bottom:calc(52% - 4px);width:120px;height:80px;background:#e9d9b8;border:3px solid #b7a37a}
+.house:before{content:'';position:absolute;left:-12px;right:-12px;top:-44px;height:44px;background:#a85a3a;clip-path:polygon(0 100%,50% 0,100% 100%)}
+.h1{left:6%}.h2{left:36%;background:#cfe0ee}.h3{left:70%;background:#efd5d5}
+.walk{position:absolute;left:0;right:0;bottom:0;height:110px;background:#c9c4b8}
+#hall{background:linear-gradient(#9fd0f0 0,#dcefff 55%,#6fae5c 55%)}
+#hall .bldg{position:absolute;left:50%;margin-left:-230px;width:460px;bottom:92px;height:230px;background:#e8e2d2;border:3px solid #b9b19b}
+#hall .ped{position:absolute;left:50%;margin-left:-250px;width:500px;bottom:318px;height:78px;background:#d9d1bd;clip-path:polygon(0 100%,50% 0,100% 100%)}
+#hall .name{position:absolute;left:50%;transform:translateX(-50%);bottom:332px;font:800 13px system-ui;letter-spacing:3px;color:#5a4a30;z-index:2}
+#hall .cols{position:absolute;left:50%;margin-left:-210px;width:420px;bottom:92px;height:200px;display:flex;justify-content:space-between}
+#hall .cols i{width:26px;background:linear-gradient(90deg,#f5f1e6,#d4ccb8);display:block;height:100%}
+#hall .door{position:absolute;left:50%;margin-left:-30px;width:60px;height:90px;bottom:92px;background:#4a2f1a;border-radius:30px 30px 0 0;border:3px solid #2a1a0d}
+#hall .steps{position:absolute;left:50%;margin-left:-260px;width:520px;bottom:60px;height:34px;background:repeating-linear-gradient(#cfc7b3 0 8px,#b3ab96 8px 11px);z-index:2}
+#hall .flagp{position:absolute;left:50%;margin-left:-4px;bottom:392px;width:4px;height:70px;background:#caa24a}
+#hall .flagp i{position:absolute;left:4px;top:2px;width:42px;height:28px;background:linear-gradient(90deg,#1f4a8a 50%,#f2b84b 50%);animation:wave 3s ease-in-out infinite;transform-origin:left}
+#hall .cop{position:absolute;bottom:92px;z-index:3}
+#hall .label{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 13px system-ui;letter-spacing:3px;color:#7a1f1f;text-shadow:0 1px 0 #fff}
+@keyframes angry{0%,100%{transform:translateX(-2px)}50%{transform:translateX(2px)}}
+#toasts{position:absolute;top:8px;right:10px;z-index:30;display:flex;flex-direction:column;gap:5px;align-items:flex-end;pointer-events:none}
+.toast{background:rgba(10,14,22,.9);border-left:4px solid var(--good);padding:5px 10px;border-radius:6px;font-size:13px;animation:tin .3s,tout .5s 2.6s forwards}
+.toast.b{border-color:var(--bad)}
+@keyframes tin{from{transform:translateX(30px);opacity:0}}
+@keyframes tout{to{opacity:0;transform:translateY(-8px)}}
+#banner{position:absolute;left:0;right:0;top:42%;z-index:25;text-align:center;font:900 30px Impact,system-ui;letter-spacing:3px;color:#fff;text-shadow:0 3px 10px #000;opacity:0;pointer-events:none}
+#banner.show{animation:ban 2.2s forwards}
+@keyframes ban{0%{opacity:0;transform:scale(.7)}15%{opacity:1;transform:scale(1.05)}80%{opacity:1}100%{opacity:0}}
+#dlg,#choices{background:#0e1420;border:2px solid #34425c;border-radius:14px;padding:12px 16px;margin-top:10px;min-height:128px}
+#dlg{cursor:pointer;position:relative}
+#dlgName{display:inline-block;padding:3px 13px;border-radius:999px;font-weight:700;font-size:13px;color:#fff}
+#dlgRole{margin-left:8px;font-size:12px;color:var(--mut)}
+#dlgText{font-size:18px;line-height:1.45;margin-top:9px;min-height:54px}
+#dlgNext{position:absolute;right:16px;bottom:8px;color:var(--acc);font-size:13px;animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+.cTitle{font-weight:700;font-size:16px;margin-bottom:6px}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btnrow.col{flex-direction:column}
+button.opt,.btnrow button{background:#233049;color:var(--ink);border:1px solid #3a4b6b;border-radius:10px;padding:9px 14px;font-size:14px;cursor:pointer;text-align:left}
+.btnrow button:hover{background:#2e4163;border-color:var(--acc)}
+.btnrow button small{display:block;color:var(--mut);font-size:12px;margin-top:2px}
+.btnrow button.go{background:#2c5a45;border-color:#3c8a66}
+.btnrow button.stop{background:#5e2b2b;border-color:#8a4444}
+.conds{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px;margin-top:6px}
+.conds label{display:flex;gap:8px;align-items:flex-start;background:#151d2c;padding:6px 8px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #2a3750}
+.conds label small{display:block;color:var(--mut)}
+#burden{margin-top:8px;font-size:13px}
+.card{background:var(--panel);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.card h3{margin:0 0 6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--acc)}
+.aTitle{font-size:17px;font-weight:700}
+.card table{width:100%;font-size:13px;margin-top:6px;border-collapse:collapse}
+.card td{padding:2px 0}.card td:last-child{text-align:right;font-weight:600}
+td.bad{color:var(--bad)}
+.pj{padding:6px 0;border-bottom:1px solid #2a3750}.pj:last-child{border:0}
+.prog{display:flex;gap:3px;margin-top:4px}.prog i{flex:1;height:5px;border-radius:3px;background:#0b1019}
+.prog i.d{background:var(--good)}.prog i.c{background:var(--acc)}
+#minutes{list-style:none;margin:0;padding:0;max-height:210px;overflow:auto;font-size:12px;color:#b9c4d6}
+#minutes li{padding:3px 0;border-bottom:1px dashed #2a3750}
+#minutes li.b{color:#f59a9a}#minutes li.g{color:#8fe0b6}
+#overlay{position:fixed;inset:0;background:rgba(5,8,14,.93);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
+#overlay .box{max-width:620px;background:var(--panel);border-radius:16px;padding:26px 30px;border:2px solid #34425c}
+#overlay h1{margin:0 0 8px;font-size:30px}
+#overlay p{line-height:1.5;color:#c6d0e0}
+.modes label{display:block;margin:6px 0;color:#c6d0e0;cursor:pointer}
+#overlay button.alt{background:#2a3a55;color:#e9eef7}
+#modal{position:fixed;inset:0;background:rgba(5,8,14,.88);z-index:110;display:flex;align-items:center;justify-content:center;padding:20px}
+#modal .box{max-width:580px;width:100%;background:var(--panel);border:2px solid #34425c;border-radius:16px;padding:22px 26px;max-height:92vh;overflow:auto}
+#modal h2{margin:0 0 8px}
+#modal p,#modal li{line-height:1.5;color:#c6d0e0}
+#modal label{display:block;font-size:13px;color:var(--mut);margin-top:8px}
+#modal textarea,#modal select{width:100%;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:8px;margin:4px 0 6px;font:inherit}
+#modal textarea{min-height:58px}
+#overlay button{margin-top:14px;background:var(--acc);color:#2a1c05;font-weight:800;border:0;border-radius:10px;padding:11px 22px;font-size:16px;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="app">
+ <div id="hud"></div>
+ <div id="main">
+  <div id="left">
+   <div id="scene">
+    <div class="seal">CITY OF CLIFTON</div>
+    <div class="flag" style="left:3%"><i></i></div>
+    <div class="flag cityf" style="right:3%"><i></i></div>
+    <div id="cast"></div>
+    <div class="desk" id="mdesk"></div>
+    <div class="desk" id="cdesk"></div>
+    <div id="plates"></div>
+    <div id="gavel"></div>
+    <div id="aud"></div>
+    <div id="crowd"></div>
+    <div id="speaker"></div>
+    <div id="podium"><span>PUBLIC PODIUM</span></div>
+    <div id="office"></div>
+    <div id="hall"></div>
+    <div id="field"></div>
+    <div id="toasts"></div>
+    <div id="banner"></div>
+   </div>
+   <div id="dlg">
+    <span id="dlgName"></span><span id="dlgRole"></span>
+    <div id="dlgText"></div>
+    <div id="dlgNext">click or press Space &#9654;</div>
+   </div>
+   <div id="choices" class="hidden"></div>
+  </div>
+  <aside id="side">
+   <div class="card" id="agenda"></div>
+   <div class="card" id="sys"></div>
+   <div class="card"><h3>Active Projects</h3><div id="projs"></div></div>
+   <div class="card"><h3>Minutes</h3><ul id="minutes"></ul></div>
+  </aside>
+ </div>
+</div>
+<div id="modal" class="hidden"></div>
+<div id="overlay"><div class="box">
+ <h1>&#127963;&#65039; Municipality Tycoon</h1>
+ <p>You are the mayor of Clifton. Every week the council meets in chambers: you read city business, hear one development proposal, listen to the public, draft conditions, and put it to a vote.</p>
+ <p>Approved projects move through Permitting, Site Prep, Construction, Commissioning and Operation. Expect wells drilled without permits, contaminated water, wasted water, noise, but also new roads, parks and donations. How you respond decides your term.</p>
+ <p class="mut">You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
+ <div class="modes"><label><input type="radio" name="mode" value="52" checked> Full term: 52 weeks (about an hour or more)</label><label><input type="radio" name="mode" value="12"> Quick term: 12 weeks (about 15 to 20 minutes)</label></div>
+ <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button>
+</div></div>
+
+<script>
+'use strict';
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+let SPD=1,AUTOADV=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms/SPD));
+const rnd=(a,b)=>Math.random()*(b-a)+a;
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const USED={};
+function fresh(key,arr){const u=USED[key]||(USED[key]=new Set());let c=arr.filter(x=>!u.has(x));if(!c.length){u.clear();c=arr}const v=pick(c);u.add(v);return v}
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const clamp=(v,a=0,b=100)=>Math.max(a,Math.min(b,v));
+const money=n=>{const s=n<0?'-':'';n=Math.abs(n);return s+(n>=1e9?'$'+(n/1e9).toFixed(2)+'B':n>=1e6?'$'+(n/1e6).toFixed(n>=1e8?0:1)+'M':n>=1e3?'$'+Math.round(n/1e3)+'K':'$'+Math.round(n))};
+const num=n=>Math.round(n).toLocaleString();
+const AUTO=/[?&]auto=1/.test(location.search);
+const SPEED=AUTO?1:16;
+
+/* ---------- audio ---------- */
+let AC=null,MASTER=null,MUTE=false,VOL=.7,AMB=null;
+function ctx(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();MASTER=AC.createGain();MASTER.gain.value=MUTE?0:VOL;MASTER.connect(AC.destination)}if(AC.state==='suspended')AC.resume();return AC}
+function setVol(){if(MASTER)MASTER.gain.value=MUTE?0:VOL}
+function tone(f,d,type='sine',v=.07,slide=0,when=0){if(MUTE)return;try{const ac=ctx(),t=ac.currentTime+when,o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(30,f+slide),t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(MASTER);o.start(t);o.stop(t+d)}catch(e){}}
+function noise(d,freq,q,v,type='bandpass'){if(MUTE)return;try{const ac=ctx(),n=Math.floor(ac.sampleRate*d),b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);for(let i=0;i<n;i++)a[i]=(Math.random()*2-1)*Math.pow(1-i/n,1.5);const s=ac.createBufferSource();s.buffer=b;const f=ac.createBiquadFilter();f.type=type;f.frequency.value=freq;f.Q.value=q;const g=ac.createGain();g.gain.value=v;s.connect(f);f.connect(g);g.connect(MASTER);s.start()}catch(e){}}
+function ambience(on){
+ try{
+  if(on&&!AMB&&!MUTE){const ac=ctx(),n=ac.sampleRate*2,b=ac.createBuffer(1,n,ac.sampleRate),a=b.getChannelData(0);let l=0;for(let i=0;i<n;i++){l=l*.97+(Math.random()*2-1)*.03;a[i]=l*8}
+   const s=ac.createBufferSource();s.buffer=b;s.loop=true;const f=ac.createBiquadFilter();f.type='lowpass';f.frequency.value=420;const g=ac.createGain();g.gain.value=0;g.gain.linearRampToValueAtTime(.12,ac.currentTime+.8);s.connect(f);f.connect(g);g.connect(MASTER);s.start();AMB={s,g}}
+  else if(!on&&AMB){const{s,g}=AMB;AMB=null;g.gain.linearRampToValueAtTime(0,ctx().currentTime+.5);setTimeout(()=>{try{s.stop()}catch(e){}},600)}
+ }catch(e){}
+}
+const voiceOf=sp=>sp.voice||(sp.voice=130+([...(sp.name||'x')].reduce((a,c)=>a+c.charCodeAt(0),0)%190));
+const sfx={
+ gavel:()=>{tone(170,.22,'square',.16,-110);noise(.12,900,1,.25,'lowpass')},
+ pop:()=>{tone(520,.12,'triangle',.07,300);noise(.1,1500,2,.05)},
+ boo:()=>{tone(170,.5,'sawtooth',.04,-60);noise(.6,300,.8,.18)},
+ cheer:()=>{noise(.9,2200,.6,.16);tone(440,.3,'triangle',.03,200)},
+ clap:()=>{for(let i=0;i<7;i++)setTimeout(()=>noise(.07,2500,1,.18),i*90+Math.random()*50)},
+ tick:sp=>{const f=sp?voiceOf(sp):300;tone(f+Math.random()*50,.045,'square',.014)},
+ good:()=>{tone(660,.12);tone(880,.2,'sine',.07,0,.11)},
+ bad:()=>{tone(300,.28,'sawtooth',.06,-140);tone(200,.3,'sawtooth',.05,-80,.15)},
+ alarm:()=>{tone(740,.15,'square',.05);tone(560,.2,'square',.05,0,.17)},
+ chime:()=>{tone(523,.4,'sine',.07);tone(659,.4,'sine',.07,0,.12);tone(784,.6,'sine',.07,0,.24)}
+};
+
+/* ---------- cast ---------- */
+const MAYOR={id:'mayor',name:'Mayor (You)',role:'Presiding Officer',color:'#b8892b',skin:'#e3b88f',hair:'#3a2a1c',suit:'#1f2a44',glasses:false};
+const COUNCIL=[
+ {id:'chen',name:'Dr. Sarah Chen',short:'Dr. Chen',role:'Environmental Scientist',color:'#2e7d4f',skin:'#e8c39e',hair:'#1b1b1b',hs:'long',suit:'#2e7d4f',glasses:true,w:{env:1.0,jobs:.1,tax:.1,res:.4,dev:-.2},greed:.05},
+ {id:'bradley',name:'Tom Bradley',short:'Tom Bradley',role:'Business Owner',color:'#2a5aa8',skin:'#f1c9a5',hair:'#6b4a2b',suit:'#264b8a',w:{env:.1,jobs:.5,tax:.6,res:.1,dev:.7},greed:.35},
+ {id:'rodriguez',name:'Miguel Rodriguez',short:'Rodriguez',role:'Union Organizer',color:'#a33b2c',skin:'#b98560',hair:'#111',suit:'#a33b2c',w:{env:.3,jobs:1.0,tax:.3,res:.3,dev:.1},greed:.15},
+ {id:'wong',name:'Patricia Wong',short:'Patricia Wong',role:'Neighborhood Advocate',color:'#7a3fa0',skin:'#f0d0b0',hair:'#9a9a9a',hs:'long',suit:'#7a3fa0',w:{env:.4,jobs:.2,tax:.2,res:1.0,dev:-.1},greed:.05},
+ {id:'jennings',name:'Harold Jennings',short:'Jennings',role:'Retired Accountant',color:'#5a6270',skin:'#e0b48f',hair:'#dcdcdc',hs:'bald',suit:'#555c68',glasses:true,w:{env:.2,jobs:.2,tax:1.0,res:.3,dev:.2},greed:.3}
+];
+const CAST={mayor:MAYOR,clerk:{id:'clerk',name:'City Clerk',role:'Clerk of the Council',color:'#6a6a6a',skin:'#d9b08c',hair:'#4a3a2a',hs:'long',suit:'#6a6a6a',glasses:true},
+ outside:{name:'Outside City Hall',role:'',color:'#555'},office:{name:'Your office',role:'',color:'#555'}};
+COUNCIL.forEach(m=>CAST[m.id]=m);
+
+const SKINS=['#f1c9a5','#e0b48f','#c68e63','#a8704a','#7a4b2d','#f6d8bd'];
+const HAIRS=['#1b1b1b','#3b2a1a','#6b4a2b','#a6743a','#8a8a8a','#d6d6d6','#7a2b1f'];
+const SHIRTS=['#c0392b','#2980b9','#27ae60','#8e44ad','#d68910','#16a085','#5d6d7e','#cb4335'];
+const FIRST=['Karen','Dale','Maria','Jerome','Susan','Ravi','Ellen','Hank','Tasha','Walt','Nina','Omar','Bev','Carl','Joanne','Luis','Priscilla','Doug','Mei','Frank'];
+const LAST=['Alvarez','Brooks','Chen','Dobbs','Evans','Fitch','Garza','Hollis','Ivers','Jackson','Kowalski','Lindgren','Moreau','Nguyen','Okafor','Pruitt','Quinn','Reyes','Stone','Tate'];
+const look=()=>({skin:pick(SKINS),hair:pick(HAIRS),suit:pick(SHIRTS),hs:Math.random()<.35?'long':(Math.random()<.12?'bald':''),glasses:Math.random()<.2});
+
+function figHTML(o){return `<div class="fig" style="--skin:${o.skin};--hair:${o.hair};--suit:${o.suit};--d:${(Math.random()*-3).toFixed(2)}s"><div class="hair ${o.hs||''}"></div><div class="head"><i class="eye"></i><i class="eye"></i><b class="mouth"></b>${o.glasses?'<u class="gl"></u>':''}</div><div class="body"><s class="tie"></s></div><div class="arm l"></div><div class="arm r"></div></div>`}
+
+function buildScene(){
+ const cast=$('#cast'),plates=$('#plates');
+ const place=(o,left,top,cls)=>{const d=document.createElement('div');d.className='ch '+(cls||'');d.id='c-'+o.id;d.style.left=left+'%';d.style.top=top+'px';d.innerHTML='<div class="tag"></div>'+figHTML(o);cast.appendChild(d);o.el=d};
+ const xs=[8,22,36,64,78];
+ place(MAYOR,50,134,'mayor');
+ COUNCIL.forEach((m,i)=>place(m,xs[i],152));
+ place(CAST.clerk,92,156,'clerk');
+ const plate=(txt,left,top)=>{const p=document.createElement('div');p.className='plate';p.textContent=txt;p.style.left=left+'%';p.style.top=top+'px';plates.appendChild(p)};
+ plate('MAYOR',50,252);
+ COUNCIL.forEach((m,i)=>plate(m.short,xs[i],246));
+ plate('CLERK',92,246);
+ const aud=$('#aud');
+ [[386,[-350,-280,-210,-140,140,210,280,350]],[444,[-385,-315,-245,-175,-105,-35,35,105,175,245,315,385]]].forEach(([top,row])=>row.forEach(x=>{const d=document.createElement('div');d.className='aud';d.style.left=`calc(50% + ${x+Math.round(rnd(-5,5))}px)`;d.style.top=top+'px';d.innerHTML=figHTML(look());aud.appendChild(d)}));
+}
+let audT=null;
+function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);if(m)audT=setTimeout(()=>a.className='',ms/SPD)}
+
+/* ---------- state / HUD ---------- */
+const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
+const S={maxWeeks:52,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+ stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
+const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
+function buildHud(){
+ $('#hud').innerHTML=`<div class="brand">&#127963;&#65039; <b>Municipality Tycoon</b></div>
+ <div class="stat"><span>Week</span><b id="hWeek"></b></div>
+ <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
+ ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
+ <div class="ctl"><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="Dialogue speed (F)">Speed 1x</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
+ $('#mute').onclick=()=>{MUTE=!MUTE;$('#mute').textContent='Sound: '+(MUTE?'off':'on');setVol();if(MUTE)ambience(false)};
+ $('#vol').oninput=e=>{VOL=e.target.value/100;setVol()};
+ $('#spd').onclick=cycleSpeed;$('#auto').onclick=toggleAuto;
+ $('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
+}
+function hud(){
+ $('#hWeek').textContent=`${Math.min(S.week,S.maxWeeks)} / ${S.maxWeeks} · ${S.week%2===1?'Meeting':'Off week'}`;
+ $('#hBudget').textContent=money(S.budget);
+ METERS.forEach(([k])=>{const e=$(`.stat[data-k=${k}]`);e.querySelector('i').style.width=S[k]+'%';e.querySelector('b').textContent=Math.round(S[k])});
+ if(typeof renderSys==='function'&&$('#sys'))renderSys();
+}
+function toast(t,good){const d=document.createElement('div');d.className='toast'+(good?'':' b');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
+function flash(k,good){const e=$(`.stat[data-k=${k}]`);if(!e)return;e.classList.add(good?'flashg':'flashb');setTimeout(()=>e.classList.remove('flashg','flashb'),700)}
+function adj(k,v,why){
+ if(!v)return;S[k]=clamp(S[k]+v);const good=k==='corrupt'?v<0:v>0;
+ hud();flash(k,good);toast(`${METERS.find(m=>m[0]===k)[1]} ${v>0?'+':''}${Math.round(v)}${why?' ('+why+')':''}`,good);
+}
+function addBudget(v,why){S.budget+=v;hud();flash('budget',v>0);toast(`Treasury ${v>0?'+':''}${money(v)}${why?' ('+why+')':''}`,v>0)}
+function minutes(t,c){const li=document.createElement('li');li.textContent=`Wk ${S.week}: ${t}`;if(c)li.className=c;const u=$('#minutes');u.prepend(li);while(u.children.length>40)u.lastChild.remove()}
+function banner(t){const b=$('#banner');b.textContent=t;b.classList.remove('show');void b.offsetWidth;b.classList.add('show')}
+
+/* ---------- dialogue ---------- */
+let typer=null,advanceCb=null;
+function trigger(){if(typer){typer.finish();return}if(advanceCb){const cb=advanceCb;advanceCb=null;cb()}}
+function speak(sp,on){if(sp&&sp.el)sp.el.classList.toggle('speaking',on)}
+async function say(speaker,text,opts={}){
+ const sp=typeof speaker==='string'?CAST[speaker]:speaker;
+ $('#choices').classList.add('hidden');$('#dlg').classList.remove('hidden');
+ $('#dlgName').textContent=sp.name;$('#dlgName').style.background=sp.color||'#444';$('#dlgRole').textContent=sp.role||'';
+ $('#dlgText').textContent='';$('#dlgNext').style.visibility='hidden';
+ speak(sp,true);
+ await new Promise(r=>{
+  let i=0;typer={finish(){clearInterval(this.t);$('#dlgText').textContent=text;typer=null;r()}};
+  typer.t=setInterval(()=>{i+=SPD>=4?2:1;$('#dlgText').textContent=text.slice(0,i);if(i%3<(SPD>=4?2:1)&&SPD<8)sfx.tick(sp);if(i>=text.length){clearInterval(typer.t);typer=null;r()}},(opts.speed||SPEED)/Math.min(SPD,4));
+ });
+ speak(sp,false);
+ if(opts.auto)await sleep(AUTO?20:opts.auto);
+ else{$('#dlgNext').style.visibility='visible';await new Promise(r=>{advanceCb=r;if(AUTOADV||SPD>=8)setTimeout(()=>{if(advanceCb===r){advanceCb=null;r()}},Math.max(500,text.length*38)/SPD)});}
+}
+function ask(title,opts,note=''){
+ return new Promise(res=>{
+  $('#dlg').classList.add('hidden');const b=$('#choices');b.classList.remove('hidden');
+  b.innerHTML=`<div class="cTitle">${title}</div>${note?`<div class="mut">${note}</div>`:''}<div class="btnrow col">${opts.map(o=>`<button class="${o.cls||''}" data-k="${o.k}"><b>${o.label}</b>${o.sub?`<small>${o.sub}</small>`:''}</button>`).join('')}</div>`;
+  b.onclick=e=>{const t=e.target.closest('button');if(!t)return;b.classList.add('hidden');$('#dlg').classList.remove('hidden');res(t.dataset.k)};
+ });
+}
+const SPEEDS=[1,2,4,8];
+function cycleSpeed(){SPD=SPEEDS[(SPEEDS.indexOf(SPD)+1)%SPEEDS.length];$('#spd').textContent=SPD>=8?'Speed MAX':'Speed '+SPD+'x';toast(SPD>=8?'Max speed: dialogue auto-advances':'Speed '+SPD+'x',true)}
+function toggleAuto(){AUTOADV=!AUTOADV;$('#auto').textContent='Auto: '+(AUTOADV?'on':'off');if(AUTOADV)trigger()}
+document.addEventListener('keydown',e=>{
+ if(!$('#overlay').classList.contains('hidden')||!$('#modal').classList.contains('hidden'))return;
+ if(e.code==='Space'||e.code==='Enter'){e.preventDefault();trigger()}
+ else if(e.code==='KeyF')cycleSpeed();else if(e.code==='KeyA')toggleAuto();
+});
+$('#dlg').addEventListener('click',trigger);
+
+/* ---------- scene helpers ---------- */
+function showTag(id,text,cls){const o=CAST[id];if(!o||!o.el)return;const t=o.el.querySelector('.tag');t.textContent=text;t.className='tag';void t.offsetWidth;t.className='tag show '+(cls||'');
+ o.el.classList.remove('aye','nay');if(cls==='yes')o.el.classList.add('aye');if(cls==='no')o.el.classList.add('nay')}
+function clearTags(){[MAYOR,...COUNCIL].forEach(o=>{const t=o.el.querySelector('.tag');t.className='tag';o.el.classList.remove('aye','nay')})}
+async function gavel(n=1){for(let i=0;i<n;i++){$('#gavel').classList.add('hit');MAYOR.el.classList.add('bang');sfx.gavel();$('#scene').classList.add('shake');await sleep(280);$('#gavel').classList.remove('hit');MAYOR.el.classList.remove('bang');$('#scene').classList.remove('shake');await sleep(100)}}
+async function showSpeaker(o){const s=$('#speaker');s.innerHTML=`<div class="tag"></div>${figHTML(o)}${o.sign?`<div class="sign"><span>${o.sign}</span></div>`:''}`;s.className='in '+(o.mood||'');o.el=s;sfx.pop();await sleep(AUTO?10:520)}
+async function hideSpeaker(){const s=$('#speaker');s.className='out';await sleep(AUTO?10:380);s.className='';s.innerHTML=''}
+function showCrowd(items){
+ const c=$('#crowd');c.innerHTML='';const slots=shuffle([6,15,24,33,67,76,85,94]);
+ items.slice(0,8).forEach((it,i)=>{const d=document.createElement('div');d.className='cm '+(it.stance==='opp'?'angry':'happy');d.style.left=slots[i]+'%';d.style.setProperty('--dl',(i*.16)+'s');d.innerHTML=`<div class="sign"><span>${it.sign}</span></div>`+figHTML(it);c.appendChild(d)});
+ sfx.pop();ambience(true);
+}
+async function hideCrowd(){ambience(false);const c=$('#crowd');$$('.cm',c).forEach(d=>d.classList.add('leave'));await sleep(AUTO?10:450);c.innerHTML=''}
+function heckle(text,cls){const m=pick($$('#crowd .cm'));if(!m)return;const t=document.createElement('div');t.className='tag show '+(cls||'no');t.textContent=text;m.appendChild(t);(cls==='yes'?sfx.cheer:sfx.boo)();audMood(cls==='yes'?'happy':'angry');setTimeout(()=>t.remove(),1300)}
+
+/* ---------- project model ---------- */
+const TYPES=[
+ {k:'coffee',name:'Drive-Thru Coffee Shop',icon:'&#9749;',min:5e4,max:9e5,water:900,noise:48,jobs:9,tax:.03,traffic:5,power:1,tags:[]},
+ {k:'storage',name:'Self-Storage Facility',icon:'&#128230;',min:3e5,max:8e6,water:150,noise:45,jobs:3,tax:.02,traffic:2,power:1,tags:[]},
+ {k:'gas',name:'Gas Station & Convenience Store',icon:'&#9981;',min:6e5,max:6e6,water:1500,noise:55,jobs:8,tax:.03,traffic:6,power:1,tags:['chem']},
+ {k:'apts',name:'Apartment Complex',icon:'&#127970;',min:2e6,max:1.5e8,water:6000,noise:52,jobs:2,tax:.015,traffic:7,power:3,tags:[]},
+ {k:'warehouse',name:'Distribution Warehouse',icon:'&#128666;',min:5e6,max:2e8,water:800,noise:62,jobs:5,tax:.012,traffic:9,power:3,tags:[]},
+ {k:'solar',name:'Solar Farm',icon:'&#9728;&#65039;',min:5e6,max:3e8,water:300,noise:40,jobs:1.2,tax:.008,traffic:1,power:0,tags:[]},
+ {k:'battery',name:'Battery Storage Facility',icon:'&#128267;',min:1e7,max:4e8,water:500,noise:55,jobs:1,tax:.01,traffic:1,power:4,tags:['chem']},
+ {k:'datacenter',name:'Data Center',icon:'&#128421;&#65039;',min:5e6,max:1e9,water:40000,noise:68,jobs:3,tax:.012,traffic:2,power:10,tags:[]},
+ {k:'crypto',name:'Crypto Mining Facility',icon:'&#9939;&#65039;',min:1e6,max:5e7,water:20000,noise:82,jobs:1,tax:.01,traffic:1,power:10,tags:[]},
+ {k:'bottling',name:'Water Bottling Plant',icon:'&#128167;',min:2e6,max:1e8,water:90000,noise:60,jobs:4,tax:.014,traffic:6,power:4,tags:[]},
+ {k:'quarry',name:'Gravel Quarry',icon:'&#9968;&#65039;',min:5e5,max:5e7,water:12000,noise:78,jobs:3,tax:.02,traffic:8,power:2,tags:['dust']},
+ {k:'fab',name:'Semiconductor Fab',icon:'&#128300;',min:1e8,max:1e9,water:70000,noise:64,jobs:3.5,tax:.011,traffic:4,power:9,tags:['chem']},
+ {k:'hotel',name:'Hotel & Conference Center',icon:'&#127976;',min:1e7,max:2e8,water:9000,noise:50,jobs:6,tax:.025,traffic:6,power:3,tags:[]},
+ {k:'chem',name:'Chemical Processing Plant',icon:'&#9879;&#65039;',min:5e7,max:1e9,water:60000,noise:70,jobs:3,tax:.015,traffic:7,power:6,tags:['chem']},
+ {k:'mall',name:'Strip Mall',icon:'&#128717;&#65039;',min:1e6,max:6e7,water:3000,noise:52,jobs:8,tax:.03,traffic:8,power:2,tags:[]}
+];
+const SITES=['Harlan Road','the old Dunmore farm','Riverside Industrial Park','the Route 9 corridor','the edge of Millbrook wetlands','Cedar Hill','the former Henley rail yard','Quarry Lane','Eastgate Business Park','the Pinecrest subdivision edge'];
+const DEVS=['Apex Meridian','Northgate Capital','BlueRidge Development','Titan Ventures','Summit & Stone','Vantage Build Group','Clearwater Holdings','Ironwood Partners'];
+const REPS=['Brad Kensington','Linda Marsh','Chad Whitcomb','Priya Nair','Greg Dunleavy','Marcus Holt'];
+
+function genProject(){
+ let cost=Math.pow(10,rnd(Math.log10(5e4),9));const m=Math.pow(10,Math.floor(Math.log10(cost))-1);cost=Math.round(cost/m)*m;
+ const pool=[];TYPES.filter(t=>cost>=t.min&&cost<=t.max).forEach(t=>{for(let i=0;i<(t.k==='datacenter'?3:1);i++)pool.push(t)});
+ const t=pick(pool),mm=cost/1e6,sizeF=clamp((Math.log10(cost)-4.7)/4.3,0,1);
+ const p={id:++S.pid,type:t,company:pick(DEVS),site:pick(SITES),cost,sizeF,
+  water:Math.round(t.water*Math.pow(mm,.8)),db:t.noise+3*Math.log10(mm+1),jobs:Math.max(2,Math.round(t.jobs*Math.pow(mm,.75))),
+  tax:cost*t.tax,traffic:t.traffic,power:t.power,conds:{},stage:-1,stageLeft:0,incidents:0,tabled:false,seen:{},delivered:{},
+  jit:{},durs:[1+ri(0,1),1+ri(0,1),2+Math.round(sizeF*3),1]};
+ COUNCIL.forEach(c=>p.jit[c.id]=rnd(-.12,.12));
+ const heavy=['quarry','chem','fab','crypto','datacenter','warehouse','bottling'].includes(t.k);
+ p.zl=clamp((heavy&&sizeF>.35?1:0)+(p.db>=68?1:0)+(Math.random()<.25?1:0)-(sizeF<.15?1:0),0,2);
+ p.fl=clamp((t.tags.includes('chem')?1:0)+(t.power>=9?1:0)+(t.k==='battery'?1:0)+(Math.random()<.2?1:0)-(sizeF<.2&&!t.tags.includes('chem')?1:0),0,2);
+ p.free={};p.waived=false;p.bribed=false;
+ p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
+ return p;
+}
+const CONDS=[
+ {k:'recycle',name:'Closed-loop water recycling',desc:'Cuts water use by about 65%',b:2},
+ {k:'noise',name:'Noise barrier and sound cap',desc:'About 12 dB quieter at the property line',b:1},
+ {k:'fund',name:'Community benefit fund (1% of cost)',desc:'Neighbors and council like this',b:2},
+ {k:'road',name:'Developer builds access road',desc:'Delivered during construction',b:2},
+ {k:'park',name:'Developer funds a public park',desc:'Delivered at commissioning',b:2},
+ {k:'hire',name:'Local hire guarantee (70%)',desc:'Labor loves it',b:1},
+ {k:'monitor',name:'Independent well and water monitoring',desc:'Fewer and milder incidents',b:1},
+ {k:'bond',name:'Cleanup bond (5% of cost)',desc:'Bigger fines when things go wrong',b:2},
+ {k:'fireplan',name:'Fire safety plan and on-site hydrants',desc:'Satisfies the Fire Marshal',b:1},
+ {k:'buffer',name:'Landscape buffer and setbacks',desc:'Satisfies Zoning',b:1}
+];
+const burden=(c,p)=>CONDS.reduce((s,x)=>s+(c[x.k]&&!(p&&p.free&&p.free[x.k])?x.b:0),0);
+const maxBurden=p=>3+S.dev/20+p.sizeF*1.5;
+const eff=(p,c)=>({water:p.water*(c.recycle?.35:1),db:p.db-(c.noise?12:0)});
+function impacts(p,c){
+ const e=eff(p,c);
+ return{env:clamp(e.water/1.5e6*.7+p.power/10*.3+(p.type.tags.includes('chem')?.25:0)-(c.monitor?.08:0)-(c.bond?.05:0),0,1),
+  res:clamp((e.db-45)/40*.5+p.traffic/10*.5-(c.road?.1:0),0,1),jobs:clamp(p.jobs/250,0,1),tax:clamp(p.tax/1.5e6,0,1)};
+}
+function score(m,p,c,ctx){
+ const I=impacts(p,c);
+ let s=-m.w.env*I.env-m.w.res*I.res+m.w.jobs*I.jobs*1.5+m.w.tax*I.tax*1.5+m.w.dev*.3+.25;
+ if(c.fund)s+=.15+.2*m.w.res;if(c.road)s+=.1+.1*m.w.res;if(c.park)s+=.1+.12*(m.w.res+m.w.env)/2;
+ if(c.hire)s+=.25*m.w.jobs;if(c.monitor)s+=.12*m.w.env;if(c.bond)s+=.1*m.w.tax+.05;
+ if(c.fireplan)s+=.05;if(c.buffer)s+=.05*(m.w.res+.5);
+ const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
+ s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
+ s+=p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250;
+ return s;
+}
+function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.water)).replace(/\{noise\}/g,Math.round(e.db)).replace(/\{jobs\}/g,num(p.jobs)).replace(/\{tax\}/g,money(p.tax)).replace(/\{name\}/g,p.type.name).replace(/\{site\}/g,p.site).replace(/\{cost\}/g,money(p.cost))}
+const dots=n=>'&#9679;'.repeat(Math.round(n/2))+'<span class="mut">'+'&#9675;'.repeat(5-Math.round(n/2))+'</span>';
+function showAgenda(p){
+ const a=$('#agenda');
+ if(!p){a.innerHTML='<h3>Agenda</h3><div class="mut">No project under consideration.</div>';return}
+ const e=eff(p,p.conds||{});
+ a.innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${p.type.icon} ${p.type.name}</div><div class="mut">${p.company} at ${p.site}</div>
+ <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>
+ <tr><td>Water use</td><td class="${e.water>=2e5?'bad':''}">${num(e.water)} gal/day</td></tr><tr><td>Noise</td><td class="${e.db>=70?'bad':''}">${Math.round(e.db)} dB</td></tr>
+ <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>`;
+}
+const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
+const gridLoad=()=>Math.round(50-S.gridBoost+S.projects.reduce((a,p)=>a+loadOf(p),0));
+const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
+function gridEv(p,gl){
+ const hh=ri(3,12)*1000,black=gl>=88;
+ return{title:black?'Blackout':'Brownouts',
+  text:black?`Grid strain from the ${p.type.name} and other large loads tipped the system over. A ${ri(2,8)}-hour blackout hit ${num(hh)} households and a hospital switched to generators.`:`Rolling brownouts hit ${num(hh)} households as the grid ran at ${gl}% of capacity. The ${p.type.name} is the largest single load on the system.`,
+  dev:black?'We followed our interconnect agreement. Honestly, the utility should have seen this coming.':'We coordinated with the utility, but demand came in higher than forecast.',
+  env:black?4:2,fine:black?200000:80000,topic:'power',grid:1,
+  extra:{label:'Require a substation upgrade at their expense',sub:'Cuts their grid load by 40%.',dev:-8,trust:5,mult:.4,apply:p=>{p.sub=true}}};
+}
+function renderSys(){
+ const g=gridLoad(),w=Math.min(waterLoad(),130);
+ const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}`;
+}
+function renderProjects(){
+ const el=$('#projs');
+ if(!S.projects.length){el.innerHTML='<div class="mut">None yet. Approved projects appear here and progress week by week.</div>';return}
+ el.innerHTML=S.projects.map(p=>`<div class="pj"><div>${p.type.icon} <b>${p.type.name}</b> <span class="mut">${money(p.cost)}</span></div><div class="mut">${STAGES[p.stage]}${p.stage<OPER?' &middot; '+p.stageLeft+' wk left':''} &middot; ${p.incidents} incident${p.incidents===1?'':'s'}</div><div class="prog">${STAGES.map((s,i)=>`<i class="${i<p.stage?'d':i===p.stage?'c':''}"></i>`).join('')}</div></div>`).join('');
+}
+
+/* ---------- dialogue content ---------- */
+const BUSINESS=[
+ {t:'Public Works reports fourteen potholes repaired on Elm and Third Street, and the contractor came in under budget.',w:'jennings',q:'Under budget, Mr. Mayor. Underline that. Twice.'},
+ {t:'The library will extend Saturday hours until six p.m. starting next month.',w:'wong',q:'My neighbors will be thrilled. The kids need that quiet space.'},
+ {t:'The Founders Day parade route is approved: Main Street to Veterans Park.',w:'bradley',q:'Local shops are already ordering extra stock for the weekend.'},
+ {t:'The Fire Marshal reminds residents to keep hydrants clear of snow, leaves, and, quote, lawn gnomes.',w:'rodriguez',q:'Somebody had to say it.'},
+ {t:'The Water Department will flush hydrants Tuesday. Expect discolored water for a few hours.',w:'chen',q:'Good moment to remind folks to run their taps until the water clears.'},
+ {t:'Proclamation: this is Dog Adoption Week in Clifton.',w:'bradley',q:'I support the proclamation. I will not be adopting anything. Allergies.'},
+ {t:'Street sweeping moves to Thursdays in Ward Two.',w:'wong',q:'Please put it on the door hangers this time. People missed it last year.'},
+ {t:'The recycling center now accepts electronics on the first Saturday of the month.',w:'chen',q:'Finally. Half of my neighbors have a drawer full of dead phone chargers.'},
+ {t:'Approval of last week\'s minutes.',w:'rodriguez',q:'So moved.'},
+ {t:'The senior center is requesting a new entrance ramp. Twelve thousand dollars is allocated from the community fund.',w:'wong',q:'That is the best twelve thousand dollars we will spend this year.'},
+ {t:'Police report a nine percent drop in porch package thefts since the porch camera campaign.',w:'jennings',q:'Cameras are cheaper than a patrol car. I like cameras.'},
+ {t:'The annual audit received a clean opinion.',w:'jennings',q:'A clean opinion. I am not crying. It is allergies.'}
+];
+const REMARK={
+ chen:{for:['The environmental profile here is manageable. I want monitoring, but I am not opposed.','Frankly this is a lighter footprint than what usually crosses this desk. I can work with it.'],
+  against:['The aquifer cannot absorb a draw like {water} gallons a day. I need to see real numbers before I vote yes.','I read the filings twice. Our watershed would fail this stress test.']},
+ bradley:{for:['{jobs} jobs and {tax} a year in tax base. That is an easy yes for me.','Investment like this does not knock twice. If we want a future tax base, we say yes.'],
+  against:['Honestly the risk and reward just are not there on this one for me.','If we keep burying developers in conditions, they take their checkbook to the next county.']},
+ rodriguez:{for:['{jobs} jobs. Real ones. Let us get people working.','My members need work. If the hiring is local, I am in.'],
+  against:['I will not vote for something that brings outside crews and leaves my members the scraps.','Show me real local hiring and I will listen. Right now this is a lot of promises.']},
+ wong:{for:['If they keep the trucks off residential streets, I can live with this.','The neighbors on this side of town could use the investment. Cautiously supportive.'],
+  against:['My neighbors near {site} will hear this at all hours. {noise} decibels is not a quiet neighbor.','Folks are going to wake up to this every morning, and nobody asked them.']},
+ jennings:{for:['{tax} a year? Now that is a line item I can get behind.','The numbers pencil out. I would like a bond, but the numbers pencil out.'],
+  against:['I ran the numbers twice. The city carries more risk than reward.','What happens when this thing fails? Who pays? Because I have a feeling it is us.']}
+};
+Object.entries({
+ chen:{for:['Water use is modest and the footprint is small. I can support this with monitoring.','This is the kind of project our watershed can absorb. Put the monitoring wells in the motion and I am a yes.'],
+  against:['Every gallon this draws is a gallon our creek does not get. I cannot vote for it in this form.','Show me the recharge data. Until then I assume the aquifer loses.']},
+ bradley:{for:['Clifton has been leaving money on the table for years. This is how we stop.','Jobs, tax base, and a developer willing to build. I do not see the downside.'],
+  against:['I am pro-business, but this one smells like a headache for the city.','The margins on this look thin. I do not want Clifton holding the bag when it fails.']},
+ rodriguez:{for:['Union scale, local hire, steady work. Put that in writing and you have my vote.','I have members who have been on the bench all winter. This puts them on payroll.'],
+  against:['Contractors who fly in their own crews are not creating jobs for Clifton.','I have heard these promises before. I want numbers, names and a hiring plan.']},
+ wong:{for:['It is not in anyone\'s front yard, and the traffic plan is sensible. I am leaning yes.','My neighborhood association reviewed this. They are cautiously okay with it.'],
+  against:['People move here for peace and quiet. This takes that away, and I cannot support it.','No one on {site} was asked. That matters to me.']},
+ jennings:{for:['Cost to the city is low and the revenue is real. That is as good as it gets.','If the numbers in this application hold, the budget will thank us.'],
+  against:['The tax abatements eat the benefit. I see long-term cost, short-term headlines.','I need a stronger bond and a clearer exit plan before I put my name on this.']}
+}).forEach(([id,o])=>{REMARK[id].for.push(...o.for);REMARK[id].against.push(...o.against)});
+const NEUTRAL=['I am still undecided. I want to hear from the public before I commit.','There are good arguments on both sides. Let us hear the community.','I have questions, but I am willing to be persuaded either way.','This is closer than people think. I want to listen tonight.'];
+const TOPICS={
+ water:{sign:['NO WELLS','SAVE OUR WATER','WATER IS LIFE'],opp:['My well ran cloudy last spring. You are telling me {water} gallons a day is fine? Not on my watch.','We drink from the same aquifer. If they drain it, my kids pay the price.']},
+ noise:{sign:['TOO LOUD','SAVE OUR SLEEP','SHHH!'],opp:['{noise} decibels is a leaf blower in my bedroom. I moved here for quiet.','A constant hum, day and night. That is not what we signed up for.']},
+ traffic:{sign:['TOO MANY TRUCKS','KIDS CROSS HERE'],opp:['Heavy trucks on a street where kids walk to school? Please.','Our road cannot handle this. It is a pothole festival already.']},
+ power:{sign:['POWER BILLS!','NO BLACKOUTS'],opp:['If this thing pulls as much power as they say, who pays? Us. Through our bills.','We had brownouts last summer. Adding a giant power hog is reckless.']},
+ chem:{sign:['NO TOXINS','CLEAN AIR'],opp:['What exactly is stored on this site? "Proprietary" is not an answer.','One spill and our creek is done. I want a cleanup bond, not promises.']},
+ nimby:{sign:['NOT HERE','KEEP IT RURAL'],opp:['I am not against progress, I am against it next to my backyard.','Our property values will tank. Put it somewhere else.']},
+ safety:{sign:['SAFE JOBS','PROTECT WORKERS'],opp:['A worker got hurt and they hid it for two days. Safety first, or no project.','This outfit cuts corners. Today it is a worker. Tomorrow it is a neighbor.']},
+ jobs:{sign:['JOBS NOW','HIRE LOCAL'],sup:['I have been out of work eight months. {jobs} jobs would change my family\'s life.','Local jobs, Mr. Mayor. That is all I am asking.']},
+ tax:{sign:['FUND OUR SCHOOLS','LOWER TAXES'],sup:['{tax} a year in taxes means fewer bills for the rest of us. Approve it.','Our schools and roads need this revenue. Do not let it walk away.']},
+ local:{sign:['SUPPORT LOCAL','GROW CLIFTON'],sup:['We keep losing businesses to the next town over. Welcome some investment for once.','My shop is struggling. More customers means more hope.']},
+ bribe:{sign:['RESIGN','MAYOR FOR SALE','BRIBES BOUGHT THIS MAYOR'],opp:['You took money from the developer and then lied about it. Resign!','We trusted you with this city. And you sold it for an envelope.']},
+ thanks:{sign:['THANK YOU','GOOD CALL'],sup:['Thank you for standing up to them. That took guts.','Finally, a mayor who enforces the rules. Thank you.']}
+};
+
+Object.entries({
+ water:{opp:['Our kids brush their teeth with this water. Please do not gamble with it.','I have lived here forty years and watched the creek shrink. Do not take more.']},
+ noise:{opp:['I work nights and sleep days. A constant roar would end that for me.','You can hear a pin drop on my street. Not for long if this goes through.']},
+ traffic:{opp:['I count the trucks already. This would triple them.','My daughter bikes to school on that road. It is not built for this.']},
+ power:{opp:['Our electric bills went up twice last year. This will not help.','The grid is stretched thin already. Who is going to say no when the lights flicker?']},
+ chem:{opp:['I want the list of every chemical on this site, in writing.','There is a school half a mile away. Why is this even on the table?']},
+ nimby:{opp:['Build it anywhere else. I am serious. Anywhere else.','You are asking us to live next to it so someone else can profit.']},
+ jobs:{sup:['I have three kids and a layoff notice. Please approve this.','Young people leave Clifton because there is nothing to stay for. This helps.']},
+ tax:{sup:['Our property taxes are crushing. Let a developer carry some of the load.','The fire department has not had a raise in years. This revenue could fix that.']},
+ local:{sup:['I own the diner next door. More workers means more lunch customers.','Clifton needs to say yes to something for once.']}
+}).forEach(([k,o])=>{if(o.opp)TOPICS[k].opp.push(...o.opp);if(o.sup)TOPICS[k].sup.push(...o.sup)});
+const TLABEL={water:'hydrology',noise:'acoustic',traffic:'traffic',power:'grid',chem:'hazmat',fiscal:'fiscal',jobs:'workforce'};
+function genCitizens(p,c,n){
+ const I=impacts(p,c),e=eff(p,c);
+ const pOpp=clamp(.22+I.env*.35+I.res*.3-I.jobs*.2-(S.trust-50)/300,.08,.9);
+ let oppT=[];if(e.water>=2e4)oppT.push('water','water');if(e.db>=60)oppT.push('noise');if(p.traffic>=6)oppT.push('traffic');if(p.power>=7)oppT.push('power');if(p.type.tags.includes('chem')||p.fl>=1)oppT.push('chem');oppT.push('nimby');
+ const reps=p.reports||[];
+ reps.forEach(r=>{if(r.res==='better')oppT=oppT.filter(t=>t!==r.topic);if(r.res==='worse'&&TOPICS[r.topic]&&TOPICS[r.topic].opp)oppT.push(r.topic,r.topic,r.topic)});
+ if(p.biasTopic&&TOPICS[p.biasTopic]&&TOPICS[p.biasTopic].opp)oppT.push(p.biasTopic,p.biasTopic);
+ if(!oppT.length)oppT=['nimby'];
+ const supT=['jobs','tax','local'];
+ const out=[];
+ for(let i=0;i<n;i++){
+  const rep=reps.length&&Math.random()<.5?pick(reps):null;
+  if(rep&&rep.res!=='mixed'){
+   const opp=rep.res==='worse',T=TOPICS[rep.topic]||TOPICS.nimby;
+   const txt=opp?fresh('cit-rw',[`The ${rep.label} report found that ${rep.detail}. That alone should end this.`,`Did you read the ${rep.label} report? ${rep.detail[0].toUpperCase()+rep.detail.slice(1)}. How can you even consider this?`,`The city's own ${rep.label} study says ${rep.detail}. Listen to your own experts.`])
+    :fresh('cit-rb',[`I came here worried about ${rep.label} issues, but the report says ${rep.detail}. I can live with that.`,`The ${rep.label} study put my mind at ease: ${rep.detail}. Let us not stand in the way.`,`I read the ${rep.label} report. ${rep.detail[0].toUpperCase()+rep.detail.slice(1)}. That is good enough for me.`]);
+   out.push({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:opp?'#8a3b3b':'#2f7a55',...look(),stance:opp?'opp':'sup',topic:rep.topic,
+    sign:opp?fresh('sg-'+rep.topic,T.opp?T.sign:['READ THE REPORT','THE STUDY SAYS NO']):fresh('sg-ok',['REPORT LOOKS OK','STUDY IS REASSURING','LET THEM BUILD']),text:txt,mood:opp?'angry':'happy'});
+   continue;
+  }
+  const opp=Math.random()<pOpp,topic=pick(opp?oppT:supT),T=TOPICS[topic];
+  out.push({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:opp?'#8a3b3b':'#2f7a55',...look(),stance:opp?'opp':'sup',topic,
+   sign:fresh('sg-'+topic,T.sign),text:fill(fresh('cit-'+topic+(opp?'o':'s'),opp?T.opp:T.sup),p,c),mood:opp?'angry':'happy'});
+ }
+ return out;
+}
+
+/* ---------- events ---------- */
+const EV=[
+ {bad:1,st:[1,2],when:p=>p.water>=15000,make:p=>{const n=ri(4,23);return{title:'Unpermitted wells',text:`State inspectors found ${n} unpermitted wells drilled on the ${p.type.name} site. Not a single one had a permit on file.`,dev:'That is a paperwork mix-up, Mayor. Our drilling subcontractor got ahead of the schedule.',env:8,fine:n*15000,topic:'water'}}},
+ {bad:1,st:[1,2],make:p=>{const g=ri(2,9)*100000;return{title:'Groundwater contamination',text:`Test results confirm ${num(g)} gallons of groundwater were contaminated by ${pick(['diesel fuel from a ruptured tank','drilling slurry','leaking hydraulic fluid','cement wash-out'])} at the ${p.type.name} site.`,dev:'We take full responsibility and are cooperating with the state. This was an isolated incident.',env:11,fine:250000,topic:'water',gal:g}}},
+ {bad:1,st:[2,3,4],when:p=>p.water>=8000,make:p=>{const g=ri(3,12)*100000;return{title:'Water wasted',text:`Meters show ${num(g)} gallons of treated city water wasted after contractors ${pick(['left a hydrant running overnight for dust control','flushed cooling loops straight into the storm drain','ruptured a main with an excavator','ran a leaking test line all weekend'])}.`,dev:'Against our total water budget that is a rounding error, but we will tighten our procedures.',env:6,fine:g/5,topic:'water',gal:g}}},
+ {bad:1,st:[1,2],make:p=>({title:'Muddy runoff',text:`Silt-laden runoff from the ${p.type.name} site turned Cedar Creek brown for two miles. Fish kills are being reported downstream.`,dev:'Heavy rain overwhelmed our silt fences. These things happen.',env:6,fine:60000,topic:'water'})},
+ {bad:1,st:[2,4],when:p=>p.db>=55,make:p=>({title:'Night-time noise',text:`Crews ran ${p.type.k==='datacenter'||p.type.k==='crypto'?'backup generators':'pile drivers'} at 2 a.m. Neighbors recorded ${Math.round(p.db+8)} decibels at the fence line.`,dev:'We had a deadline. We have since adjusted the schedule.',env:1,fine:40000,topic:'noise'})},
+ {bad:1,st:[4],when:p=>p.type.tags.includes('chem'),make:p=>{const g=ri(5,60)*100;return{title:'Chemical spill',text:`${num(g)} gallons of process chemicals spilled into the storm sewer during a transfer at the ${p.type.name}.`,dev:'The spill was contained quickly and poses no long-term threat. Probably.',env:12,fine:300000,topic:'chem',gal:g}}},
+ {bad:1,st:[3,4],when:p=>p.water>=20000,make:p=>({title:'Neighbors\' wells going dry',text:`Residents report private wells running dry. County hydrologists say the water table near the site has dropped ${ri(8,40)} feet since pumping began.`,dev:'Correlation is not causation, Mayor. Though we are open to a goodwill study.',env:9,fine:100000,topic:'water'})},
+ {bad:1,st:[0,1],make:p=>({title:'Grading without a permit',text:`Bulldozers were spotted grading the ${p.type.name} site before the grading permit was issued.`,dev:'We assumed approval was a formality. We apologize for the misunderstanding.',env:2,fine:40000,topic:'nimby'})},
+ {bad:1,st:[2],make:p=>({title:'Worker injured',text:`A worker was hospitalized at the ${p.type.name} site. Inspectors cited three safety violations and a missing guardrail.`,dev:'Safety is our number one priority. We are reviewing every procedure.',env:0,fine:50000,topic:'safety'})},
+ {bad:1,st:[2,3,4],when:p=>p.water>=10000&&!p.fixedMain,make:p=>{const g=ri(3,15)*100000;return{title:'Water main break',text:`Pressure swings from the ${p.type.name}'s heavy draw burst a 24-inch main on ${pick(['Elm Street','Mill Road','Fourth Avenue','Quarry Lane'])}. ${num(ri(4,40)*100)} homes lost water and ${num(g)} gallons were lost.`,dev:'Our draw is within permitted limits, Mayor. Those are city pipes from the 1950s.',env:4,fine:90000,topic:'water',gal:g,
+  extra:{label:'Order developer to fund a new main (pressure fix)',sub:'They pay for replacement. Prevents repeat breaks.',dev:-8,trust:5,mult:.5,apply:p=>{p.fixedMain=true}}}}},
+ {bad:1,st:[1,2,3,4],when:p=>p.water>=3000&&!p.metered,make:p=>{const g=ri(2,8)*100000;return{title:'Illegal water connection',text:`Inspectors found an unmetered, illegal tap on a city main feeding the ${p.type.name} site. An estimated ${num(g)} gallons were taken over several months.`,dev:'A contractor hooked up a temporary line. We did not know it was unmetered. Probably.',env:2,fine:120000,topic:'water',gal:g,
+  extra:{label:'Require metered, inspected connections (audit)',sub:'Closes the loophole for good.',dev:-6,trust:4,mult:.5,apply:p=>{p.metered=true}}}}},
+ {bad:1,st:[1,2],when:p=>p.traffic>=6,make:p=>({title:'Truck traffic',text:`Dump trucks tore up Elm Street and ran through the school zone twice yesterday.`,dev:'Our drivers took a detour. We will assign a flagger.',env:1,fine:30000,topic:'traffic'})},
+ {bad:1,st:[1],when:p=>p.type.tags.includes('dust')||p.traffic>=8,make:p=>({title:'Dust cloud',text:`A dust cloud from the ${p.type.name} site drifted over two subdivisions. Dozens of asthma complaints so far.`,dev:'We are adding water trucks. It was a very dry week.',env:3,fine:30000,topic:'chem'})},
+ {good:1,st:[1,2],when:p=>p.cost>=2e6,id:'road',make:p=>({title:'New access road',text:`The developer finished a brand-new ${ri(1,4)}.${ri(0,9)}-mile access road and opened it to the public.`,dev:'We believe in being good neighbors. The road is ours to give.',trust:3})},
+ {good:1,st:[2,3,4],when:p=>p.cost>=5e6,id:'park',make:p=>({title:'New park',text:`The developer unveiled a new ${ri(4,25)}-acre park with trails, a playground and a pavilion.`,dev:'Come enjoy it! Families are what make a community.',trust:5,env:3})},
+ {good:1,st:[2,3,4],when:p=>p.cost>=1e6,id:'school',make:p=>({title:'School donation',text:`The developer donated ${money(ri(2,10)*10000)} to the school district for a new computer lab.`,dev:'Education is the best investment we can make.',trust:3})},
+ {good:1,st:[3,4],when:p=>p.cost>=2e7,id:'fire',make:p=>({title:'Fire engine donation',text:'The developer donated a new fire engine to the volunteer fire department.',dev:'First responders keep us all safe. It is the least we could do.',trust:3})},
+ {good:1,st:[3,4],when:p=>p.jobs>=15,id:'jobfair',make:p=>({title:'Local job fair',text:`The developer hosted a job fair and hired ${ri(20,Math.max(21,Math.min(120,p.jobs)))} local residents on the spot.`,dev:'We want Clifton to build Clifton.',trust:3})},
+ {good:1,st:[3,4],when:p=>p.cost>=1e7,id:'solar',make:p=>({title:'Solar canopy',text:'The developer installed a solar canopy over the library parking lot at no cost to the city.',dev:'A small thank-you for the warm welcome.',trust:2,env:3})},
+ {good:1,st:[2,3,4],when:p=>p.cost>=3e7,id:'main',make:p=>({title:'Water main upgrade',text:`The developer replaced two miles of leaky water main, saving about ${num(ri(20,90)*1000)} gallons a day.`,dev:'Wasting water helps nobody. We fixed it.',trust:2,env:4})}
+];
+const RESP=[
+ {k:'fine',label:'Issue a fine',sub:'Collect the fine. Developer cools toward you. Residents see action.',mult:.6,dev:-6,trust:3},
+ {k:'stop',label:'Stop-work order (1 week delay)',sub:'Hard line. Biggest environmental protection, biggest developer backlash.',mult:.2,dev:-14,trust:7},
+ {k:'forgive',label:'Accept their apology',sub:'Developer is relieved. Residents will not be.',mult:1,dev:6,trust:-6}
+];
+
+/* ---------- game flow ---------- */
+let snap=null;
+async function callToOrder(){
+ clearTags();
+ await gavel(3);
+ banner(`WEEK ${S.week}`);
+ await say('mayor',fresh('open',[`This meeting of the Clifton City Council will come to order. Clerk, please note all members are present.`,`Good evening, everyone. I call this meeting to order. Please silence your phones.`,`Order, please. This is the regular weekly meeting of the Clifton City Council.`,`Welcome, everyone. We have a full agenda tonight, so let us begin.`,`I call the meeting to order. Please rise for the pledge, then we will get started.`]));
+}
+async function leakScene(l){
+ const p=l.proj,r={name:'Dana Whitfield',role:'Clifton Courier reporter',color:'#8a2b2b',...look(),sign:'PRESS'};
+ S.leaked=true;S.stats.leaks=(S.stats.leaks||0)+1;sfx.alarm();banner('BRIBE LEAKED');
+ await say('mayor','Before we begin, the press gallery has asked to be heard.');
+ await showSpeaker(r);
+ await say(r,`Mayor, the Courier has obtained records showing ${p.company} routed ${money(l.amt)} to your campaign account around the ${p.type.name} vote. Is that true?`);
+ await hideSpeaker();
+ const k=await ask('A bribe you accepted has leaked to the press.',[{k:'deny',label:'Deny everything',sub:'The records exist. This probably will not hold.',cls:'stop'},{k:'clean',label:'Come clean and cooperate',sub:'Painful, but limits the damage.'}]);
+ let bad=false;
+ if(k==='deny'){
+  if(Math.random()<.25){await say('mayor','These records are fabricated and politically motivated.');adj('trust',-4);minutes('A bribe leak fizzled out.','b')}
+  else{await say('mayor','These records are fabricated.');await say('clerk','Mayor, the reporter just posted the bank statements.');bad=true;adj('trust',-18,'caught lying');adj('corrupt',12);adj('dev',-8)}
+ }else{await say('mayor','It is true, and I am sorry. I will cooperate fully with any investigation.');bad=true;adj('trust',-10);adj('corrupt',-25,'came clean');adj('dev',-5)}
+ minutes(`Scandal: leak that ${p.company} paid the mayor ${money(l.amt)}.`,'b');
+ if(bad){
+  await say('chen','This is disgraceful. The public deserves better than this.');
+  const T=TOPICS.bribe,cs=[0,1].map(()=>({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:'#8a3b3b',...look(),stance:'opp',sign:pick(T.sign),mood:'angry',text:pick(T.opp)}));
+  showCrowd(cs);await sleep(AUTO?10:300);
+  for(const c of cs){await showSpeaker(c);await say(c,c.text);heckle('BOO!');await hideSpeaker()}
+  await hideCrowd();
+ }
+}
+async function scandalCheck(){
+ if(S.corrupt>=100)return;
+ const li=S.leaks.findIndex(l=>l.week<S.week&&Math.random()<l.prob);
+ if(li>=0){const l=S.leaks.splice(li,1)[0];await leakScene(l);return}
+ if(S.corrupt>=25&&Math.random()<S.corrupt/150){
+  const r={name:'Dana Whitfield',role:'Clifton Courier reporter',color:'#8a2b2b',...look(),sign:'PRESS'};
+  await say('mayor','We will now take a short statement from the press gallery.');
+  await showSpeaker(r);
+  await say(r,'Mayor, sources tell the Courier that a developer slid an envelope across your desk. Do you have a comment?');
+  await hideSpeaker();
+  const k=await ask('How do you respond to the Courier?',[{k:'deny',label:'Deny everything',sub:'Might work. If it does not, it looks much worse.'},{k:'clean',label:'Come clean and cooperate',sub:'Painful now, but it defuses the investigation.'}]);
+  if(k==='deny'){
+   if(Math.random()<.5){await say('mayor','These allegations are baseless and politically motivated.');adj('trust',-3);minutes('The Courier ran a scandal story; it fizzled.','b')}
+   else{await say('mayor','These allegations are... baseless.');await say('clerk','Mayor, the reporter just posted the photo.');adj('trust',-14,'caught lying');adj('corrupt',10);minutes('Scandal! The Courier published proof.','b')}
+  }else{await say('mayor','I made a mistake. I will cooperate fully with any inquiry.');adj('trust',-8);adj('corrupt',-30,'came clean');minutes('Mayor came clean about an envelope.','b')}
+ }
+}
+async function cityBusiness(){
+ await say('mayor','First, routine city business.');
+ const items=shuffle(BUSINESS).slice(0,2);
+ for(const it of items)await say('mayor',it.t);
+ await say(items[0].w,items[0].q);
+ await say('mayor','Thank you. Moving on.');
+ await silly(.4);
+}
+const SILLY={
+ chen:['I move that we ask the creek how it feels about this.','Has anyone considered that fish also vote, with their fins?','My cat is a registered environmental stakeholder, and she disapproves.','I once measured a puddle for six hours. I have never been more at peace.','Is a data center just a very warm library for computers?','I read that trees talk to each other. I have been eavesdropping for years.'],
+ bradley:['I think we should rezone the entire town as a drive-thru.','Synergy. I just wanted to say synergy.','What if the tax base were... bigger? Just spitballing.','I have a business idea: a business that sells businesses to other businesses.','Can we monetize the potholes? Premium potholes.','I sleep four hours a night and I use the other twenty to disrupt things.'],
+ rodriguez:['I would like to formally thank the sandwich I had at lunch for its service.','I move that every meeting include a ten-minute nap.','Back in my day we hauled gravel uphill both ways. I am thirty-four.','What if the crane operators wore capes? Morale.','Unions are great. So are lunch breaks. Coincidence? No.','I think hard hats should come in more colors. Teal, specifically.'],
+ wong:['I would like it noted that the water fountain in the lobby is judging me.','Quiet is good. I once heard a tree and I was moved.','My neighbor\'s plastic flamingo is an affront to the zoning code.','Have we considered a moat?','I believe Clifton needs a mascot, and it should be a goose.','Does anyone else feel like the clock in here runs fast on the fun parts?'],
+ jennings:['I have audited my own thoughts and found them lacking.','Is a bond just a very formal friendship?','Please let the record show I brought exact change.','I have calculated that this meeting could have been a spreadsheet.','I counted the ceiling tiles. There are four hundred and twelve. I thought you should know.','I once balanced a budget in my sleep. The budget woke up and balanced me.']
+};
+async function silly(chance,id){
+ if(Math.random()>=chance)return;
+ const m=id?CAST[id]:pick(COUNCIL);
+ await say(m.id,fresh('silly-'+m.id,SILLY[m.id]));
+ sfx.pop();audMood('happy',1200);
+ const r=Math.random();
+ if(r<.55)await say('mayor',fresh('silly-m',['Thank you, Councilmember. We will let that one marinate.','The clerk will not be recording that.','Noted. Please never explain it.','Let us all pretend that made sense. Moving on.','I will allow it, but I will not understand it.','That is... a statement. Moving on.']));
+ else if(r<.8){await say('clerk',fresh('silly-c',['Mayor, do I strike that from the record?','Mayor, I am going to need that in writing, and I hope nobody writes it.','Mayor, I stopped taking minutes about thirty seconds ago.']));await say('mayor',fresh('silly-m2',['Strike it.','Strike it, and then strike it again.','Leave it in. History should know.']))}
+}
+function stageName(p){return STAGES[p.stage]}
+async function projectUpdates(mode){
+ const off=mode==='off';
+ if(!S.projects.length)return;
+ if(!off)await say('mayor',fresh('pu-intro',['Next, status reports from the Planning Department on projects already approved.','Now an update from Planning on the projects we have already approved.','Let us check in on the active projects.']));
+ const changes=[];let rev=0;
+ const pending=off?[]:S.queue.splice(0).map(x=>[x[0],x[1],x[2],'queued']);
+ let bad=pending.filter(x=>x[1].bad).length;
+ for(const p of S.projects){
+  if(p.curtail>0)p.curtail--;
+  if(p.watch>0)p.watch--;
+  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g')}}}
+  else rev+=p.tax/52;
+  const c=p.conds;
+  if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
+  else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
+  else{
+   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(p.stage===0?.5:p.stage===OPER?.6:1);
+   if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
+   if(Math.random()<.2+(S.dev>60?.1:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
+  }
+ }
+ const gl=gridLoad();
+ if(bad<2&&gl>=72&&Math.random()<(gl-65)/60){
+  const ops=S.projects.filter(p=>loadOf(p)>0).sort((a,b)=>loadOf(b)-loadOf(a));
+  if(ops.length)pending.push([ops[0],{bad:1,make:p=>gridEv(p,gl)},false]);
+ }
+ if(changes.length)sfx.chime();
+ if(off){
+  if(changes.length)await say('office','Planning Department memo: '+changes.join('; ')+'.');
+  if(rev>0){S.stats.tax+=rev;addBudget(Math.round(rev),'weekly tax from operating projects')}
+ }else{
+  if(changes.length)await say('mayor','Progress since the last meeting: '+changes.join('; ')+'.');
+  else await say('mayor',fresh('pu-none',['No projects changed stage since the last meeting.','Nothing has moved to a new stage since we last met.']));
+  if(rev>0){S.stats.tax+=rev;addBudget(Math.round(rev),'tax from operating projects');await say('mayor',`Finance reports ${money(rev)} collected from operating projects this week.`)}
+ }
+ for(const [p,ev,promised,qm] of pending)await runEvent(p,ev,promised,off?'off':qm);
+ renderProjects();
+}
+async function runEvent(p,evDef,promised,mode){
+ const ev=evDef.pre||evDef.make(p);if(evDef.id)p.seen[evDef.id]=1;
+ const urgent=/Blackout|Brownout|Water main|spill|contamination/i.test(ev.title||'');
+ if(mode==='off'&&!(evDef.bad&&urgent)){S.queue.push([p,{good:evDef.good,bad:evDef.bad,pre:ev,id:evDef.id},promised]);return}
+ if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
+ if(evDef.good){
+  await say('mayor',`Good news. ${promised?'As promised in the approval conditions: ':''}${ev.text}`);
+  await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
+  const m=pick(COUNCIL);await say(m.id,pick(['Well, that is a pleasant surprise.','That is what a good neighbor looks like.','I will gladly take good news for a change.']));
+  sfx.good();adj('trust',ev.trust||0,ev.title);adj('env',ev.env||0);S.stats.perks++;adj('dev',promised?2:3);
+  minutes(`${ev.title}: ${p.type.name}.`,'g');return;
+ }
+ p.incidents++;S.stats.incidents++;S.stats.gallons+=ev.gal||0;sfx.alarm();sfx.bad();banner(ev.title.toUpperCase());
+ if(ev.grid)S.stats.grid=(S.stats.grid||0)+1;
+ if(p.waived){adj('trust',-4,'safety review was waived');}
+ if(mode==='early'){
+  await say('mayor',`During the inspection you spot a problem. ${ev.text}`);
+  await say(p.rep,ev.dev);
+  adj('trust',2,'caught it on inspection');
+ }else{
+  await say('mayor',mode==='queued'?`Last week the Planning Department logged an incident at the ${p.type.name} from ${p.company}: ${ev.text}`:`Troubling report on the ${p.type.name} from ${p.company}: ${ev.text}`);
+  const reactor=ev.topic==='water'?CAST.chen:ev.topic==='noise'||ev.topic==='traffic'?CAST.wong:ev.topic==='safety'?CAST.rodriguez:pick(COUNCIL);
+  await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
+  await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
+ }
+ const fine=Math.round(ev.fine*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||20000;
+ if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
+ const opts=RESP.map(r=>({k:r.k,label:r.label,sub:r.k==='fine'?`Collect ${money(fine)}. ${r.sub}`:r.sub}));
+ if(ev.extra)opts.splice(2,0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
+ const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
+ const r=k==='extra'?ev.extra:RESP.find(x=>x.k===k);
+ adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)),ev.title);adj('dev',r.dev);adj('trust',r.trust);
+ if(k==='fine'){addBudget(fine,'fine')}
+ if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
+ if(k==='extra')ev.extra.apply(p);
+ await say('mayor',k==='fine'?`I am fining ${p.company} ${money(fine)}, effective immediately.`:k==='stop'?`I am issuing a stop-work order at the ${p.type.name} site until inspectors sign off.`:k==='extra'?`I am ordering ${p.company} to do the following: ${ev.extra.label.toLowerCase()}.`:`We will accept the apology, but this is on the record. One more incident and the response will be different.`);
+ if(mode==='early'){minutes(`Inspection found: ${ev.title} at ${p.type.name} (${k==='fine'?'fined':k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven'}).`,'b');return}
+ // citizens react
+ const topic=k==='forgive'?ev.topic:'thanks',n=k==='forgive'?2:1;
+ const crowd=[];for(let i=0;i<n;i++){const T=TOPICS[topic];const opp=k==='forgive';crowd.push({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:opp?'#8a3b3b':'#2f7a55',...look(),stance:opp?'opp':'sup',sign:pick(T.sign),mood:opp?'angry':'happy',
+  text:opp?`You are letting them off with a warning?! After "${ev.title.toLowerCase()}"? Shame on you, Mayor!`:fill(pick(T.sup),p)})}
+ await say('mayor',k==='forgive'?'I see members of the public rising from the gallery.':'A resident has asked to speak.',{auto:700});
+ showCrowd(crowd);await sleep(AUTO?10:300);
+ for(const c of crowd){await showSpeaker(c);await say(c,c.text);if(k==='forgive')heckle('BOO!');await hideSpeaker()}
+ await hideCrowd();
+ minutes(`${ev.title}: ${p.type.name} (${k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven'}).`,'b');
+}
+function chooseDecision(p){
+ return new Promise(res=>{
+  $('#dlg').classList.add('hidden');const b=$('#choices');b.classList.remove('hidden');
+  const mx=maxBurden(p);
+  const lock=c=>p.free[c.k]||p.nocond&&true||(c.k==='bond'&&p.noBond);
+  const zt=['no zoning issues','conditionally permitted','conflicts with neighboring zone'][p.waived?0:p.zl],ft=['no fire concerns','fire concerns','major fire concerns'][p.waived?0:p.fl];
+  b.innerHTML=`<div class="cTitle">Your motion on the ${p.type.name}</div><div class="mut">Attach conditions to win over members, but a developer pushed too far will walk away. Staff: ${zt}; ${ft}.${p.nocond?' Counsel warned that conditions are unenforceable, so none can be added.':''}</div>
+  <div class="conds">${CONDS.map(c=>`<label><input type="checkbox" data-k="${c.k}" ${p.free[c.k]?'checked disabled':lock(c)?'disabled':''}><span>${c.name}${p.free[c.k]?' <b style="color:var(--good)">(offered free)</b>':''}<small>${c.desc}</small></span></label>`).join('')}</div>
+  <div id="burden"></div>
+  <div class="btnrow"><button class="go" data-a="approve">Recommend APPROVAL</button><button class="stop" data-a="deny">Recommend DENIAL</button>${p.tabled?'':'<button data-a="table">Table for a week</button>'}</div>`;
+  const conds={...p.free};const upd=()=>{const bu=burden(conds,p);const st=bu>mx?'<b style="color:var(--bad)">They will walk away.</b>':bu>mx-1.5?'<b style="color:var(--acc)">Getting risky.</b>':'<b style="color:var(--good)">Acceptable to them.</b>';$('#burden').innerHTML=`Developer tolerance: ${st}`};
+  upd();
+  b.onchange=e=>{const k=e.target.dataset.k;if(k){conds[k]=e.target.checked;upd()}};
+  b.onclick=e=>{const t=e.target.closest('button');if(!t)return;b.classList.add('hidden');$('#dlg').classList.remove('hidden');b.onclick=null;b.onchange=null;res({action:t.dataset.a,conds:Object.fromEntries(Object.entries(conds).filter(x=>x[1]))})};
+ });
+}
+function openOverlay(id,html){const o=$('#'+id);o.innerHTML=html;o.classList.add('show')}
+function closeOverlay(id){const o=$('#'+id);o.classList.remove('show');o.innerHTML=''}
+
+async function hallScene(){
+ if(S.trust>=45)return;
+ const n=Math.min(14,3+Math.round((50-S.trust)/3)),riot=S.trust<25;
+ const signs=['RECALL THE MAYOR','LISTEN TO US','WHO ARE YOU WORKING FOR?','PEOPLE NOT PROFITS'];
+ if(S.corrupt>=20)signs.push('HONEST GOVERNMENT NOW','MAYOR FOR SALE');
+ if(S.leaked)signs.push('RESIGN','BRIBES BOUGHT THIS MAYOR');
+ if(S.stats.gallons>0||S.env<50)signs.push('SAVE OUR WATER','PROTECT OUR CREEK');
+ if(S.stats.grid)signs.push('NO MORE BLACKOUTS','STOP THE POWER GRAB');
+ let html=`<div class="label">${riot?'ANGRY CROWD AT CITY HALL':'PROTEST AT CITY HALL'}</div><div class="flagp"><i></i></div><div class="ped"></div><div class="name">CLIFTON CITY HALL</div><div class="bldg"></div><div class="cols">${'<i></i>'.repeat(6)}</div><div class="door"></div><div class="steps"></div>`;
+ if(riot)for(let i=0;i<4;i++)html+=`<div class="cop" style="left:${36+i*9}%;width:76px;margin-left:-38px;transform:scale(.75);transform-origin:50% 100%">${figHTML({skin:pick(SKINS),hair:'#1b1b1b',suit:'#1b3a6b'})}</div>`;
+ for(let i=0;i<n;i++)html+=`<div class="cm angry" style="left:${(6+Math.random()*88).toFixed(1)}%;--b:${ri(0,56)}px;--dl:${(i*.1).toFixed(2)}s"><div class="sign"><span>${pick(signs)}</span></div>${figHTML(look())}</div>`;
+ openOverlay('hall',html);sfx.pop();sfx.boo();ambience(true);
+ banner(riot?'ANGRY CROWD':'PROTEST');
+ const L={name:'Protest organizer',role:'Clifton resident',color:'#8a3b3b',el:$('#hall .cm')};
+ await say('outside',`The mayor arrives at city hall. ${riot?'A furious crowd has surrounded the steps.':'A crowd has gathered on the steps with signs.'}`);
+ await say(L,`Mayor! Public trust is at ${Math.round(S.trust)} percent! Are you even listening to us?`);
+ if(S.corrupt>=20)await say(L,'We hear envelopes are changing hands in your office!');
+ else if(S.stats.gallons>0)await say(L,`${num(S.stats.gallons)} gallons of our water lost or poisoned, and you let them walk!`);
+ else if(S.stats.grid)await say(L,'The lights keep going out, and you keep approving more!');
+ if(riot)await say('outside','Police form a line at the doors as the crowd presses forward.',{auto:900});
+ const k=await ask('Protesters block the entrance. What do you do?',[
+  {k:'talk',label:'Stop and speak with them',sub:'A gamble. Sincerity can win them over, or you can look out of touch.'},
+  {k:'review',label:'Promise a public review of active projects',sub:'Trust up. Developers will not love it.'},
+  {k:'side',label:'Slip in through the side entrance',sub:'Avoids the crowd. Looks like hiding.'}]);
+ if(k==='talk'){
+  if(Math.random()<(S.env>50?.7:.5)+(S.corrupt<15?.1:-.1)){await say('mayor','I hear you. Every one of you deserves a mayor who listens, and I am listening.');adj('trust',4,'spoke with protesters')}
+  else{await say('mayor','I understand your concerns, but we are doing everything we can.');await say(L,'That is what they always say!');adj('trust',-3,'out of touch')}
+ }else if(k==='review'){await say('mayor','I will order a public review of every active project, starting this month.');adj('trust',3);adj('dev',-3)}
+ else{await say('outside','The mayor ducks through a side door. Cameras catch it.');adj('trust',-2,'hid from protesters')}
+ ambience(false);closeOverlay('hall');
+}
+
+function openRoom(label,vis){
+ const om={name:MAYOR.name,role:'In your office',color:MAYOR.color,skin:MAYOR.skin,hair:MAYOR.hair,suit:MAYOR.suit};
+ openOverlay('office',`<div class="lock">${label}</div><div class="win"></div><div class="frame" style="left:30%">MAYOR OF THE YEAR</div><div class="frame" style="left:44%;width:58px">PROCLAMATION</div><div class="shelf"></div>
+  <div class="chair" style="left:36%;bottom:108px"></div><div class="och" id="oM" style="left:36%;bottom:104px">${figHTML(om)}</div><div class="odesk"><div class="nameplate">MAYOR</div></div>
+  <div class="chair" style="left:82%;bottom:28px"></div><div class="och" id="oV" style="left:82%;bottom:30px">${figHTML(vis)}</div>`);
+ om.el=$('#oM');vis.el=$('#oV');sfx.pop();banner(label);
+ return om;
+}
+function openField(kind,label,vis){
+ const om={name:MAYOR.name,role:'Out in the field',color:MAYOR.color,skin:MAYOR.skin,hair:MAYOR.hair,suit:MAYOR.suit};
+ const bg=kind==='site'?'<div class="crane"><i></i></div><div class="fence"></div><div class="trailer">SITE OFFICE</div><div class="pile"></div>':'<div class="house h1"></div><div class="house h2"></div><div class="house h3"></div><div class="walk"></div>';
+ const hat=kind==='site'?'<div class="hardhat"></div>':'';
+ openOverlay('field',`<div class="flabel">${label}</div>${bg}<div class="och" id="fM" style="left:38%;bottom:${kind==='site'?44:30}px">${figHTML(om)}${hat}</div><div class="och" id="fV" style="left:62%;bottom:${kind==='site'?38:24}px">${figHTML(vis)}${hat}</div>`);
+ $('#field').className='show '+kind;
+ om.el=$('#fM');vis.el=$('#fV');sfx.pop();banner(label);
+ return om;
+}
+async function officeMeeting(p){
+ if(Math.random()>clamp(.35+S.corrupt/200+p.sizeF*.15,.3,.9))return;
+ const bribeP=clamp(.1+S.corrupt/130+(p.cost>=1e7?.12:0),.08,.75);
+ const kind=Math.random()<bribeP?'bribe':pick(['offer','offer','waiver']);
+ const vis=kind==='bribe'?{name:'Vince Carrow',role:'Lobbyist, '+p.company,color:'#4a3b6a',...look(),suit:'#222',hair:'#222'}:p.rep;
+ const om=openRoom('CLOSED-DOOR MEETING',vis);
+ p.met=true;
+ await say('office',`After hours, your assistant closes the door. ${vis.name} of ${p.company} takes the chair across from your desk.`);
+ const nm=k=>CONDS.find(c=>c.k===k).name.toLowerCase();
+ if(kind==='offer'){
+  const pool=['fund','road','park','hire','monitor','fireplan','buffer'];
+  const offered=shuffle(pool).slice(0,2);
+  await say(vis,`Mayor, we would rather be partners than adversaries. If you move to approve, ${p.company} will voluntarily commit to ${offered.map(nm).join(' and ')}. No strings attached.`);
+  await say(om,'Voluntary commitments go on the record. Go on.');
+  const k=await ask(`${vis.name} offers voluntary commitments`,[{k:'take',label:'Accept the offer',sub:'Those conditions are free: they do not count against the developer\'s tolerance.'},{k:'push',label:'Push for more',sub:'Might win a third commitment. Might sour them.'},{k:'no',label:'Decline private deals',sub:'Keep everything on the public record.'}]);
+  if(k==='take'){offered.forEach(x=>p.free[x]=true);adj('dev',3);await say(vis,'Wonderful. We will hold up our end.');minutes(`Private meeting: ${p.company} offered ${offered.map(nm).join(' and ')}.`)}
+  else if(k==='push'){
+   if(Math.random()<.55){const more=shuffle(pool.filter(x=>!offered.includes(x)))[0];offered.push(more);await say(vis,`All right. We will add ${nm(more)}. That is as far as I can go.`)}
+   else{await say(vis,'You are pushing your luck, Mayor. The offer stands, and that is all.');adj('dev',-6)}
+   offered.forEach(x=>p.free[x]=true);minutes(`Private meeting: negotiated ${offered.length} free commitments.`);
+  }else{await say(om,'Put anything you want to offer in writing at the public meeting.');adj('trust',1);adj('dev',-2)}
+ }else if(kind==='waiver'){
+  await say(vis,p.zl>0||p.fl>0?`Mayor, between us, staff is going to be difficult on the ${p.zl>p.fl?'zoning':'fire safety'} side. Our attorneys call it overzealous. Waive the staff review and we move faster, and ${p.company} will remember your help.`:'Mayor, staff reviews are a formality. Waive them and we save everyone a week.');
+  const k=await ask('Developer asks you to waive staff review',[{k:'grant',label:'Waive the zoning and fire review',sub:'Staff concerns vanish from the record. Residents may notice. Incidents become more likely.',cls:'stop'},{k:'fast',label:'Expedite, but keep the full review',sub:'A friendly gesture that costs nothing.'},{k:'hold',label:'Full review, no exceptions',sub:'Developer will be annoyed.'}]);
+  if(k==='grant'){p.waived=true;adj('dev',10);await say(vis,'You will not regret this, Mayor.');minutes('Waived staff review in a private meeting.','b')}
+  else if(k==='fast'){adj('dev',3);await say(om,'I will ask staff to prioritize it. They will still do their jobs.')}
+  else{adj('dev',-4);adj('trust',1);await say(om,'Staff reviews exist for a reason. They stay.')}
+ }else{
+  const amt=Math.round(p.cost*.004/1000)*1000||25000;
+  await say(vis,`Mayor, no one is keeping notes in here. If this passes, ${money(amt)} will find its way to your campaign account. Consider it a thank-you.`);
+  const k=await ask(`Lobbyist offers ${money(amt)} for a "yes" on the ${p.type.name}`,[{k:'take',label:'Accept the envelope',sub:'Developer owes you. Council gets pressure. Scandal risk climbs.',cls:'stop'},{k:'refuse',label:'Refuse and show him out',sub:'Clean hands. The lobbyist will not forget it.'}]);
+  if(k==='take'){
+   $('#office').insertAdjacentHTML('beforeend','<div class="prop env">&#9993;&#65039;</div>');sfx.pop();await sleep(900);
+   await say(om,'I will see what I can do.');p.bribed=true;adj('corrupt',22,'bribe');adj('dev',12);S.stats.bribes=(S.stats.bribes||0)+1;minutes('Accepted a lobbyist\'s envelope.','b');
+   S.leaks.push({proj:p,amt,week:S.week,prob:clamp(.18+S.corrupt/250,.12,.6)});
+  }else{await say(om,'Please leave. My vote is not for sale.');adj('trust',2);adj('dev',-3)}
+ }
+ await say(vis,'Thank you for your time, Mayor.',{auto:700});
+ closeOverlay('office');
+}
+
+const MEMBER_TOPICS={chen:['water','chem','power'],bradley:['fiscal','jobs'],rodriguez:['jobs','fiscal'],wong:['noise','traffic','water'],jennings:['fiscal','power']};
+function severity(p,t){
+ const e=eff(p,p.conds||{});
+ if(t==='water')return clamp(e.water/1.5e6,0,1);
+ if(t==='noise')return clamp((e.db-45)/40,0,1);
+ if(t==='traffic')return p.traffic/10;
+ if(t==='power')return p.power/10;
+ if(t==='chem')return clamp((p.type.tags.includes('chem')?.5:0)+p.fl*.25,0,1);
+ if(t==='fiscal')return clamp(1-p.tax/1.5e6,0,1)*.7;
+ return clamp(1-p.jobs/250,0,1)*.7;
+}
+const REQ={
+ water:['I want an independent hydrology study before I vote. Nobody has verified that draw.','Can staff commission a water study? I do not trust the numbers in the application.','The water numbers are the whole ballgame for me. I would like a hydrology report.'],
+ noise:['I would like an acoustic study at the property line, not a brochure number.','Has anyone measured what {noise} decibels sounds like from the nearest home? I want a sound study.'],
+ traffic:['Before I decide, I want a traffic engineer to count the real truck trips.','Can we get a traffic study? That road was not built for this.'],
+ power:['I would like the utility to model the grid impact before we commit.','What does this do to our grid? I want a utility load study.'],
+ chem:['I want a hazmat assessment of what is stored on site.','Can we get a hazardous materials review before the vote? I am not comfortable guessing.'],
+ fiscal:['I want finance to verify the tax numbers. Abatements have a way of eating revenue.','Can the Finance Director run a fiscal impact analysis? I do not trust the projections.'],
+ jobs:['I want the workforce board to verify those job numbers. Automation changes everything.','Can we get a labor analysis? How many of those jobs are really local?']
+};
+async function requestReports(p){
+ let asked=shuffle(COUNCIL).filter(m=>score(m,p,{},{pub:0})<.15).slice(0,3);
+ if(!asked.length)asked=[pick(COUNCIL)];
+ p.requests=[];
+ for(const m of asked){
+  const t=MEMBER_TOPICS[m.id].filter(x=>!p.requests.some(r=>r.topic===x)).sort((a,b)=>severity(p,b)-severity(p,a))[0];
+  if(!t)continue;
+  p.requests.push({m:m.id,topic:t});
+  await say(m.id,fill(fresh('req-'+t,REQ[t]),p,p.conds||{}));
+ }
+ const labels=p.requests.map(r=>TLABEL[r.topic]);
+ await say('mayor',fresh('req-mayor',[`Without objection, staff will return next week with ${labels.join(' and ')} reports.`,`So ordered. We will bring back ${labels.join(' and ')} findings at the next meeting.`,`The clerk will note the request for ${labels.join(' and ')} studies. We revisit this next week.`]));
+}
+function makeReport(p,t){
+ const sev=severity(p,t),roll=Math.random(),pw=.2+sev*.45;
+ const res=roll<pw?'worse':roll<pw+.3?'better':'mixed';
+ const lab=TLABEL[t];
+ const R={topic:t,res,label:lab};
+ if(t==='water'){R.who='Dr. Lena Ortiz';R.role='Hydrologist';
+  if(res==='worse'){p.water=Math.round(p.water*1.4);R.detail=`peak draw is about ${num(p.water)} gallons a day and the aquifer recharges slowly`;R.text=`The hydrology study is complete. Peak demand is 40 percent above the application, roughly ${num(p.water)} gallons a day. Recharge in this basin is slow, and neighboring wells could see drawdown within two years.`}
+  else if(res==='better'){p.water=Math.round(p.water*.7);R.detail=`realistic draw is closer to ${num(p.water)} gallons a day and the basin can handle it`;R.text=`The hydrology study is complete. Recharge is stronger than assumed. Realistic draw is about ${num(p.water)} gallons a day, and the basin can carry it.`}
+  else{R.detail='the aquifer can support the draw only with recycling and well monitoring';R.text='The study confirms the stated draw. The aquifer can support it, but only with water recycling and independent well monitoring.'}}
+ else if(t==='noise'){R.who='Marcus Bell';R.role='Acoustic Consultant';
+  if(res==='worse'){p.db+=5;R.detail=`readings at the nearest home would reach ${Math.round(p.db)} decibels`;R.text=`We modeled the site at the nearest home. Expect about ${Math.round(p.db)} decibels, five more than the application claims, with a low-frequency hum that carries.`}
+  else if(res==='better'){p.db-=4;R.detail=`readings at the nearest home would be about ${Math.round(p.db)} decibels`;R.text=`Terrain and tree cover help. At the nearest home we expect roughly ${Math.round(p.db)} decibels, lower than the application suggested.`}
+  else{R.detail='noise is within limits but audible on quiet nights';R.text='Noise is within code but audible on quiet nights. A sound barrier would make a real difference.'}}
+ else if(t==='traffic'){R.who='Rosa Delgado';R.role='Traffic Engineer';
+  if(res==='worse'){p.traffic=Math.min(10,p.traffic+2);R.detail='peak truck trips are double what the developer reported';R.text='We counted comparable sites. Peak truck trips are about double what the developer reported, and the Elm Street intersection fails at rush hour.'}
+  else if(res==='better'){p.traffic=Math.max(1,p.traffic-2);R.detail='trip counts were overstated and the roads can absorb them';R.text='Trip counts were overstated. With staggered shifts, existing roads can absorb the traffic with only a turn lane.'}
+  else{R.detail='traffic is manageable with a routing plan';R.text='Traffic is manageable if trucks are restricted to the Route 9 corridor. Without a routing plan, it is not.'}}
+ else if(t==='power'){R.who='Kevin Marsh';R.role='Utility Planner';
+  if(res==='worse'){p.power=Math.min(10,p.power+2);R.detail='peak demand is higher than stated and would strain the grid';R.text='Our load study shows peak demand about 20 percent above the application. At current capacity, the grid would run hot on summer afternoons.'}
+  else if(res==='better'){p.power=Math.max(0,p.power-2);R.detail='the grid has more headroom than assumed';R.text='A planned substation upgrade gives us more headroom than assumed. The load is manageable.'}
+  else{R.detail='the grid can handle it only with some upgrades';R.text='The grid can handle the load, but only after a transformer upgrade that is not yet funded.'}}
+ else if(t==='chem'){R.who='Ana Reyes';R.role='Hazmat Specialist';
+  if(res==='worse'){p.fl=Math.min(2,p.fl+1);R.detail='storage and containment fall short of what the site needs';R.text='The proposed storage and containment fall short of code for what will be on site. A spill would reach the storm sewer in minutes.'}
+  else if(res==='better'){p.fl=Math.max(0,p.fl-1);R.detail='the containment plan exceeds code';R.text='The containment plan exceeds code. Secondary containment and drainage controls are solid.'}
+  else{R.detail='containment is adequate but untested';R.text='Containment meets code on paper, but nothing has been tested. I would want a drill before opening day.'}}
+ else if(t==='fiscal'){R.who='Nora Whitaker';R.role='Finance Director';
+  if(res==='worse'){p.tax=Math.round(p.tax*.7);R.detail=`abatements cut net revenue to about ${money(p.tax)} a year`;R.text=`After abatements and service costs, net revenue is about ${money(p.tax)} a year, 30 percent below the application.`}
+  else if(res==='better'){p.tax=Math.round(p.tax*1.3);R.detail=`net revenue would be about ${money(p.tax)} a year`;R.text=`Assessed value is higher than the application assumed. Net revenue should be about ${money(p.tax)} a year.`}
+  else{R.detail='revenue is close to the projections';R.text='The revenue projections hold up, give or take. There is little cushion if construction slips.'}}
+ else{R.who='Tyrell Banks';R.role='Workforce Board Analyst';
+  if(res==='worse'){p.jobs=Math.max(2,Math.round(p.jobs*.65));R.detail=`only about ${num(p.jobs)} permanent jobs are likely`;R.text=`Automation changes the picture. We expect about ${num(p.jobs)} permanent jobs, well below the application.`}
+  else if(res==='better'){p.jobs=Math.round(p.jobs*1.35);R.detail=`about ${num(p.jobs)} permanent jobs are likely`;R.text=`Supplier jobs were left out of the application. We expect about ${num(p.jobs)} permanent jobs, more than stated.`}
+  else{R.detail='job counts are accurate but most are specialized';R.text='The job counts are accurate, but most roles need specialized training, so local hiring needs a training partnership.'}}
+ return R;
+}
+const REACT={
+ worse:['This is worse than I feared.','So the application was optimistic. I need to rethink my position.','I am glad we asked. That changes things.','That is not what I wanted to hear, but it is what I needed to hear.'],
+ better:['That is a relief. This answers my concern.','Good. The study addresses what I was worried about.','I will admit I expected worse. This helps.','That is encouraging. I feel better about this than I did last week.'],
+ mixed:['So it depends on conditions. I will want those in the motion.','Reasonable, but not a blank check.','That is not what I hoped for, but it is manageable.','Fair. The details will matter.']
+};
+async function reportsScene(p){
+ if(!p.requests||!p.requests.length)return;
+ p.reports=p.reports||[];p.asked=p.asked||{};
+ await say('mayor',fresh('rep-intro',['Before the developer speaks, we have the reports the council requested last week.','First up tonight, the studies this council asked for.','Staff has returned with the reports requested at our last meeting.']));
+ for(const rq of p.requests){
+  const R=makeReport(p,rq.topic);p.reports.push(R);p.asked[rq.m]=R;
+  const sp={name:R.who,role:R.role,color:'#4a6a6a',...look(),suit:'#3b4a63'};
+  await showSpeaker(sp);await say(sp,R.text);await hideSpeaker();
+  showAgenda(p);
+  await say(rq.m,fresh('react-'+R.res,REACT[R.res]));
+ }
+ p.requests=[];
+}
+
+async function staffReports(p,returning){
+ const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
+ const F={name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...look(),suit:'#a8412b',hair:'#222'};
+ const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
+ const zt=[`Zoning review: the ${p.type.name} is a permitted use at ${p.site}. No variances are required. Staff has no objection.`,
+  `Zoning review: the use is conditionally permitted at ${p.site}. Staff recommends a landscape buffer, strict enforcement of the ${Math.round(p.db)} dB limit, and a truck routing plan.`,
+  `Zoning review: this use conflicts with the neighboring residential zone. It would need a variance, and staff cannot recommend approval without a buffer and a noise cap.`];
+ const ft=[`Fire Marshal's report: access, hydrant flow and occupancy are all adequate. No objections.`,
+  `Fire Marshal's report: ${p.type.tags.includes('chem')?'hazardous materials storage':'the site layout'} raises concerns. I want a fire safety plan, on-site hydrants and a second access point.`,
+  `Fire Marshal's report: major concern. ${p.type.k==='battery'?'A lithium battery thermal runaway cannot be fought with our current equipment.':'The hazard profile exceeds what my department can respond to.'} I cannot sign off without a full fire safety plan and a dedicated access road.`];
+ if(returning){
+  await say('mayor',fresh('staff-ret',['Staff, has anything changed since last week?','Zoning and Fire, any updates in light of the reports?','A quick word from Zoning and the Fire Marshal before we continue.']));
+  await showSpeaker(Z);
+  await say(Z,fresh('z-ret',[`Zoning's position is unchanged from last week.${zl>0?' The buffer and noise conditions still apply.':''}`,`Nothing new from Zoning.${zl>0?' We still recommend conditions.':' We still have no objection.'}`,`Staff has not changed its zoning recommendation.`]));
+  await hideSpeaker();
+  await showSpeaker(F);
+  const changed=(p.reports||[]).some(r=>r.topic==='chem');
+  await say(F,changed?fresh('f-ret-c',['The hazmat findings are noted. My conditions follow from them.','Given the hazmat report, I stand by my recommendations.']):fresh('f-ret',[`The Fire Marshal's position stands.${fl>0?' My conditions still apply.':''}`,`No change from Fire.${fl>0?' I still want the safety plan.':' I still have no objection.'}`]));
+  await hideSpeaker();
+  return;
+ }
+ await say('mayor','Now comments from staff. First, Zoning.');
+ await showSpeaker(Z);
+ await say(Z,p.waived?'The zoning review for this item was waived at the applicant\'s request. Staff did not complete a full analysis.':zt[zl]);
+ await hideSpeaker();
+ await say('mayor','And the Fire Marshal.');
+ await showSpeaker(F);
+ await say(F,p.waived?'The fire review was waived as well. For the record, I did not sign off on anything.':ft[fl]);
+ await hideSpeaker();
+ if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
+ else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
+}
+
+const COND_FOR={water:'recycle',noise:'noise',traffic:'road',power:'monitor',chem:'fireplan',fiscal:'bond',jobs:'hire'};
+async function attorneyAdvice(p,returning){
+ const A={name:'Gerald Finch',role:'City Attorney',color:'#6b5b3a',skin:'#e6bd98',hair:'#8a8a8a',suit:'#3d3d46',glasses:true,hs:''};
+ const good=Math.random()<.6;
+ const T=['bond','findings','conds'];if(p.met)T.push('ethics');
+ const reps=p.reports||[];
+ if(reps.length)T.push('record','mitigate','mitigate');
+ p.legalSeen=p.legalSeen||[];
+ let cand=T.filter(x=>!p.legalSeen.includes(x));if(!cand.length)cand=T;
+ const t=pick(cand);p.legalSeen.push(t);
+ const worst=reps.find(r=>r.res==='worse')||reps[0];
+ const cn=worst?CONDS.find(c=>c.k===COND_FOR[worst.topic]).name.toLowerCase():'';
+ const ADV={
+  bond:{g:['I recommend an indemnification agreement and a cleanup bond. Without one, the city is exposed if something goes wrong.','Put a cleanup bond in the motion. If this goes sideways, taxpayers should not be the ones paying.'],b:['Waive the cleanup bond. They are unenforceable in practice, and they scare developers away.','A bond is overkill here. Skip it and avoid a negotiation fight.']},
+  findings:{g:['Adopt written findings of fact for your decision. It makes the decision appeal-proof, whichever way it goes.','Whatever you decide, write down why. Findings of fact are your best defense in court.'],b:['Skip written findings. They only create a record that can be used against the city.','Do not write down your reasoning. Silence cannot be cross-examined.']},
+  conds:{g:['Conditions tied to the building permit are fully enforceable and hold up in court. Use them.','Attach your conditions to the permit itself, and they will survive a challenge.'],b:['Conditions beyond the zoning code are illegal exactions. I advise against attaching any.','I would not attach conditions at all. Any one of them invites a lawsuit.']},
+  ethics:{g:['Mayor, I advise disclosing that private meeting on the record. It avoids ethics trouble down the road.','Log that closed-door meeting in the public record. It is far better to disclose it than have it discovered.'],b:['No need to disclose that private meeting. Nobody keeps those records.','I would leave that meeting off the record. It only raises questions.']},
+  record:{g:['Enter the staff reports into the public record before the vote. A decision grounded in a documented record survives appeal.','Make the reports part of the record. If anyone sues, they are your evidence.'],b:['Do not formally enter those reports into the record. Anything in the record can be used against the city.','Keep the reports informal. Once they are in the record, you are bound by them.']},
+  mitigate:{g:[`Given the ${worst?worst.label:''} report, I recommend requiring ${cn}. It answers the finding directly and holds up legally.`,`The ${worst?worst.label:''} report gives you a legal basis for ${cn}. Use it.`],b:[`I would not respond to the ${worst?worst.label:''} report with conditions. It concedes the city thinks there is a problem.`,`Do not act on the ${worst?worst.label:''} report. Responding to it creates liability.`]}
+ }[t];
+ await say('mayor',returning?fresh('atty-ret',['The City Attorney is back, and I understand counsel has updated advice.','Counsel has reviewed the reports and has fresh advice for us.','Mr. Finch, you have been reviewing the new findings. What is your advice now?']):fresh('atty-first',['The City Attorney has advice for the council.','Before we continue, a word from the City Attorney.','Mr. Finch, what is the legal view?']));
+ await showSpeaker(A);await say(A,fresh('atty-'+t+(good?'g':'b'),good?ADV.g:ADV.b));await hideSpeaker();
+ const base=[{k:'follow',label:'Follow counsel\'s advice'},{k:'ignore',label:'Disregard it',sub:'Trust your own judgment.'}];
+ let k=await ask('The City Attorney has spoken. Your response?',[...base,{k:'second',label:'Get a second opinion ($20K)',sub:'Outside counsel tells you whether the advice is sound.'}]);
+ if(k==='second'){
+  addBudget(-20000,'outside counsel');
+  const O={name:'Maria Okafor',role:'Outside counsel',color:'#3a6b5b',...look(),suit:'#2b3b4a'};
+  await showSpeaker(O);await say(O,good?fresh('o-g',['I reviewed that advice. It is sound. I would follow it.','I agree with the City Attorney on this one. Follow it.','Nothing wrong with that advice. It is conventional and defensible.']):fresh('o-b',['I reviewed that advice, and I disagree. Following it would expose the city. I would not do it.','I would not follow that. It leaves the city worse off than before.','That advice does not hold up. I would be careful.']));await hideSpeaker();
+  k=await ask('Now what?',base);
+ }
+ const follow=k==='follow';
+ if(follow)S.stats[good?'legalGood':'legalBad']=(S.stats[good?'legalGood':'legalBad']||0)+1;
+ await say('mayor',follow?'We will follow the City Attorney\'s advice.':'Thank you, counsel. I will use my own judgment on that.');
+ if(t==='bond'){if(follow){if(good){p.free.bond=true;adj('trust',1,'city protected')}else{p.noBond=true;adj('dev',3)}}else if(good)p.exposed=true}
+ else if(t==='findings'){if(follow){if(good)p.findings=true;else p.noFindings=true}else if(good)p.noFindings=true}
+ else if(t==='conds'){if(follow){if(good)p.enforceable=true;else p.nocond=true}}
+ else if(t==='record'){if(follow){if(good){p.findings=true;adj('trust',1,'reports on the record')}else{p.noFindings=true;adj('dev',2)}}else if(good)p.noFindings=true}
+ else if(t==='mitigate'){if(follow){if(good){p.free[COND_FOR[worst.topic]]=true;adj('trust',1,'responded to report')}else p.nocond=true}}
+ else{if(follow){if(good){adj('corrupt',-8,'disclosed meeting');adj('trust',-1)}else adj('corrupt',8,'undisclosed meeting')}else if(good)adj('corrupt',3,'undisclosed meeting')}
+ minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
+}
+
+async function newProject(){
+ const p=S.agenda,returning=p.tabled;
+ showAgenda(p);
+ await say('mayor',returning?fresh('main-ret',[`The ${p.type.name} proposal is back from last week.`,`We return to the ${p.type.name} that was tabled last week.`,`The tabled item from ${p.company}, the ${p.type.name}, is back before us.`]):fresh('main-new',[`Now for the main item. A request from ${p.company}: a ${p.type.name} valued at ${money(p.cost)}, proposed for ${p.site}.`,`Our featured item tonight is from ${p.company}, a ${money(p.cost)} ${p.type.name} at ${p.site}.`,`The big item on tonight's agenda: ${p.company} wants to build a ${p.type.name} at ${p.site}. Estimated investment, ${money(p.cost)}.`]));
+ if(returning){
+  await reportsScene(p);
+  COUNCIL.forEach(m=>{const s=score(m,p,{},{pub:0});showTag(m.id,s>.15?'Leaning YES':s<-.15?'Leaning NO':'Undecided',s>.15?'yes':s<-.15?'no':'')});
+  await say('clerk',fresh('clerk-lean',['Staff counts show the markers above each member. Positions can still change.','With the new reports, here is where members lean. It is not binding.','Updated whip count is above each member.']));clearTags();
+ }
+ await say('mayor',returning?fresh('dev-ret-i',['The developer has asked to respond.','Does the applicant wish to respond to the reports?','The developer is recognized.']):'The developer may address the council.');
+ await showSpeaker(p.rep);
+ if(returning){
+  await say(p.rep,fresh('dev-ret',[`Thank you. We have read the reports and we are ready to answer any questions. We still believe this is a good fit for Clifton.`,`We appreciate the extra time, Mayor. The reports raise fair points, and we will work with the council on conditions.`,`The delay cost us, but we respect the process. We stand by our proposal: ${num(p.jobs)} jobs and ${money(p.tax)} a year.`]));
+ }else{
+  await say(p.rep,`Thank you, Mayor and members of the council. ${p.company} is proud to bring a ${money(p.cost)} ${p.type.name} to ${p.site}. We will create ${num(p.jobs)} jobs and generate ${money(p.tax)} a year in tax revenue.`);
+  const sp=p.water>=2e4?`Yes, it uses ${num(p.water)} gallons of water a day, but that is a drop in the bucket compared to the regional supply.`:p.db>=65?'There may be some operational sound, but we like to call it the sound of progress.':p.traffic>=7?'Truck traffic will be noticeable. We have a plan for that. Mostly.':'We expect minimal impacts on the surrounding community.';
+  await say(p.rep,sp);
+ }
+ await hideSpeaker();
+ await staffReports(p,returning);
+ await attorneyAdvice(p,returning);
+ // council discussion
+ await say('mayor',fresh('disc',['Council members, discussion.','The floor is open for council discussion.','Any comments from the council before we hear from the public?']));
+ const askedIds=Object.keys(p.asked||{}),speakers=[...askedIds,...shuffle(COUNCIL.map(m=>m.id).filter(id=>!askedIds.includes(id)))].slice(0,3);
+ for(const id of speakers){
+  const m=CAST[id],s=score(m,p,{},{pub:0}),a=p.asked&&p.asked[id];
+  if(a){
+   const L=a.res==='worse'?fresh('ar-w',[`On the ${a.label} report: ${a.detail}. I came in worried and I am more so now.`,`I asked for the ${a.label} study and it found that ${a.detail}. I cannot ignore that.`])
+    :a.res==='better'?fresh('ar-b',[`I asked for the ${a.label} study, and it came back favorable: ${a.detail}. That moves me.`,`The ${a.label} report said ${a.detail}. I have to admit that eases my concern.`])
+    :fresh('ar-m',[`The ${a.label} report landed in the middle: ${a.detail}. I want that reflected in the conditions.`,`${a.detail[0].toUpperCase()+a.detail.slice(1)}. So conditions matter, and I will be watching them closely.`]);
+   await say(id,L);
+  }else await say(id,s>.1?fill(fresh('rm-'+id+'f',REMARK[id].for),p,p.conds||{}):s<-.1?fill(fresh('rm-'+id+'a',REMARK[id].against),p,p.conds||{}):fresh('neutral',NEUTRAL));
+  await silly(.2);
+ }
+ // public comment
+ await say('mayor',fresh('pc-open',['We will now open the floor to public comment. Please keep remarks to three minutes.','Public comment is now open. State your name and keep to three minutes.','I will now recognize members of the public. Three minutes each, please.']));
+ await gavel(1);
+ const list=genCitizens(p,{},ri(3,5));showCrowd(list);await sleep(AUTO?10:700);
+ let opp=0,sup=0;
+ for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker()}
+ await hideCrowd();
+ await say('mayor',fresh('pc-close',[`Public comment is closed. We heard ${opp} opposed and ${sup} in support.`,`Thank you all. That is ${opp} against and ${sup} in favor. Public comment is closed.`,`We have heard from the public: ${opp} opposed, ${sup} in support. We will close comment.`]));
+ minutes(`Public comment on the ${p.type.name}: ${opp} opposed, ${sup} in support.`);
+ await silly(.25);
+ const pub=(sup-opp)/list.length;
+ // decision
+ const d=await chooseDecision(p);
+ if(d.action==='table'){
+  p.tabled=true;S.pending=p;
+  await say('mayor',fresh('table',['I move to table this item for one week. Members, what information do you need?','This is not ready for a vote. I move to table it a week. What would help you decide?','I will table this until next week. Tell me what you need to see.']));
+  await requestReports(p);
+  await showSpeaker(p.rep);await say(p.rep,fresh('dev-table',['Another week of delay costs us money, Mayor. But we will be here.','We will gladly cooperate with the studies, but time is money.','Understood. We will provide whatever access the consultants need.']));await hideSpeaker();
+  adj('dev',-8,'delay');minutes(`Tabled the ${p.type.name} for one week.`);showAgenda(null);return;
+ }
+ p.conds=d.conds;showAgenda(p);
+ const names=CONDS.filter(c=>p.conds[c.k]).map(c=>c.name.toLowerCase());
+ if(burden(p.conds,p)>maxBurden(p)){
+  await say('mayor',d.action==='approve'?`I move to approve the ${p.type.name} with these conditions: ${names.join(', ')}.`:`I will propose these conditions if the item moves forward: ${names.join(', ')}.`);
+  await showSpeaker(p.rep);await say(p.rep,`Mayor, that is a non-starter. Between ${names.length} conditions, the numbers simply do not work. ${p.company} is withdrawing the application. We will take our investment to the next county.`);await hideSpeaker();
+  await say('bradley','And there goes our tax base. Well done, everyone.');
+  adj('dev',-10,'walked away');adj('trust',-1);minutes(`${p.company} withdrew the ${p.type.name} proposal over conditions.`,'b');S.stats.denied++;showAgenda(null);return;
+ }
+ const ctx={pub,mayor:d.action==='approve'?.15:-.2,bribe:0};
+ if(d.action==='approve')await say('mayor',names.length?`I move to approve the ${p.type.name} subject to: ${names.join(', ')}.`:`I move to approve the ${p.type.name} as submitted.`);
+ else await say('mayor',`I cannot support this as proposed, and I ask my colleagues to vote no on the ${p.type.name}.`);
+ let rec=d.action;
+ if(p.bribed){ctx.bribe=.15;ctx.mayor=.15;rec='approve';await say('wong','Mayor, you seem unusually keen on this one tonight.')}
+ await silly(.2);
+ // vote
+ await say('mayor','The question before us is whether to approve the project as drafted. Clerk, call the roll.');
+ let yes=0,no=0;
+ for(const m of COUNCIL){
+  await say('clerk',`${m.short}?`,{auto:450});
+  const y=score(m,p,p.conds,ctx)>0;
+  await say(m.id,y?fresh('aye-'+m.id,['Aye.','Aye, with reservations.','Yes.','Aye, and I hope we do not regret it.','Yes, on the strength of the conditions.']):fresh('nay-'+m.id,['Nay.','No.','Nay, and I mean it.','No. The risks are too high.','Nay. Not in this form.']),{auto:500});
+  showTag(m.id,y?'AYE':'NAY',y?'yes':'no');y?yes++:no++;sfx[y?'good':'bad']();await sleep(AUTO?10:350);
+ }
+ const passed=yes>=3;
+ await gavel(1);
+ if(passed)sfx.clap();else sfx.boo();
+ await say('mayor',passed?fresh('res-y',[`The ayes have it, ${yes} to ${no}. The ${p.type.name} is approved.`,`The motion carries, ${yes} to ${no}. The ${p.type.name} moves forward.`,`${yes} ayes, ${no} nays. The ${p.type.name} is approved.`]):fresh('res-n',[`The motion fails, ${yes} to ${no}. The ${p.type.name} is denied.`,`${yes} ayes, ${no} nays. The ${p.type.name} is denied.`,`With a vote of ${yes} to ${no}, the application for the ${p.type.name} is denied.`]));
+ clearTags();
+ let final=passed;
+ if(passed&&rec==='deny'){
+  const k=await ask('The council overrode your recommendation. Veto?',[{k:'veto',label:'Veto the approval',sub:'Kill the project. Developer relations take a hit.'},{k:'let',label:'Let it stand',sub:'Respect the council\'s decision.'}]);
+  if(k==='veto'){final=false;S.stats.vetoes++;await say('mayor','I am exercising the mayor\'s veto. The project will not proceed.');await say('bradley','Unbelievable.');adj('dev',-12);}
+ }
+ const pubSign=sup-opp;
+ if(final){
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;
+  adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(10-burden(p.conds,p)*1.5,2,12)));
+  if(p.noFindings)adj('trust',-3,'residents appealed the approval');
+  await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
+  minutes(`Approved the ${p.type.name} (${yes}-${no}).`,'g');renderProjects();
+ }else{
+  S.stats.denied++;adj('trust',pubSign<0?4:-3,pubSign<0?'public opposed':'jobs lost');adj('dev',-10);
+  if(p.sizeF>.35&&Math.random()<(p.findings?0:p.noFindings?.85:.35)){const l=ri(100,500)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs');}
+  minutes(`Denied the ${p.type.name} (${yes}-${no}).`,'b');
+ }
+ showAgenda(null);
+}
+async function adjourn(meeting=true){
+ if(meeting){
+  await say('mayor',fresh('adj',['Is there any further business? Hearing none, this meeting is adjourned.','If there is nothing further, we are adjourned. Thank you all for coming.','Seeing no further business, this meeting is adjourned until the next session.']));
+  await gavel(2);
+ }
+ const d={trust:S.trust-snap.trust,env:S.env-snap.env,dev:S.dev-snap.dev,budget:S.budget-snap.budget};
+ // weekly drift
+ S.projects.filter(p=>p.stage===OPER).forEach(p=>{S.env=clamp(S.env-impacts(p,p.conds).env*.25*(p.conds.monitor?.6:1))});
+ S.env=clamp(S.env+.15);
+ if(S.corrupt>0)S.corrupt=clamp(S.corrupt-.3);
+ hud();
+ const sign=v=>(v>0?'+':'')+Math.round(v);
+ await ask(`Week ${S.week} summary (${meeting?'council meeting':'off week'})`,[{k:'next',label:'Next week',sub:`Trust ${sign(d.trust)} · Environment ${sign(d.env)} · Developer ${sign(d.dev)} · Treasury ${d.budget>=0?'+':''}${money(d.budget)}`}]);
+}
+function checkEnd(){
+ if(S.trust<=10)return'RECALLED|The voters of Clifton have recalled you. Public trust collapsed.';
+ if(S.env<=8)return'EMERGENCY|The state has declared an environmental emergency in Clifton and taken over permitting. Your term is over.';
+ if(S.corrupt>=100)return'INDICTED|Investigators have uncovered a trail of bribes. You are escorted out of chambers.';
+ if(S.week>S.maxWeeks)return'TERM|You finished your full term as mayor of Clifton.';
+ return null;
+}
+function ending(code){
+ clearSave();
+ const [t,msg]=code.split('|');
+ const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
+ const score=Math.round(S.trust*3+S.env*3+S.dev+Math.min(S.budget/20000,150)+jobs*.4-S.corrupt*2+S.stats.perks*5-S.stats.incidents*3);
+ const ok=t==='TERM';
+ const grade=!ok?'F':score>520?'A':score>440?'B':score>360?'C':'D';
+ $('#overlay').innerHTML=`<div class="box"><h1>${ok?'Term complete':t}</h1><p>${msg}</p>
+ <p><b>Grade: ${grade}</b> &middot; Score ${score}</p>
+ <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
+ <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
+ <button onclick="location.reload()">Run for mayor again</button></div>`;
+ $('#overlay').classList.remove('hidden');
+}
+/* ---------- off-week activities ---------- */
+const lookR=()=>({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:'#2f7a55',...look()});
+async function pickProject(list,title){
+ const k=await ask(title,list.map(p=>({k:String(p.id),label:`${p.type.name} (${p.company})`,sub:`${STAGES[p.stage]} · ${p.incidents} incident${p.incidents===1?'':'s'}`})));
+ return list.find(p=>String(p.id)===k);
+}
+async function actInspect(){
+ const cand=S.projects.filter(p=>p.stage>=1);
+ const p=cand.length===1?cand[0]:await pickProject(cand,'Which site do you inspect?');
+ const F={name:'Frank Dolan',role:`Site foreman, ${p.company}`,color:'#a86a1f',...look(),suit:'#e8791a'};
+ openField('site',`SITE INSPECTION: ${p.type.name.toUpperCase()}`,F);
+ await say('office',`You put on a hard hat and walk the ${p.type.name} site with the foreman.`);
+ await say(F,fresh('fore-in',['Welcome, Mayor. Everything is running smoothly out here. As you can see.','Mayor! We were not expecting you today. Watch your step.','Happy to give you the tour. We have nothing to hide.']));
+ const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));
+ const chance=.3+.25*p.sizeF+(p.tip?.4:0)+(p.waived?.15:0);
+ if(el.length&&Math.random()<chance){p.tip=false;await runEvent(p,pick(el),false,'early')}
+ else{await say(F,fresh('fore-ok',['See? Clean as a whistle.','Nothing to report. We run a tight site.','Everything is by the book, Mayor.']));await say('office','You find nothing wrong, but crews noticed the mayor on site. Word gets around.');adj('trust',1,'visible oversight');adj('dev',2)}
+ closeOverlay('field');
+}
+async function actHours(){
+ for(let i=0;i<2;i++){
+  const R=lookR(),p=S.projects.length&&Math.random()<.65?pick(S.projects):null;
+  openRoom('OFFICE HOURS',R);
+  await say('office',i?'Another resident is waiting.':'You open your door for resident office hours.');
+  if(p){
+   const t=p.water>=5000?'water':p.db>=58?'noise':p.traffic>=6?'traffic':'nimby';
+   await say(R,`Mayor, I live near the ${p.type.name}. ${fill(fresh('oh-'+t,TOPICS[t].opp),p,p.conds||{})}`);
+   if(Math.random()<.5)await say(R,fresh('oh-tip',['And I saw crews working after dark last week, near the back fence.','Also, some of their trucks were hauling something that smelled awful.','I think they are cutting corners. A neighbor says the same.']));
+   const k=await ask(`Resident concern about the ${p.type.name}`,[{k:'inq',label:'Open an inquiry ($10K)',sub:'Staff watches the site closely for two weeks. Good odds your next inspection finds something.'},{k:'look',label:'Promise to look into it',sub:'Small trust gain, no cost.'},{k:'brush',label:'Brush it off',sub:'Saves time. Costs trust.'}]);
+   if(k==='inq'){addBudget(-10000,'inquiry');p.watch=2;p.tip=true;adj('trust',2);await say('mayor','I am opening a formal inquiry. You will hear back from staff.')}
+   else if(k==='look'){adj('trust',1);await say('mayor','Thank you for coming in. I will look into it personally.')}
+   else{adj('trust',-3,'brushed off a resident');await say('mayor','The council has already considered those issues. Thank you.')}
+  }else{
+   await say(R,fresh('oh-gen',['The pothole on Elm Street has been there since March.','Our street lights have been out for a month.','The bus stop on Fourth has no bench. Seniors stand in the rain.','Nobody has picked up the brush on Cedar Lane in weeks.']));
+   const k=await ask('Resident request',[{k:'fix',label:'Promise to fix it ($5K)',sub:'Trust up.'},{k:'ref',label:'Refer to Public Works',sub:'Small trust gain.'},{k:'brush',label:'Brush it off',sub:'Trust drops.'}]);
+   if(k==='fix'){addBudget(-5000,'quick fix');adj('trust',2)}else if(k==='ref')adj('trust',1);else adj('trust',-2,'brushed off a resident');
+  }
+  closeOverlay('office');
+ }
+}
+async function actWalk(ap){
+ const R=lookR();
+ openField('street','COMMUNITY WALK',R);
+ await say('office',`You walk the neighborhood nearest ${ap.site} and stop to talk with residents.`);
+ const t=['water','noise','traffic','power','chem'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0],sev=severity(ap,t);
+ if(sev>.3){await say(R,fill(fresh('walk-'+t,TOPICS[t].opp),ap,{}));ap.biasTopic=t;await say('office',`The mood is worried. The big concern is ${TLABEL[t]}. You expect more of it at public comment.`)}
+ else{await say(R,fresh('walk-ok',['Honestly, we could use the jobs. I hope the council says yes.','I do not love it, but it is not in my backyard. I will live with it.','People are curious more than angry. That is a good sign.']));await say('office','The mood is cautiously open.')}
+ adj('trust',2,'walked the neighborhood');
+ const act=S.projects.filter(p=>p.stage>=1);
+ if(act.length&&Math.random()<.3){const p=pick(act);p.tip=true;await say(R,`Also, a neighbor swears the ${p.type.name} crew dumped something near the creek at night.`);await say('office',`You make a note to inspect the ${p.type.name}.`)}
+ closeOverlay('field');
+}
+async function actPress(){
+ const r={name:'Dana Whitfield',role:'Clifton Courier reporter',color:'#8a2b2b',...look()};
+ openRoom('PRESS INTERVIEW',r);
+ await say('office','A reporter from the Courier sits down for an interview.');
+ const rumor=S.leaks.length>0,hot=S.stats.incidents>=Math.max(2,S.projects.length);
+ await say(r,rumor?'Mayor, people are talking about developer money around city hall. Anything you want to say?':hot?'Mayor, this city has had a string of incidents at the project sites. Are you in control?':'Mayor, how would you grade your first months in office?');
+ const k=await ask('How do you handle the interview?',[{k:'boast',label:'Talk up your record',sub:'Great if things are going well. Risky if they are not.'},{k:'open',label:'Be transparent about problems',sub:'Steady trust gain. Developers do not love it.'},{k:'none',label:'No comment',sub:'Avoids trouble, but reporters keep digging.'}]);
+ if(k==='boast'){if(rumor||hot){await say('mayor','Clifton is in great shape and we are delivering for residents.');await say(r,'That is not what the residents say.');adj('trust',-4,'spin backfired')}else{await say('mayor','We are bringing jobs, tax revenue and oversight to Clifton.');adj('trust',3,'good press')}}
+ else if(k==='open'){await say('mayor','There have been problems, and I want residents to hear that from me. Here is what we are doing about them.');adj('trust',2);adj('dev',-2)}
+ else{await say('mayor','No comment at this time.');adj('trust',-1);S.leaks.forEach(l=>{l.prob=clamp(l.prob+.08,.05,.7)})}
+ closeOverlay('office');
+}
+async function actSession(ap){
+ const U={name:'Priya Shah',role:'Utility and Planning Director',color:'#4a6a6a',...look(),suit:'#3b4a63'};
+ openRoom('WORK SESSION',U);
+ await say('office','You sit down with the utility board and planning commission.');
+ const opts=[];
+ if(S.budget>=150000)opts.push({k:'grid',label:'Fund a substation upgrade ($150K)',sub:'Permanently lowers grid load by 12 points.'});
+ if(S.budget>=120000)opts.push({k:'water',label:'Fund water main renewal ($120K)',sub:'Lowers water system draw and prevents main breaks on current projects.'});
+ if(S.budget>=25000)opts.push({k:'report',label:`Commission an early report on the ${ap.type.name} ($25K)`,sub:'A study on its biggest risk lands before the meeting.'});
+ opts.push({k:'skip',label:'Skip the work session'});
+ await say(U,fresh('ws',['Mayor, we have budget room for one priority this session. Where do you want it to go?','The board is ready to act on whatever you prioritize.','We have a few shovel-ready items. Your call, Mayor.']));
+ const k=await ask('Work session: how do you spend your time?',opts);
+ if(k==='grid'){addBudget(-150000,'substation upgrade');S.gridBoost=(S.gridBoost||0)+12;adj('trust',1);await say(U,'The upgrade will take the pressure off the grid.')}
+ else if(k==='water'){addBudget(-120000,'water main renewal');S.waterBoost=(S.waterBoost||0)+15;S.projects.forEach(p=>p.fixedMain=true);adj('trust',1);await say(U,'The renewal will stabilize pressure across the system.')}
+ else if(k==='report'){
+  addBudget(-25000,'early report');
+  const t=['water','noise','traffic','power','chem','fiscal','jobs'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0];
+  const R=makeReport(ap,t);ap.reports=(ap.reports||[]).concat(R);showAgenda(ap);
+  const sp={name:R.who,role:R.role,color:'#4a6a6a',...look(),suit:'#3b4a63'};
+  await say(sp,R.text);
+  await say(U,`Separately, staff pre-review: zoning is ${['clear','conditional','in conflict'][ap.zl]}, and the fire marshal has ${['no concerns','some concerns','major concerns'][ap.fl]}.`);
+ }
+ closeOverlay('office');
+}
+const ACT={
+ inspect:{label:'Site inspection',sub:'Visit an active project and look for violations before they become incidents.',ok:()=>S.projects.some(p=>p.stage>=1),fn:actInspect},
+ hours:{label:'Office hours with residents',sub:'Builds trust and can surface tips about active projects.',fn:actHours},
+ walk:{label:'Community walk',sub:'Builds trust and previews what residents will say about the next project.',fn:actWalk},
+ press:{label:'Press interview',sub:'Shape the story. Reporters ask hard questions.',fn:actPress},
+ session:{label:'Work session',sub:'Fund utility upgrades or commission an early report on the next project.',fn:actSession}
+};
+async function offWeek(){
+ const ap=S.pending||S.agenda||genProject();S.agenda=ap;showAgenda(ap);
+ banner('OFF WEEK');
+ await say('clerk',fresh('off-open',['Mayor, there is no council meeting this week. Planning has sent your calendar.','This is an off week, Mayor. No votes, but plenty to do.','No meeting this week. Staff memos and your calendar are on your desk.']));
+ await projectUpdates('off');
+ if(checkEnd())return;
+ await officeMeeting(ap);
+ const done=[];
+ for(let i=0;i<2;i++){
+  const opts=Object.entries(ACT).filter(([k,a])=>!done.includes(k)&&(!a.ok||a.ok())).map(([k,a])=>({k,label:a.label,sub:a.sub}));
+  const k=await ask(`Off-week calendar: activity ${i+1} of 2`,opts,`Next council meeting: the ${ap.type.name} (${money(ap.cost)})`);
+  done.push(k);await ACT[k].fn(ap);
+ }
+ showAgenda(ap);
+}
+async function runGame(){
+ try{
+  while(true){
+   snap={trust:S.trust,env:S.env,dev:S.dev,budget:S.budget};
+   hud();renderProjects();showAgenda(null);
+   let e;
+   if(S.week%2===0)autosave();
+   if(S.week%2===1){
+    await hallScene();
+    const ap=S.agenda||S.pending||genProject();S.pending=null;S.agenda=ap;showAgenda(ap);
+    await callToOrder();
+    if(S.week===1)await say('clerk','Welcome, Mayor. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
+    await scandalCheck();
+    e=checkEnd();if(e)return ending(e);
+    await cityBusiness();
+    await projectUpdates('meeting');
+    e=checkEnd();if(e)return ending(e);
+    await newProject();
+    await adjourn(true);
+    S.agenda=null;
+   }else{
+    await offWeek();
+    e=checkEnd();if(e)return ending(e);
+    await adjourn(false);
+   }
+   S.week++;
+   e=checkEnd();if(e)return ending(e);
+  }
+ }catch(err){console.error(err);$('#dlgText').textContent='Error: '+err.message}
+}
+
+/* ---------- save, help, feedback ---------- */
+const SAVE_KEY='municipality-tycoon-save-v1',HELP_KEY='municipality-tycoon-help-seen',FEEDBACK_URL='';
+const slimProj=p=>{const c={...p,type:p.type.k,rep:{...p.rep}};delete c.rep.el;return c};
+function autosave(){
+ try{
+  const d={v:1,S:{...S,projects:S.projects.map(slimProj),pending:S.pending?slimProj(S.pending):null,agenda:null,queue:[],
+   leaks:S.leaks.map(l=>({amt:l.amt,week:l.week,prob:l.prob,proj:{company:l.proj.company,type:{name:l.proj.type.name}}}))}};
+  localStorage.setItem(SAVE_KEY,JSON.stringify(d));toast('Progress saved',true);
+ }catch(e){}
+}
+function readSave(){try{const r=localStorage.getItem(SAVE_KEY);return r?JSON.parse(r):null}catch(e){return null}}
+function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(e){}}
+function restore(d){const hyd=c=>({...c,type:TYPES.find(t=>t.k===c.type)});Object.assign(S,d.S,{projects:d.S.projects.map(hyd),pending:d.S.pending?hyd(d.S.pending):null})}
+function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.classList.remove('hidden')}
+function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
+const HELP=[
+ {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
+ {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. At 10 you are recalled.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: fines and tax revenue in, costs out.</li></ul>'},
+ {t:'At the meeting',h:'<p>Use the <b>conditions</b> list to win over members: water recycling, noise caps, a park, local hire, a cleanup bond and more. Every condition costs the developer. Push too far and they walk away.</p><p>You can <b>table</b> an item once. Members ask for studies, and next week the reports come back and can change the numbers and the debate. The city attorney gives advice that is sometimes good and sometimes bad. You can pay for a second opinion.</p>'},
+ {t:'After approval',h:'<p>Projects move through Permitting, Site Prep, Construction, Commissioning and Operating. Expect incidents: unpermitted wells, contaminated or wasted water, noise, blackouts, main breaks. You can <b>fine</b>, issue a <b>stop-work order</b>, or <b>forgive</b>, and some incidents offer a fix the developer pays for.</p><p>Watch the <b>City Systems</b> panel. Too much power or water demand causes blackouts and main breaks.</p>'},
+ {t:'Controls',h:'<ul><li><b>Space / Enter / click</b> advances dialogue.</li><li><b>F</b> cycles speed (1x, 2x, 4x, max). <b>A</b> toggles auto-advance.</li><li>Your game <b>autosaves every other week</b>. Close the tab and use Continue later.</li><li>The <b>Feedback</b> button sends your thoughts any time.</li></ul>'}
+];
+function showHelp(){
+ return new Promise(res=>{
+  let i=0;
+  const done=()=>{closeModal();try{localStorage.setItem(HELP_KEY,'1')}catch(e){}res()};
+  const render=()=>{
+   modal(`<h2>${HELP[i].t}</h2>${HELP[i].h}<div class="btnrow"><button id="hp" ${i?'':'disabled'}>Back</button><button class="go" id="hn">${i<HELP.length-1?'Next':'Got it'}</button><button id="hs">Skip</button></div><div class="mut" style="margin-top:8px">${i+1} / ${HELP.length}</div>`);
+   $('#hn').onclick=()=>{if(i<HELP.length-1){i++;render()}else done()};
+   $('#hp').onclick=()=>{if(i){i--;render()}};
+   $('#hs').onclick=done;
+  };
+  render();
+ });
+}
+function feedbackText(){
+ const v=id=>($('#'+id)||{}).value||'';
+ return `Municipality Tycoon playtest feedback\nWeek ${S.week}/${S.maxWeeks} | Trust ${Math.round(S.trust)} | Env ${Math.round(S.env)} | Dev ${Math.round(S.dev)} | Scandal ${Math.round(S.corrupt)} | Treasury ${money(S.budget)} | Projects approved ${S.stats.approved}\n\nConfusing or unclear:\n${v('fb1')}\n\nMost fun moment:\n${v('fb2')}\n\nIdeas / things I wished I could do:\n${v('fb3')}\n\nOverall (1-5): ${v('fb4')}\n`;
+}
+function showFeedback(){
+ modal(`<h2>Playtest feedback</h2><p class="mut">Thanks for playing! Tell me what worked and what did not. Your current week and meters are included automatically.</p>
+ <label>What confused you or felt unclear?<textarea id="fb1"></textarea></label>
+ <label>What was the most fun moment?<textarea id="fb2"></textarea></label>
+ <label>Ideas, or things you wished you could do?<textarea id="fb3"></textarea></label>
+ <label>Overall rating<select id="fb4"><option>5</option><option>4</option><option selected>3</option><option>2</option><option>1</option></select></label>
+ <div class="btnrow"><button class="go" id="fbCopy">Copy feedback</button>${navigator.share?'<button id="fbShare">Share</button>':''}${FEEDBACK_URL?'<button id="fbOpen">Open feedback form</button>':''}<button id="fbClose">Close</button></div><div id="fbMsg" class="mut" style="margin-top:8px"></div>`);
+ const msg=t=>{$('#fbMsg').textContent=t};
+ $('#fbCopy').onclick=async()=>{
+  const txt=feedbackText();
+  try{await navigator.clipboard.writeText(txt);msg('Copied. Paste it into a message to the person who sent you this link.')}
+  catch(e){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');msg('Copied. Paste it into a message to the person who sent you this link.')}catch(e2){msg('Could not copy. Select the text above manually.')}ta.remove()}
+ };
+ if($('#fbShare'))$('#fbShare').onclick=()=>navigator.share({title:'Municipality Tycoon feedback',text:feedbackText()}).catch(()=>{});
+ if($('#fbOpen'))$('#fbOpen').onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(feedbackText()).catch(()=>{});window.open(FEEDBACK_URL,'_blank','noopener')};
+ $('#fbClose').onclick=closeModal;
+}
+
+buildHud();buildScene();hud();renderProjects();showAgenda(null);
+{
+ const sv=readSave();
+ if(sv&&sv.S&&sv.S.week>1){const b=$('#contBtn');b.textContent=`Continue saved game (week ${sv.S.week} of ${sv.S.maxWeeks})`;b.classList.remove('hidden');
+  b.onclick=()=>{restore(sv);$('#overlay').classList.add('hidden');hud();renderProjects();runGame()}}
+}
+$('#startBtn').onclick=async()=>{
+ const m=document.querySelector('input[name=mode]:checked');S.maxWeeks=m?+m.value:52;
+ $('#overlay').classList.add('hidden');hud();
+ let seen=false;try{seen=!!localStorage.getItem(HELP_KEY)}catch(e){}
+ if(!seen&&!AUTO)await showHelp();
+ runGame();
+};
+if(AUTO){
+ setTimeout(()=>$('#startBtn')&&$('#startBtn').click(),200);
+ setInterval(()=>{trigger();const bs=$$('#choices:not(.hidden) button');if(bs.length){const cb=$$('#choices input');cb.forEach(c=>{if(Math.random()<.25){c.checked=true;c.dispatchEvent(new Event('change',{bubbles:true}))}});pick(bs).click()}},60);
+}
+window.G={S,COUNCIL,genProject};
+</script>
+</body>
+</html>
