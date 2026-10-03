@@ -355,7 +355,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -522,8 +522,8 @@ function showAgenda(p){
  <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
-const gridLoad=()=>Math.round(50-S.gridBoost+S.projects.reduce((a,p)=>a+loadOf(p),0));
-const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost-S.fund.pw*6+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
+const gridLoad=()=>Math.round(50-S.gridBoost+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0));
+const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.temp.water-S.fund.pw*6+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
  return{title:black?'Blackout':'Brownouts',
@@ -1099,6 +1099,78 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- crises ---------- */
+const CRISES=[
+ {k:'heat',name:'Heat wave',w:()=>1+(gridLoad()>70?2:0),make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A record heat wave has settled over Clifton. Demand on the power grid is spiking and elderly residents are at risk.',apply:()=>{S.temp.grid=18;S.temp.weeks=3},
+  opts:[{k:'centers',label:'Open cooling centers ($30K)',sub:'Protects residents. Trust up.',cost:30000,trust:3},{k:'appeal',label:'Ask residents to conserve power',sub:'Free, but it might not be enough.',risk:.35,bad:{trust:-4}},{k:'none',label:'Wait it out',sub:'Cheapest, and the riskiest.',trust:-4}]})},
+ {k:'drought',name:'Drought',w:()=>1+(waterLoad()>60?2:0),make:()=>({who:{name:'Priya Shah',role:'Utility Director'},text:'The region is in a severe drought. Reservoirs are dropping and water demand is far above supply.',apply:()=>{S.temp.water=20;S.temp.weeks=4},
+  opts:[{k:'restrict',label:'Impose mandatory water restrictions',sub:'Residents grumble. Demand drops a lot.',trust:-2,temp:{water:8}},{k:'truck',label:'Truck in emergency water ($60K)',sub:'Expensive, and residents notice.',cost:60000,trust:2,temp:{water:12}},{k:'ask',label:'Ask the biggest water users to cut back',sub:'Developers will not love it.',dev:-4,trust:1,temp:{water:12}}]})},
+ {k:'flood',name:'Flooding',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Heavy rain has flooded low-lying streets and the Cedar Creek bridge. Basements are underwater across the south side.',
+  opts:[{k:'repair',label:'Emergency repairs ($120K)',sub:'Fast and thorough.',cost:120000,trust:3},{k:'patch',label:'Patch what we can ($50K)',sub:'Cheaper. It may not hold.',cost:50000,trust:-1,risk:.4,bad:{trust:-4}},{k:'aid',label:'Wait for state aid',sub:'Free, but slow and unpopular.',trust:-4,risk:.5,bad:{cost:100000}}]})},
+ {k:'storm',name:'Windstorm',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A windstorm has knocked down power lines across the east side. About six thousand homes are in the dark.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,10);S.temp.weeks=Math.max(S.temp.weeks,1)},
+  opts:[{k:'crews',label:'Authorize emergency overtime crews ($40K)',sub:'Power comes back sooner.',cost:40000,trust:3},{k:'utility',label:'Leave it to the utility',sub:'Free. Residents will be angry.',trust:-2}]})},
+ {k:'smoke',name:'Wildfire smoke',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'Wildfire smoke has blanketed the region. The air quality index is in the unhealthy range and asthma calls are climbing.',apply:()=>{adj('env',-2,'smoke')},
+  opts:[{k:'advisory',label:'Issue a public health advisory',sub:'Free and sensible.',trust:1},{k:'close',label:'Close schools and outdoor events ($10K)',sub:'Cautious. Costs a little.',cost:10000,trust:2},{k:'none',label:'Carry on as normal',sub:'People will remember.',trust:-3}]})},
+ {k:'cyber',name:'Cyber attack',w:()=>1,make:()=>({who:{name:'Nora Whitaker',role:'Finance Director'},text:'Hackers have locked the city\'s computers and are demanding a $100,000 ransom. Payroll and permits are frozen.',
+  opts:[{k:'pay',label:'Pay the ransom ($100K)',sub:'Fast. It looks bad if it leaks.',cost:100000,corrupt:3,risk:.35,bad:{trust:-5}},{k:'refuse',label:'Refuse and rebuild ($60K)',sub:'Slower, but principled.',cost:60000,trust:-1},{k:'state',label:'Call the state cyber team',sub:'Free, but slow.',trust:-2,risk:.3,bad:{cost:40000}}]})},
+ {k:'scandal',name:'Council scandal',w:()=>1,make:()=>{const m=pick(COUNCIL);return{who:{name:'Dana Whitfield',role:'Clifton Courier reporter'},text:`The Courier reports that ${m.name} voted on a project owned by a relative and did not disclose it. Residents want answers.`,
+  opts:[{k:'censure',label:`Censure ${m.short}`,sub:'Strong signal. They will not forgive you.',trust:3,rel:{[m.id]:-10}},{k:'defend',label:`Defend ${m.short}`,sub:'Loyalty has a price.',trust:-3,corrupt:4,rel:{[m.id]:10}},{k:'probe',label:'Ask the ethics office to investigate quietly',sub:'Buys time. May backfire.',risk:.4,bad:{trust:-4}}]}}},
+ {k:'housing',name:'Housing protest',w:()=>housingRatio()<.9?3:0,make:()=>({who:{name:'Tasha Brooks',role:'Tenants association'},text:'Renters are marching on city hall. Rents are up sharply, and the waiting list for an apartment stretches for months.',
+  opts:[{k:'relief',label:'Emergency rent relief fund ($50K)',sub:'Eases the pain for now.',cost:50000,trust:4},{k:'modular',label:'Fund modular housing ($90K)',sub:'Adds 80 homes quickly.',cost:90000,trust:2,housing:80},{k:'none',label:'Say the market will sort it out',sub:'Residents will not be amused.',trust:-4}]})}
+];
+function applyOpt(o,mit){
+ if(o.cost)addBudget(-Math.round(o.cost*mit),o.label.split(' (')[0]);
+ if(o.trust)adj('trust',o.trust);if(o.env)adj('env',o.env);if(o.dev)adj('dev',o.dev);if(o.corrupt)adj('corrupt',o.corrupt);
+ if(o.temp){if(o.temp.grid!==undefined)S.temp.grid=o.temp.grid;if(o.temp.water!==undefined)S.temp.water=o.temp.water}
+ if(o.housing)S.housing+=o.housing;
+ if(o.rel)for(const[id,v]of Object.entries(o.rel))adjRel(id,v,'');
+ if(o.risk&&o.bad&&Math.random()<o.risk){
+  if(o.bad.trust)adj('trust',o.bad.trust,'it backfired');
+  if(o.bad.cost)addBudget(-o.bad.cost,'extra costs');
+  return true;
+ }
+ return false;
+}
+async function runCrisis(c,mode){
+ const d=c.make();
+ if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
+ sfx.alarm();banner(c.name.toUpperCase());
+ await say('mayor',fresh('cr-intro',['We have a developing situation.','I have just been handed an urgent report.','The council needs to hear this right away.']));
+ const W={name:d.who.name,role:d.who.role,color:'#a8412b',...look(),suit:'#a8412b'};
+ await showSpeaker(W);await say(W,d.text);await hideSpeaker();
+ if(d.apply)d.apply();
+ hud();
+ await say(pick(COUNCIL).id,fresh('cr-react',['This is the kind of thing we have to get ahead of.','Mayor, the whole town is watching how we handle this.','Whatever we decide, we decide it quickly.','I hope we have prepared for something like this.']));
+ const mit=clamp(1-.1*(S.fund.pw+S.fund.safety),.7,1.2);
+ const k=await ask(`${c.name}: how do you respond?`,d.opts.map(o=>({k:o.k,label:o.label,sub:o.sub})),mit<1?'Your investment in public works and safety is reducing costs.':mit>1?'Cuts to public works and safety are driving costs up.':'');
+ const o=d.opts.find(x=>x.k===k);
+ const bad=applyOpt(o,mit);
+ await say('mayor',fresh('cr-do',[`Here is what we are going to do: ${o.label.replace(/ \(.*\)/,'').toLowerCase()}.`,`I am authorizing the following: ${o.label.replace(/ \(.*\)/,'').toLowerCase()}.`]));
+ if(bad)await say('clerk',fresh('cr-bad',['Mayor, that did not go as planned.','Mayor, there are complications.']));
+ const good=!bad&&(o.trust||0)>=0;
+ const C={...lookR(),stance:good?'sup':'opp',sign:good?'THANK YOU':'DO BETTER',mood:good?'happy':'angry',text:good?fill(fresh('cr-thx',TOPICS.thanks.sup),S.agenda||{type:{name:''},jobs:0,tax:0,site:'',cost:0,water:0,db:0}):fresh('cr-angry',['That response was not good enough, Mayor.','We needed leadership and we got excuses.','You should have acted faster.'])};
+ showCrowd([C]);await sleep(AUTO?10:300);await showSpeaker(C);await say(C,C.text);heckle(good?'YEAH!':'BOO!',good?'yes':'no');await hideSpeaker();await hideCrowd();
+ minutes(`${c.name}: ${o.label.replace(/ \(.*\)/,'')}${bad?' (backfired)':''}.`,good?'g':'b');
+}
+async function austerityEvent(){
+ banner('STATE OVERSIGHT');sfx.alarm();
+ await say('clerk','Mayor, the state auditor has taken notice of our unpaid bills. A letter just arrived.');
+ await say('mayor',fresh('au-m',['The state is putting our budget under oversight for six weeks.','We are in the red long enough that the state is taking over our spending.']));
+ await say('jennings',fresh('au-j',['I warned everyone. I warned everyone, repeatedly, in writing.','Nobody should be surprised. This is what a deficit looks like.']));
+ S.austerity=6;S.fund={pw:-1,safety:-1,parks:-1,insp:-1};
+ adj('trust',-5,'state oversight');adj('dev',-3);
+ minutes('State oversight imposed emergency cuts.','b');hud();
+}
+async function crisisCheck(mode){
+ if(S.crisisCd>0){S.crisisCd--;return}
+ if(S.defWeeks>=4&&!S.austerity){await austerityEvent();S.crisisCd=2;return}
+ if(Math.random()>.13)return;
+ const pool=[];CRISES.forEach(c=>{const w=c.w();for(let i=0;i<w;i++)pool.push(c)});
+ if(!pool.length)return;
+ await runCrisis(pick(pool),mode);
+ S.crisisCd=2;
+}
+
 /* ---------- ordinances ---------- */
 const ORDS=[
  {k:'water',name:'Water efficiency standard',desc:'New projects must use closed-loop water recycling at no cost to the council.',vec:{env:1,jobs:-.2,tax:0,res:.2,dev:-.6},fx:{dev:-4,trust:1},free:['recycle']},
@@ -1274,6 +1346,8 @@ function weeklyFinance(){
  S.dev=clamp(S.dev-(S.rate-1)*.8);
  S.env=clamp(S.env+.08*L.parks);
  if(S.budget<0){S.budget-=Math.round(-S.budget*.01);S.defWeeks=(S.defWeeks||0)+1;if(S.defWeeks%2===0)adj('trust',-1,'unpaid bills')}else S.defWeeks=0;
+ if(S.temp.weeks>0){S.temp.weeks--;if(S.temp.weeks<=0){S.temp.grid=0;S.temp.water=0}}
+ if(S.austerity>0){S.austerity--;S.trust=clamp(S.trust-.2);if(S.austerity===0)minutes('State budget oversight has ended.','g')}
  hud();
 }
 function budgetPanel(){
@@ -1325,6 +1399,7 @@ async function budgetHearing(){
  if(S.budget<0)await say(FD,'The treasury is overdrawn. We are paying interest and delaying vendors. This needs to be fixed tonight.');
  await hideSpeaker();
  S.q={rev:0,exp:0};
+ if(S.austerity>0){await say('mayor','The budget is under state oversight, so there is nothing for the council to change tonight.');minutes('Budget hearing: state oversight, no changes allowed.');showAgenda(null);return}
  for(const m of shuffle(COUNCIL).slice(0,3))await say(m.id,fresh('brem-'+m.id+(f.net<0?'b':'o'),BREM[m.id][f.net<0?'bad':'ok']));
  await silly(.2);
  await say('mayor',fresh('bh-pc',['We will take public comment on the budget.','The floor is open for budget comments.']));
@@ -1730,6 +1805,8 @@ async function offWeek(){
  await say('clerk',fresh('off-open',['Mayor, there is no council meeting this week. Planning has sent your calendar.','This is an off week, Mayor. No votes, but plenty to do.','No meeting this week. Staff memos and your calendar are on your desk.']));
  await projectUpdates('off');
  if(checkEnd())return;
+ await crisisCheck('off');
+ if(checkEnd())return;
  await officeMeeting(ap);
  const done=[];
  for(let i=0;i<2;i++){
@@ -1756,6 +1833,7 @@ async function runGame(){
     await cityBusiness();
     await memberMoment();
     await projectUpdates('meeting');
+    await crisisCheck('meeting');
     e=checkEnd();if(e)return ending(e);
     await runAgenda();
     await adjourn(true);
