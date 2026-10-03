@@ -941,7 +941,7 @@ function gridEv(p,gl){
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
  const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
- $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
 }
 function renderProjects(){
  const el=$('#projs');
@@ -2287,7 +2287,88 @@ const sewerLoad=()=>Math.max(8,Math.round(34-(S.sewerBoost||0)-S.fund.pw*3-(S.pr
 const trashPct=()=>Math.round(LFD().used/LFD().cap*100);
 const trashRate=()=>{const L=LFD();return(S.pop/12000*2+workers()/260+S.projects.filter(p=>p.stage===2).length*.25)*(L.haul?.45:1)*(L.rec?.8:1)};
 const weeksToFull=()=>{const L=LFD(),r=trashRate();return r>0?Math.max(0,Math.round((L.cap-L.used)/r)):99};
+/* ---------- Public Works: streets, plowing, cleanup, and the crew's voice ---------- */
+const STR=()=>S.streets===undefined?(S.streets=70):S.streets;
+let _pwc=null,_pwd=null;
+function pwCrew(){return _pwc||(_pwc={...lookPro(),name:'Hank Moreau',role:'Public Works crew lead',color:'#d9822b',cl:'polo',hs:'cap',suit:'#e8791a',hair:'#3a2a1c'})}
+function pwDir(){return _pwd||(_pwd={...lookPro(),name:'Priya Shah',role:'Public Works Director',color:'#4a6a6a',suit:'#3b4a63'})}
+async function pwSay(who,t){await showSpeaker(who);await say(who,t);await hideSpeaker()}
+const pwLv=()=>clamp(Math.round(S.fund.pw),-1,1)+1;
+const PWTXT={
+ pothole:['We have one patch truck for the whole town, and it is older than I am. It will take a few weeks, Mayor.','We can patch it this week. Elm Street is on the list.','Already on today\'s route. That one will be done by lunch.'],
+ lights:['The lights are the electric side, but we can swap the bulbs. We are short a bucket truck, though.','We can swap those bulbs by Friday and I will check the whole block.','We will relamp the whole street, not just the one pole.'],
+ bench:['A bench is cheap. The concrete pad and the permit are what slow us down, and we are down two guys.','We can set a bench and pad by the end of the month.','I have a spare bench in the yard. We can set it this week.'],
+ brush:['The brush chipper is in the shop, and so is the other one. Honestly, it is going to be a while.','We can pick up that brush on Cedar Lane next week.','We can clear it Tuesday, and I will have the crew clean the ditch too.'],
+ walk:['Mayor, we have not seen some of these streets in months. The money is not there for it.','The streets in this neighborhood are not great, but we are working through them.','We have been through here twice this month. It is a good block, honestly.'],
+ snow:['We have two plows for the whole town. Side streets will wait.','The plows are ready and the salt is stocked.','Full fleet, extra salt, and the overtime schedule is set.']
+};
+async function pwInput(topic){
+ const C=pwCrew(),a=PWTXT[topic]||PWTXT.walk;
+ await say('office','You ask the Public Works crew lead what he thinks.');
+ await pwSay(C,a[pwLv()]);
+ if(STR()<45&&Math.random()<.5)await pwSay(pwDir(),'Mayor, our street condition score has slipped to '+Math.round(STR())+'. Public Works funding is the lever.');
+}
+const PW_SEAS={
+ 'Pothole season':['We are out of cold patch, and the winter chewed up half of Elm Street. We need a boost.','Crews are patching every day, and we can do more with a little help.','We are on top of it, Mayor. A bigger crew would get it done in a week.'],
+ 'Snow plow budget':['We cannot clear the side streets with the fleet we have. Cut a plow route and somebody will be stuck.','Main routes are fine. Side streets depend on the weather.','We have enough trucks and salt to do it properly.'],
+ 'Leaf burning ban':['Leaf pickup is a lot of trucks and a lot of hours. We are short on both.','Leaf pickup is doable if we run two extra weekends.','We can pick up leaves on a rolling schedule and chip them for mulch.'],
+ 'Frozen pipes':['We are down two guys, and every thaw call is an hour each. It is going to be rough.','We can handle most of the calls, but not all.','The crew is on call and the thaw machines are ready.'],
+ 'Flood watch':['We are short on sandbags and short on hands. Please tell us what to prioritize.','We have sandbags for the south side, and the barriers are in the yard.','We have the barriers up, and a second crew standing by.'],
+ 'Arbor Day tree planting':['Planting is the easy part. Watering them all summer is where we run short.','We can handle the planting and a watering schedule.','We will plant, mulch, and tag them with the schools.']
+};
+const PWFX={'Send an emergency repaving crew ($30K)':12,'Patch the worst ones ($10K)':5,'Wait for the budget':-4,'Full fleet and salt ($35K)':6,'Priority routes only ($12K)':2,'Contract it out cheap':-4,'Ban burning and fund leaf pickup ($15K)':4,'Fund thaw crews and a repair rebate ($25K)':3};
+async function pwCleanup(title){
+ S.streets=clamp(STR()-4);
+ const C=pwCrew();
+ await pwSay(C,fresh('pw-fc',[`Mayor, ${title.toLowerCase()} left about nine tons of cups, cones and confetti on Main Street.`,`The ${title.toLowerCase()} was great. It also left half the downtown covered in trash.`,`Cleanup after ${title.toLowerCase()} is going to take the crew a couple of days, Mayor.`]));
+ const opts=[{k:'crew',label:'Full cleanup crew with overtime ($6K)',sub:'Streets bounce back. The crew appreciates it.'},{k:'norm',label:'Normal crews, as they get to it',sub:'Free. Streets stay messy for a while.'},{k:'vol',label:'Ask volunteers to help',sub:'Free, but it may not cover it.'}];
+ if(S.budget<6000)opts.shift();
+ const k=await ask('Cleanup after '+title.toLowerCase(),opts);
+ if(k==='crew'){addBudget(-6000,'cleanup crew');S.streets=clamp(STR()+7);adj('trust',1);await say('mayor','Overtime is approved. Thank you, everyone.')}
+ else if(k==='vol'){if(Math.random()<.55){S.streets=clamp(STR()+3);adj('trust',1,'volunteer cleanup');await say('mayor','If you can spare an hour, grab a bag. Thank you.')}else{S.streets=clamp(STR()-1);await say('mayor','If you can spare an hour, grab a bag.');await pwSay(C,'Four people showed up, Mayor. Two of them were staff.')}}
+ else{S.streets=clamp(STR()-2);if(S.fund.pw<0){adj('trust',-1,'streets left messy');await pwSay(C,'We are stretched thin, Mayor. We will get to it when we can.')}else await say('mayor','Crews will handle it in the normal rotation.')}
+}
+async function pwBrief(){
+ const D=pwDir(),st=STR();
+ if(!(st<60||S.fund.pw<0||st>=85||Math.random()<.25))return;
+ await say('mayor','A quick word from Public Works.');
+ await pwSay(D,st<45?`Mayor, street condition has fallen to ${Math.round(st)} out of 100. Potholes, uncleared storm drains, and trash after events are piling up. This is what a ${['cut','standard','boosted'][pwLv()]} Public Works budget gets us.`:st>=85?`Mayor, streets are in the best shape in years: ${Math.round(st)} out of 100. The crews are proud of it.`:`Mayor, street condition is ${Math.round(st)} out of 100. We are holding steady at a ${['cut','standard','boosted'][pwLv()]} budget.`);
+ if(st<45)await pwSay(pwCrew(),'Honestly, Mayor, the guys are working Saturdays just to keep up.');
+}
+async function pwRequest(){
+ const D=pwDir(),C=pwCrew();
+ showAgendaCard('Public Works equipment request','Aging plow and dump trucks',[['Street condition',Math.round(STR())+' / 100'],['Fleet','Aging'],['Budget',['Cut','Standard','Boosted'][pwLv()]]]);
+ await say('mayor',fresh('pwr-i',['Next, a request from Public Works.','The Public Works Director has an equipment request.','Public Works is asking for new equipment.']));
+ await pwSay(D,'Mayor, our main plow truck is thirty-one years old. It has already broken down twice this winter. Replacement is sixty thousand dollars, or we can lease for fifteen.');
+ await pwSay(C,'It sounds like a bucket of bolts, because it is. Please say yes.');
+ await say('jennings','Sixty thousand dollars is sixty thousand dollars. I would like to see the maintenance logs.');
+ await say('rodriguez','These people clear the road so everyone else can get to work. Buy the truck.');
+ const opts=[];if(S.budget>=60000)opts.push({k:'buy',label:'Buy a new truck ($60K)',sub:'Streets hold up better for years. Crew morale up.'});
+ if(S.budget>=15000)opts.push({k:'lease',label:'Lease one ($15K)',sub:'Cheaper now. Smaller benefit.'});
+ opts.push({k:'defer',label:'Defer it',sub:'Saves money. Expect breakdowns.',cls:'stop'});
+ const k=await ask('Public Works equipment request',opts);
+ if(k==='buy'){addBudget(-60000,'new plow truck');S.pwEquip=(S.pwEquip||0)+1;S.streets=clamp(STR()+3);adj('trust',1);adjRel('rodriguez',4,'new truck');adjRel('jennings',-3,'');await say('mayor','Approved. Please send the old one to a museum.')}
+ else if(k==='lease'){addBudget(-15000,'truck lease');S.pwEquip=(S.pwEquip||0)+.6;S.streets=clamp(STR()+1);adjRel('jennings',2,'');await say('mayor','We will lease one for now, and review it next year.')}
+ else{S.streets=clamp(STR()-3);adjRel('rodriguez',-4,'denied equipment');adjRel('jennings',3,'');await say('mayor','We will defer this one. Please keep it running.');await pwSay(C,'We will try, Mayor. I would not count on it.')}
+ minutes(`Public Works equipment request: ${k==='buy'?'new truck':k==='lease'?'leased truck':'deferred'}.`);
+ showAgenda(null);
+}
+function weeklyStreets(){
+ const lv=pwLv(),tr=trafficIdx(),up=[.4,1.2,2.2][lv]+.3*(S.pwEquip||0),dec=1+tr/200;
+ let st=STR()+up-dec;
+ if(seasonIdx()===3&&Math.random()<.35){
+  if(lv===0){st-=3;S.trust=clamp(S.trust-.4);minutes('Snow stayed on the side streets for days.','b')}
+  else if(lv===1)st-=1;
+ }
+ S.streets=clamp(st);
+ if(S.streets<30)S.trust=clamp(S.trust-.3);else if(S.streets<50)S.trust=clamp(S.trust-.1);else if(S.streets>=85)S.trust=clamp(S.trust+.1);
+ S.stFlag=S.stFlag||{};
+ if(S.streets<=32&&!S.stFlag.bad){S.stFlag.bad=1;queueStory({h:'POTHOLES PILE UP ACROSS CLIFTON',sub:'Residents say the streets have not been this bad in a decade. Public Works crews say they are doing what they can with the money they are given.',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported on the condition of the streets.'})}
+ else if(S.streets>40&&S.stFlag.bad)S.stFlag.bad=0;
+ if(S.streets>=88&&!S.stFlag.good){S.stFlag.good=1;queueStory({h:'CLIFTON STREETS SPARKLE',sub:'Smooth pavement, empty gutters and plow crews that beat the snow. Residents are noticing.',who:'mayor',mood:'happy',trust:1,min:'The Courier praised the streets.'})}
+}
 function weeklyUtilities(){
+ weeklyStreets();
  const nc=S.projects.filter(p=>p.stage===OPER&&isSurv(p)&&!(p.curtail>0)).length;if(nc)S.trust=clamp(S.trust+Math.min(.3,.1*nc));
  const L=LFD();L.used=Math.min(L.cap*1.2,L.used+trashRate());if(L.cd>0)L.cd--;
  if(L.fee)S.budget+=6000;
@@ -2480,7 +2561,7 @@ async function actLunch(){
 
 /* ---------- budget and taxes ---------- */
 const DEPTS=[
- {k:'pw',name:'Public Works',base:22000,note:'Roads and water mains. Boost lowers water-system strain and lifts trust.'},
+ {k:'pw',name:'Public Works',base:22000,note:'Streets, plowing, cleanup after events, and water mains. Boost keeps streets clean and snow moving. Cut lets potholes and trash pile up.'},
  {k:'safety',name:'Public Safety',base:26000,note:'Fire and police. Boost softens the damage from incidents.'},
  {k:'parks',name:'Parks and Library',base:9000,note:'Boost lifts trust and slowly heals the environment.'},
  {k:'insp',name:'Inspections and Planning',base:7000,note:'Boost cuts the odds of incidents at project sites.'}
@@ -2560,6 +2641,7 @@ async function budgetHearing(){
  else await say(FD,`Last quarter we collected ${money(S.q.rev)} and spent ${money(S.q.exp)}. The treasury holds ${money(S.budget)}${S.debt?`, with ${money(S.debt)} in bond debt`:''}. At current settings we project ${f.net>=0?'a surplus':'a deficit'} of ${money(Math.abs(f.net*6))} over the next six weeks.`);
  if(S.budget<0)await say(FD,'The treasury is overdrawn. We are paying interest and delaying vendors. This needs to be fixed tonight.');
  await hideSpeaker();
+ if(S.week>1)await pwBrief();
  S.q={rev:0,exp:0};
  if(S.austerity>0){await say('mayor','The budget is under state oversight, so there is nothing for the council to change tonight.');minutes('Budget hearing: state oversight, no changes allowed.');showAgenda(null);return}
  for(const m of shuffle(COUNCIL).slice(0,3))await say(m.id,fresh('brem-'+m.id+(f.net<0?'b':'o'),BREM[m.id][f.net<0?'bad':'ok']));
@@ -2791,10 +2873,12 @@ async function seasonalEvent(){
  const f=pick(pool);S.seasonSeen.push(f.t);
  showAgendaCard(f.t,'Seasonal matter',[['Season',SEASONS[s]]]);
  await say('clerk',f.intro);
+ if(PW_SEAS[f.t])await pwSay(pwCrew(),PW_SEAS[f.t][pwLv()]);
  const k=await ask(f.t,f.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.cost?`Costs ${money(o.cost)}.`:o.gain?`Brings in ${money(o.gain)}.`:''})));
  const o=f.opts[+k];
  if(o.cost)addBudget(-o.cost,f.t.toLowerCase());if(o.gain)addBudget(o.gain,'fees');
  adj('trust',o.trust||0);if(o.env)adj('env',o.env);if(o.dev)adj('dev',o.dev);
+ if(PWFX[o.label])S.streets=clamp(STR()+PWFX[o.label]);
  if(o.set){S.prep=S.prep||{};S.prep[o.set]=1}
  if(o.water)S.waterBoost=(S.waterBoost||0)+o.water;
  await say('clerk',pick(o.lines));S.stats.fests=(S.stats.fests||0)+1;
@@ -2817,6 +2901,7 @@ async function festival(){
  adj('trust',o.trust||0);if(o.dev)adj('dev',o.dev);if(o.env)adj('env',o.env);
  await say('clerk',pick(o.lines));
  minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);S.stats.fests=(S.stats.fests||0)+1;
+ await pwCleanup(f.t);
  if(o.trust>=3&&Math.random()<.6)queueStory({h:`${f.t.toUpperCase()} DRAWS BIG CROWD`,sub:'Residents turned out in force, and the mayor was spotted with a very large pretzel.',who:'mayor',mood:'happy',trust:1,min:'The Courier covered the festival.'});
  showAgenda(null);
 }
@@ -3080,7 +3165,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
@@ -3273,6 +3358,7 @@ const ACHS=[
  {k:'ribbon',name:'Ribbon Cutter',desc:'See three projects open to a Courier headline.',test:()=>(S.stats.openings||0)>=3},
  {k:'festive',name:'Crowd Pleaser',desc:'Host four festivals or seasonal events.',test:()=>(S.stats.fests||0)>=4},
  {k:'regular',name:'Courier Regular',desc:'Appear on the Courier front page four times.',test:()=>(S.stats.paper||0)>=4},
+ {k:'smooth',name:'Smooth Operator',desc:'End with a street condition score of 85 or more.',test:()=>STR()>=85},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -3307,7 +3393,7 @@ function ending(code){
  <div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Final edition</span><span>Week ${Math.min(S.week,S.maxWeeks)}</span><span>50&cent;</span></div><div class="npHead">${hl.h}</div><div class="npSub">${hl.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...MAYOR,mood:met?'happy':ok?'neutral':'angry'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div></div>
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
- <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
+ <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
  <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}.</p>
  <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
  <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
@@ -3356,9 +3442,13 @@ async function actHours(){
    else if(k==='look'){adj('trust',1);await say('mayor','Thank you for coming in. I will look into it personally.')}
    else{adj('trust',-3,'brushed off a resident');await say('mayor','The council has already considered those issues. Thank you.');gaffe('mayor','The council has already considered those issues.','demeaning')}
   }else{
-   await say(R,fresh('oh-gen',['The pothole on Elm Street has been there since March.','Our street lights have been out for a month.','The bus stop on Fourth has no bench. Seniors stand in the rain.','Nobody has picked up the brush on Cedar Lane in weeks.']));
-   const k=await ask('Resident request',[{k:'fix',label:'Promise to fix it ($5K)',sub:'Trust up.'},{k:'ref',label:'Refer to Public Works',sub:'Small trust gain.'},{k:'brush',label:'Brush it off',sub:'Trust drops.'}]);
-   if(k==='fix'){addBudget(-5000,'quick fix');adj('trust',2)}else if(k==='ref')adj('trust',1);else{adj('trust',-2,'brushed off a resident');gaffe('mayor','Refer it to Public Works. I have bigger problems.','demeaning')}
+   const reqTxt=fresh('oh-gen',['The pothole on Elm Street has been there since March.','Our street lights have been out for a month.','The bus stop on Fourth has no bench. Seniors stand in the rain.','Nobody has picked up the brush on Cedar Lane in weeks.']);
+   await say(R,reqTxt);
+   const tp=/pothole/.test(reqTxt)?'pothole':/lights/.test(reqTxt)?'lights':/bench/.test(reqTxt)?'bench':'brush';
+   await pwInput(tp);
+   const fc=S.fund.pw>0?2500:S.fund.pw<0?8000:5000;
+   const k=await ask('Resident request',[{k:'fix',label:`Promise to fix it (${money(fc)})`,sub:S.fund.pw>0?'The crew can do it fast. Trust up.':S.fund.pw<0?'The crew is stretched, so it costs more. Trust up.':'Trust up.'},{k:'ref',label:'Refer to Public Works',sub:S.fund.pw<0?'They are short-handed. Small trust gain at best.':'Small trust gain.'},{k:'brush',label:'Brush it off',sub:'Trust drops.'}]);
+   if(k==='fix'){addBudget(-fc,'quick fix');adj('trust',2);S.streets=clamp(STR()+(tp==='pothole'||tp==='brush'?3:1));await say('mayor','I will have the crew out this week.')}else if(k==='ref'){adj('trust',S.fund.pw<0?0:1);await say('mayor','I am sending this to Public Works today.')}else{adj('trust',-2,'brushed off a resident');gaffe('mayor','Refer it to Public Works. I have bigger problems.','demeaning')}
   }
   closeOverlay('office');
  }
@@ -3378,10 +3468,11 @@ async function actWalk(ap){
  }else if(tier==='poor'){
   await say(R,fresh('walk-poor',['The streetlight on this corner has been out since spring. Nobody comes out here unless it is to write a ticket.','We need jobs, Mayor. Any jobs. But we also need the potholes fixed and the vacant house torn down.','Every promise this city makes ends at the other side of the tracks. Prove me wrong.']));
   await say('office',ap.jobs>=8?`The residents want jobs badly. ${num(ap.jobs)} of them would matter here.`:'The mood is tired, and hopeful in a cautious way.');
+  await pwInput('walk');
   const opts=[];if(S.budget>=8000)opts.push({k:'fix',label:'Promise a quick fix ($8K)',sub:'Streetlights, a pothole crew, a lot cleanup. Trust gain.'});
   opts.push({k:'note',label:'Take notes and refer it to Public Works',sub:'Small trust gain, no cost.'},{k:'skip',label:'Keep walking',sub:'Costs trust.'});
   const k=await ask('Residents raise neglected streets',opts);
-  if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');gaffe('mayor','I will have a crew out here this week','praise');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
+  if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');S.streets=clamp(STR()+8);gaffe('mayor','I will have a crew out here this week','praise');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
   else if(k==='note'){adj('trust',2,'walked the neighborhood');await say('mayor','I have written it down, and it goes to Public Works today.')}
   else{adj('trust',-2,'walked past residents');await say('mayor','I have a lot of other neighborhoods to see.');gaffe('mayor','I have a lot of other neighborhoods to see.','demeaning')}
   if(sev>.3){ap.biasTopic=t}
