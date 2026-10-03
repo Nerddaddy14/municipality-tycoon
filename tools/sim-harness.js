@@ -12,7 +12,7 @@
  window.showSpeaker=noop;window.hideSpeaker=noop;window.showCrowd=()=>{};window.hideCrowd=noop;
  window.gavel=noop;window.heckle=()=>{};window.banner=()=>{};window.showTag=()=>{};window.clearTags=()=>{};
  window.audMood=()=>{};window.autosave=()=>{};window.toast=()=>{};window.flash=()=>{};
- window.openOverlay=()=>{};window.closeOverlay=()=>{};
+ window.openOverlay=()=>{};window.closeOverlay=()=>{};window.showElectionResults=noop;
  window.ending=code=>{last=code};
  let policy='sensible';
  const pickR=a=>a[Math.floor(Math.random()*a.length)];
@@ -42,9 +42,10 @@
   return{rate,fund,bond:S.budget<0&&S.debt<1e6};
  };
  const snapshotState=()=>({week:S.week,trust:S.trust,env:S.env,dev:S.dev,corrupt:S.corrupt,budget:S.budget,approved:S.stats.approved,denied:S.stats.denied,incidents:S.stats.incidents,projects:S.projects.length,pop:S.pop,debt:S.debt});
- async function runOne(maxWeeks,pol){
+ async function runOne(maxWeeks,pol,init){
   policy=pol||'sensible';
   Object.assign(S,JSON.parse(JSON.stringify(S0)));
+  if(init)Object.assign(S,init);
   S.maxWeeks=maxWeeks;stats.lines=0;stats.chars=0;stats.asks=0;last=null;
   const t0=performance.now();
   try{await runGame()}catch(e){stats.errors.push(String(e&&e.stack||e));}
@@ -52,9 +53,9 @@
   out.estMinutes=+((stats.lines*3+stats.chars*.012+stats.asks*6)/60).toFixed(1);
   return out;
  }
- async function batch(maxWeeks,n,pol){
+ async function batch(maxWeeks,n,pol,init){
   const runs=[];
-  for(let i=0;i<n;i++)runs.push(await runOne(maxWeeks,pol));
+  for(let i=0;i<n;i++)runs.push(await runOne(maxWeeks,pol,init));
   const avg=k=>+(runs.reduce((a,r)=>a+(r[k]||0),0)/runs.length).toFixed(1);
   const ends={};runs.forEach(r=>{const e=(r.end||'none').split('|')[0];ends[e]=(ends[e]||0)+1});
   return{runs,summary:{n,maxWeeks,policy:pol||'sensible',ends,avgWeek:avg('week'),trust:avg('trust'),env:avg('env'),dev:avg('dev'),corrupt:avg('corrupt'),budget:avg('budget'),approved:avg('approved'),denied:avg('denied'),incidents:avg('incidents'),projects:avg('projects'),pop:avg('pop'),lines:avg('lines'),asks:avg('asks'),estMinutes:avg('estMinutes'),errors:stats.errors.slice(0,3)}};

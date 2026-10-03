@@ -287,6 +287,12 @@ const num=n=>Math.round(n).toLocaleString();
 const AUTO=/[?&]auto=1/.test(location.search);
 const SPEED=AUTO?1:16;
 
+/* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
+const GATING=false,LICENSE_KEY='municipality-tycoon-license';
+const FREE_FEATURES=['quick'];
+function licensed(){try{return !!localStorage.getItem(LICENSE_KEY)}catch(e){return false}}
+function feature(k){return !GATING||FREE_FEATURES.includes(k)||licensed()}
+
 /* ---------- audio ---------- */
 let AC=null,MASTER=null,MUTE=false,VOL=.7,AMB=null;
 function ctx(){if(!AC){AC=new (window.AudioContext||window.webkitAudioContext)();MASTER=AC.createGain();MASTER.gain.value=MUTE?0:VOL;MASTER.connect(AC.destination)}if(AC.state==='suspended')AC.resume();return AC}
@@ -355,12 +361,13 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
  $('#hud').innerHTML=`<div class="brand">&#127963;&#65039; <b>Municipality Tycoon</b></div>
  <div class="stat"><span>Week</span><b id="hWeek"></b></div>
+ <div class="stat hidden" id="hRecall"><span>Recall election</span><b></b></div>
  <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
  ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
  <div class="ctl"><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="Dialogue speed (F)">Speed 1x</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
@@ -373,6 +380,7 @@ function hud(){
  $('#hWeek').textContent=`${Math.min(S.week,S.maxWeeks)} / ${S.maxWeeks} · ${S.week%2===1?'Meeting':'Off week'}`;
  $('#hBudget').textContent=money(S.budget);
  METERS.forEach(([k])=>{const e=$(`.stat[data-k=${k}]`);e.querySelector('i').style.width=S[k]+'%';e.querySelector('b').textContent=Math.round(S[k])});
+ const hr=$('#hRecall');if(hr){if(S.recall){hr.classList.remove('hidden');hr.querySelector('b').style.color='var(--bad)';hr.querySelector('b').textContent=`Week ${S.recall.electionWeek} (+${Math.round(S.recall.boost)})`}else hr.classList.add('hidden')}
  if(typeof renderSys==='function'&&$('#sys'))renderSys();
  if(typeof renderFin==='function'&&$('#fin'))renderFin();
  if(typeof renderCouncil==='function'&&$('#council'))renderCouncil();
@@ -1099,6 +1107,110 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- recall elections ---------- */
+const ISSUES=[
+ {k:'env',when:()=>S.env<55,slogan:'PROTECT CLIFTON',line:'The mayor let developers foul our water. I will put the environment first.'},
+ {k:'tax',when:()=>S.rate>=1.1,slogan:'LOWER TAXES',line:'Taxes keep climbing while services slip. I will cut the waste.'},
+ {k:'corrupt',when:()=>S.corrupt>=15,slogan:'CLEAN GOVERNMENT',line:'Envelopes in closed offices are not how we run a town. I will restore honesty.'},
+ {k:'house',when:()=>housingRatio()<.93,slogan:'HOMES FOR ALL',line:'Rents are crushing families. I will build homes people can afford.'},
+ {k:'road',when:()=>trafficIdx()>=70,slogan:'FIX THE ROADS',line:'Traffic is a nightmare and the mayor shrugged. I will fix it.'},
+ {k:'lead',when:()=>true,slogan:'NEW LEADERSHIP',line:'Clifton deserves a mayor who listens first and decides second.'}
+];
+function makeChallengers(n){
+ const pool=shuffle(ISSUES.filter(i=>i.when()));
+ const out=[];
+ for(let i=0;i<n;i++){
+  const is=pool[i%pool.length];
+  out.push({name:pick(FIRST)+' '+pick(LAST),role:'Recall challenger',color:'#6a4a8a',...look(),issue:is.k,slogan:is.slogan,platform:is.line,strength:+(.4+rnd(0,.2)+(is.k==='lead'?0:.12)).toFixed(2),sign:is.slogan});
+ }
+ return out;
+}
+async function recallStep(){
+ if(!feature('recall'))return;
+ if(S.recallCd>0)S.recallCd--;
+ if(S.recall&&S.week>=S.recall.electionWeek){await recallElection();return}
+ if(!S.recall&&S.recallCd<=0&&S.trust<=10){await recallPetition(true);return}
+ if(!S.recall&&S.recallCd<=0&&S.trust<28){await recallPetition(false);return}
+ if(S.recall)await say('clerk',`Mayor, the recall election is at the meeting on week ${S.recall.electionWeek}. Your campaign is at +${Math.round(S.recall.boost)}.`);
+}
+async function recallPetition(immediate){
+ sfx.alarm();banner('RECALL PETITION');
+ const ch=makeChallengers(ri(2,3));
+ if(immediate){
+  await say('clerk','Mayor, public trust has collapsed. The recall election is being held tonight.');
+  S.recall={start:S.week,electionWeek:S.week,challengers:ch,boost:0};
+  await recallElection();return;
+ }
+ await say('clerk',`Mayor, a recall petition has been certified with ${num(ri(2200,4800))} verified signatures. A special election is set for the meeting on week ${S.week+4}.`);
+ await say('mayor',fresh('rp-m',['I take the voters seriously. Let them decide.','This is what democracy looks like, even when it is uncomfortable.','I will respect the process, and I will fight for this job.']));
+ await say(pick(COUNCIL).id,fresh('rp-c',['Mayor, the town is angry. You have a few weeks to change that.','I hope the mayor understands how serious this is.','Whatever happens, this council will serve through it.']));
+ await say('clerk','Several residents have filed to replace you. They would like to speak.');
+ for(const c of ch){
+  showCrowd([{...c,stance:'opp'}]);await sleep(AUTO?10:250);
+  await showSpeaker(c);await say(c,`I am ${c.name}, and I am running for mayor. ${c.platform}`);heckle('YEAH!','yes');await hideSpeaker();await hideCrowd();
+ }
+ const k=await ask('A recall election has been called.',[{k:'fight',label:'Fight the recall',sub:`Campaign over the next two off weeks. The election is at the meeting on week ${S.week+4}.`,cls:'go'},{k:'resign',label:'Resign with dignity',sub:'Ends your term now.',cls:'stop'}]);
+ if(k==='resign'){S.endCode='RESIGNED|You resigned rather than face a recall. Voters chose a new mayor.';return}
+ S.recall={start:S.week,electionWeek:S.week+4,challengers:ch,boost:0};
+ minutes(`Recall petition filed against the mayor. Election on week ${S.week+4}.`,'b');hud();
+}
+async function showElectionResults(rows,survived){
+ return new Promise(res=>{
+  modal(`<h2>${survived?'You survived the recall':'Recall election results'}</h2>${rows.map(r=>`<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:14px"><span>${r.name}</span><b>${r.pct}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar" style="height:14px"><i style="width:${r.pct}%;background:${r.me?'var(--good)':'var(--bad)'}"></i></div></div></div>`).join('')}<div class="btnrow"><button class="go" id="erOk">Continue</button></div>`);
+  $('#erOk').onclick=()=>{closeModal();res()};
+ });
+}
+async function recallElection(){
+ banner('RECALL ELECTION');sfx.alarm();
+ const R=S.recall,mayorRaw=50+(S.trust-35)*.9-S.corrupt*.25+R.boost+rnd(-5,5);
+ const mayorPct=Math.round(clamp(mayorRaw,12,88)),rest=100-mayorPct,sum=R.challengers.reduce((a,c)=>a+c.strength,0);
+ let left=rest;
+ const rows=[{name:'Mayor (You)',pct:mayorPct,me:true}];
+ R.challengers.forEach((c,i)=>{const p=i===R.challengers.length-1?left:Math.round(rest*c.strength/sum);left-=p;rows.push({name:c.name,pct:p})});
+ await say('mayor',fresh('re-m',['The polls have closed. Let us see what the voters have decided.','Election night. Whatever the result, thank you to everyone who voted.']));
+ await say('clerk','Mayor, the clerk has the final count.');
+ const survived=mayorPct>=50;
+ await showElectionResults(rows,survived);
+ if(survived){
+  await say('mayor','The voters have spoken, and I am grateful. I will work every day to earn that trust.');
+  S.recall=null;S.recallCd=8;adj('trust',14,'survived the recall');adj('dev',3);
+  minutes(`Survived the recall election with ${mayorPct}%.`,'g');
+ }else{
+  const win=[...R.challengers].sort((a,b)=>b.strength-a.strength)[0];
+  S.endCode=`RECALLED|The voters recalled you with ${100-mayorPct}% against, and elected ${win.name} on a platform of ${win.slogan.toLowerCase()}.`;
+ }
+ hud();
+}
+async function actCampaign(){
+ const R=S.recall;if(!R)return;
+ const opts=[{k:'rally',label:'Hold a rally ($10K)',sub:'Energizes supporters. Boost +6.'},{k:'ads',label:'Buy local ads ($40K)',sub:'Expensive and effective. Boost +8.'},{k:'doors',label:'Knock on doors',sub:'Free and slow. Boost +4.'},{k:'debate',label:'Debate the leading challenger',sub:'High stakes. Your answers decide the boost.'}].filter(o=>(o.k!=='rally'||S.budget>=1e4)&&(o.k!=='ads'||S.budget>=4e4));
+ const k=await ask('Campaign against the recall',opts,`Campaign boost so far: +${Math.round(R.boost)}`);
+ let gain=0;
+ if(k==='rally'){addBudget(-10000,'rally');gain=6;await say('mayor','Thank you all for coming. Clifton is worth fighting for.');heckle('YEAH!','yes')}
+ else if(k==='ads'){addBudget(-40000,'ads');gain=8;await say('mayor','Our ads start running tonight. The voters will hear the full record.')}
+ else if(k==='doors'){gain=4;await say('mayor','You spend a long afternoon knocking on doors. Most people are polite. Some are not.')}
+ else{
+  const top=[...R.challengers].sort((a,b)=>b.strength-a.strength)[0],O={...top},v=lookR();
+  openField('street',`DEBATE: ${top.name.toUpperCase()}`,O);
+  await say('office',`You face ${top.name} in the town debate at the library.`);
+  const Q=[`How do you answer the charge that you let ${PRIORITY[{env:'env',tax:'tax',corrupt:'dev',house:'res',road:'res',lead:'jobs'}[top.issue]]} slip?`,'Voters say they do not trust you. Why should they now?','What is the single best thing you have done in office?'];
+  for(const q of Q){
+   await say(O,q);
+   const a=await ask('Your answer?',[{k:'own',label:'Own up and promise fixes',sub:'Honest. Plays better the angrier voters are.'},{k:'attack',label:'Attack your opponent',sub:'A gamble that can backfire.'},{k:'record',label:'Point to your record',sub:'Works if you have delivered.'}]);
+   let g=0;
+   if(a==='own')g=2+(S.trust<40?1:0)-(S.corrupt>25?1:0);
+   else if(a==='attack')g=Math.round(rnd(-2,4));
+   else g=Math.min(4,Math.round(S.stats.approved*.3+(S.trust>40?1:0)));
+   gain+=g;await say('mayor',a==='own'?'I have made mistakes, and I will fix them. Here is how.':a==='attack'?'My opponent has big words and no record.':'Look at what we have built together, and what it has cost to build it right.');
+  }
+  closeOverlay('field');
+ }
+ R.boost=Math.min(25,R.boost+gain);
+ adj('trust',Math.round(gain/3),'campaigning');hud();
+ minutes(`Campaigned against the recall (boost +${Math.round(R.boost)}).`);
+ if(k!=='debate'&&document.querySelector('#field.show'))closeOverlay('field');
+}
+
 /* ---------- crises ---------- */
 const CRISES=[
  {k:'heat',name:'Heat wave',w:()=>1+(gridLoad()>70?2:0),make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A record heat wave has settled over Clifton. Demand on the power grid is spiking and elderly residents are at risk.',apply:()=>{S.temp.grid=18;S.temp.weeks=3},
@@ -1684,7 +1796,8 @@ async function adjourn(meeting=true){
  await ask(`Week ${S.week} summary (${meeting?'council meeting':'off week'})`,[{k:'next',label:'Next week',sub:`Trust ${sign(d.trust)} · Environment ${sign(d.env)} · Developer ${sign(d.dev)} · Treasury ${d.budget>=0?'+':''}${money(d.budget)}`}]);
 }
 function checkEnd(){
- if(S.trust<=10)return'RECALLED|The voters of Clifton have recalled you. Public trust collapsed.';
+ if(S.endCode)return S.endCode;
+ if(S.trust<=10&&!feature('recall'))return'RECALLED|The voters of Clifton have recalled you. Public trust collapsed.';
  if(S.env<=8)return'EMERGENCY|The state has declared an environmental emergency in Clifton and taken over permitting. Your term is over.';
  if(S.corrupt>=100)return'INDICTED|Investigators have uncovered a trail of bribes. You are escorted out of chambers.';
  if(S.week>S.maxWeeks)return'TERM|You finished your full term as mayor of Clifton.';
@@ -1797,7 +1910,8 @@ const ACT={
  walk:{label:'Community walk',sub:'Builds trust and previews what residents will say about the next project.',fn:actWalk},
  press:{label:'Press interview',sub:'Shape the story. Reporters ask hard questions.',fn:actPress},
  session:{label:'Work session',sub:'Fund utility upgrades or commission an early report on the next project.',fn:actSession},
- lunch:{label:'Lunch with a council member',sub:'Build a relationship, or ask for a vote on the next big item.',fn:actLunch}
+ lunch:{label:'Lunch with a council member',sub:'Build a relationship, or ask for a vote on the next big item.',fn:actLunch},
+ campaign:{label:'Campaign against the recall',sub:'Hold a rally, buy ads, knock on doors, or debate a challenger.',ok:()=>!!S.recall,fn:actCampaign}
 };
 async function offWeek(){
  const ap=S.pending||S.agenda||genProject();S.agenda=ap;showAgenda(ap);
@@ -1828,6 +1942,8 @@ async function runGame(){
     const ap=S.agenda||S.pending||genProject();S.pending=null;S.agenda=ap;showAgenda(ap);
     await callToOrder();
     if(S.week===1)await say('clerk','Welcome, Mayor. The council meets every other week. On meeting weeks: city business, project updates, one proposal, public comment, and the vote. On off weeks you inspect sites, meet residents and developers, and prepare. Good luck.');
+    await recallStep();
+    e=checkEnd();if(e)return ending(e);
     await scandalCheck();
     e=checkEnd();if(e)return ending(e);
     await cityBusiness();
