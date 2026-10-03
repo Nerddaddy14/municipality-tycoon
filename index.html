@@ -928,7 +928,7 @@ function showAgenda(p){
  <tr><td>Workers hired</td><td>${num(Math.round(p.jobs))}</td></tr><tr><td>Sewer load</td><td>+${sewOf(p,p.conds).toFixed(1)} pts</td></tr><tr><td>Trash</td><td>+${((p.jobs/260+.25)).toFixed(1)} pts/wk</td></tr><tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr>${p.power<0?`<tr><td>Grid output</td><td style="color:var(--good)">-${Math.round(-p.power*(.4+p.sizeF*2.5))} pts of load</td></tr>`:`<tr><td>Power demand</td><td>${dots(p.power)}</td></tr>`}${p.type.land?`<tr><td>Land and habitat</td><td class="bad">${dots(p.type.land*(.3+p.sizeF*.7)*10)}</td></tr>`:''}</table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
-const gridLoad=()=>Math.max(10,Math.round(50+[0,6,0,4][seasonIdx()]-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
+const gridLoad=()=>Math.max(10,Math.round(50+[0,6,0,4][seasonIdx()]+(S.orion!==undefined&&S.orion<=25?3:0)-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
 const waterLoad=()=>Math.max(5,Math.round(20+[0,6,1,0][seasonIdx()]-S.waterBoost+S.temp.water-S.fund.pw*6-(S.prio&&S.prio.k==='infra'?6:0)+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
@@ -1356,6 +1356,237 @@ async function scandalSystem(){
  await runScandal(sc);
  queueStory({h:sc.head,sub:sc.sub,who:sc.who||'mayor',mood:'angry',trust:-1,kind:'scandal',min:'The Courier covered the '+sc.title.toLowerCase()+'.'});
 }
+/* ---------- the Chamber of Commerce: good deals, bad deals, and open records ---------- */
+let _wally=null;
+function WALLY(){return _wally||(_wally={...lookPro(),name:'Wally Handshaw',role:'CEO, Clifton Area Chamber of Commerce',color:'#2b6a4a',cl:'vest',hs:'side',suit:'#2b6a4a',shirt:'#fff',tie:'#c9a24a',hair:'#8a5a2b',acc:'pin'})}
+const CH=()=>({standing:S.chamber===undefined?(S.chamber=50):S.chamber});
+const chAdj=v=>{S.chamber=clamp((S.chamber===undefined?50:S.chamber)+v)};
+const WALLY_QUIPS=['Partner!','This is a win-win-win.','Let me circle back on that.','I have scissors in my car.','Synergy, Mayor. Pure synergy.','I never say no. I say not yet.'];
+async function wallySays(t){await showSpeaker(WALLY());await say(WALLY(),t);await hideSpeaker()}
+async function wallyIntro(){
+ if(S.metWally)return;S.metWally=1;
+ showAgendaCard('Meet Wally Handshaw','CEO, Clifton Area Chamber of Commerce',[['Before this','Mascot (Whiskers the Catfish)'],['Record','87 ribbon cuttings in one year'],['Motto','Everything is a win-win-win']]);
+ await say('mayor','The CEO of the Chamber of Commerce is here to introduce himself.');
+ await wallySays('Mayor! Partner! Wally Handshaw, CEO of the Clifton Area Chamber of Commerce. Before this I spent eleven seasons as Whiskers the Catfish, mascot of the Clifton Riverhawks. I know how to work a crowd, and I know how to work a ribbon.');
+ await say('wong','He once cut a ribbon on a parking space.');
+ await wallySays('It was a very good parking space. And it was a win-win-win.');
+ await say('bradley','The Chamber brings us investment. I would listen to the man.');
+}
+const CH_GOOD=[
+ {k:'workforce',title:'Workforce training partnership',cost:20000,pitch:'The Chamber, the community college and the developer would run a paid training pipeline for local workers. Folks learn a trade, the project hires local, everyone wins.',real:'It is a real program with real placement targets and no strings attached.',once:{trust:2,dev:3},weekly:{trust:.06,pop:6}},
+ {k:'local',title:'Local supplier pledge',cost:0,pitch:'The developer commits to buying at least a quarter of its materials and services from Clifton businesses. I will track it myself with a very large spreadsheet.',real:'It is enforceable, with reporting to the council every quarter.',once:{trust:2,dev:2},weekly:{budget:1500}},
+ {k:'infra',title:'Infrastructure co-investment',cost:30000,pitch:'Chamber members will co-fund upgrades to the grid, the water mains and the sewer plant, in exchange for nothing but a plaque.',real:'The plaque really is the only ask. The upgrades are real.',once:{trust:1,grid:8,water:8,sewer:6}},
+ {k:'loan',title:'Small business loan fund',cost:25000,pitch:'A revolving loan fund for Clifton small businesses, seeded by the Chamber and the city. A hand up, not a hand out.',real:'It is administered by a local bank and audited annually.',once:{trust:2},weekly:{trust:.05,budget:1800}},
+ {k:'downtown',title:'Downtown revitalization',cost:15000,pitch:'Planters, lighting, a facade grant program and a Saturday market. The Chamber will run it, and I will cut every ribbon.',real:'The money goes to the contractors and merchants, and the city keeps the audit rights.',once:{trust:2,dev:1,streets:10},weekly:{budget:1200}},
+ {k:'cba',title:'Community benefits agreement',cost:0,needsProject:true,pitch:'For the {PROJ}, the Chamber has helped negotiate a community benefits agreement: a public park, water recycling and local hiring. It is the right thing to do, and it photographs well.',real:'It is binding and enforceable, with penalties if the developer backs out.',once:{trust:3,env:2},apply:ap=>{ap.conds={...(ap.conds||{}),park:true,recycle:ap.water>=8000};ap.cba=true}}
+];
+const CH_BAD=[
+ {k:'abate',title:'Streamlined incentives package',needsProject:true,leak:.09,pitch:'For the {PROJ}, the Chamber has put together a streamlined incentives package. Confidential, so competitors cannot poach it. It has a very small footprint.',real:'It is a near-total property tax abatement, kept confidential. The city would collect almost nothing from the project.',once:{dev:8},ch:10,apply:ap=>{ap.tax=Math.round(ap.tax*.25)},amend:ap=>{ap.tax=Math.round(ap.tax*.7)}},
+ {k:'water',title:'Flexible water supply agreement',needsProject:true,leak:.07,pitch:'The {PROJ} needs flexibility on water. The Chamber has a quiet arrangement that gives them reliable service, with no hassle.',real:'It is a side agreement giving the developer uncapped water rights at a fixed low rate, and the city eats the cost of shortages.',once:{dev:6,water:-8},ch:6,weekly:{env:-.12},apply:ap=>{ap.water=Math.round(ap.water*1.4)}},
+ {k:'land',title:'Land optimization transaction',leak:.09,pitch:'The city owns a vacant lot on Harlan Road. A local buyer is interested, and the Chamber can make it happen fast and quietly. Cash for the city, no hassle.',real:'The lot would be sold far below market value to a Chamber board member, who would flip it for triple.',once:{dev:4,cash:100000},ch:8,weekly:{budget:-1500}},
+ {k:'nda',title:'Confidential partnership framework',needsProject:true,leak:.1,pitch:'The {PROJ} has asked for a standard confidentiality and exclusivity framework. Totally routine, partner. The council does not need to see the details.',real:'It is a gag order that stops the city from soliciting competing bids or discussing the terms with the council.',once:{dev:5},ch:6,weekly:{trust:-.04}},
+ {k:'fee',title:'Advisory retainer',leak:.12,pitch:'The Chamber would like to retain your office as an advisor on economic development, through our nonprofit. Fifteen thousand dollars, for your time and your wisdom.',real:'It is a consulting fee routed through a nonprofit, paid to the mayor around a project vote.',once:{dev:3,cash:15000,corrupt:10},ch:8},
+ {k:'rezone',title:'Expedited review pathway',needsProject:true,leak:.08,pitch:'For the {PROJ}, the Chamber has arranged an expedited review pathway. We skip the paperwork shuffle and get to yes.',real:'It skips the zoning and fire reviews, and the project goes straight to the council vote with no safety sign-off.',once:{dev:5},ch:5,apply:ap=>{ap.waived=true}}
+];
+function chProject(){const ap=S.agenda||S.pending;return ap&&ap.type?ap:null}
+function dealText(t,ap){return t.replace('{PROJ}',ap?`${ap.company} ${ap.type.name}`:'proposed project')}
+function applyOnce(o,d){
+ if(!o)return;
+ if(o.trust)adj('trust',o.trust,d.title.toLowerCase());if(o.dev)adj('dev',o.dev);if(o.env)adj('env',o.env);if(o.corrupt)adj('corrupt',o.corrupt);
+ if(o.cash)addBudget(o.cash,d.title.toLowerCase());
+ if(o.grid)S.gridBoost=(S.gridBoost||0)+o.grid;if(o.water)S.waterBoost=(S.waterBoost||0)+o.water;if(o.sewer)S.sewerBoost=(S.sewerBoost||0)+o.sewer;
+ if(o.streets)S.streets=clamp(STR()+o.streets);
+}
+function chamberWeekly(){
+ S.deals=S.deals||[];
+ for(const d of S.deals){
+  if(d.ended||!d.weekly)continue;const w=d.weekly;
+  if(w.trust)S.trust=clamp(S.trust+w.trust);if(w.env)S.env=clamp(S.env+w.env);if(w.budget)S.budget+=w.budget;if(w.pop)S.pop+=w.pop;
+ }
+ const st=CH().standing;if(st>=70)S.dev=clamp(S.dev+.1);else if(st<=25)S.dev=clamp(S.dev-.1);
+}
+async function chamberDeal(forceBad){
+ await wallyIntro();
+ const ap=chProject();
+ S.deals=S.deals||[];
+ const heavy=ap&&(ap.cost>=2e7||['datacenter','fab','chem','crypto','bottling','hospital'].includes(ap.type.k));
+ const badP=forceBad?1:clamp(.42+(S.dev>=65?.12:0)+((S.stats.bribes||0)>0?.08:0)+(heavy?.06:0),.3,.7);
+ const bad=Math.random()<badP;
+ let pool=(bad?CH_BAD:CH_GOOD).filter(t=>!t.needsProject||ap);
+ const seen=S.dealSeen||(S.dealSeen=[]);
+ let fresh_=pool.filter(t=>!seen.includes(t.k));if(!fresh_.length)fresh_=pool;
+ const t=pick(fresh_);seen.push(t.k);
+ showAgendaCard('Chamber of Commerce proposal',t.title,[['From','Wally Handshaw'],['Project',ap?ap.type.name:'Citywide'],['City cost',t.cost?money(t.cost):'None stated']]);
+ await say('mayor',fresh('ch-i',['The Chamber of Commerce has a proposal.','Wally Handshaw has a proposal for the council.','Next, a proposal from the Chamber.']));
+ await wallySays(dealText(t.pitch,ap)+' '+pick(WALLY_QUIPS));
+ if(bad){await say('wong','That sounds very friendly for something that has not been put in writing.');await say('bradley','The Chamber has been good to Clifton. Let us hear him out.')}
+ else{await say('bradley','This is the kind of partnership that builds a town.');if(Math.random()<.5)await say('wong','If it is real, I am for it. I would like to read the fine print.')}
+ const cost=t.cost||0;
+ const mk=()=>{const o=[{k:'accept',label:bad?'Accept it as proposed':'Accept it'+(cost?` (${money(cost)})`:''),sub:bad?'Fast, quiet, and everyone is happy.':'The Chamber will take it from here.'},{k:'amend',label:bad?'Accept it with public disclosure and safeguards':'Accept it and publish the terms',sub:bad?'Takes the secrecy and the worst of it out of the deal.':'Builds goodwill and transparency.'},{k:'decline',label:'Decline',sub:bad?'Safe, and Wally will be disappointed.':'You may be walking away from something real.',cls:'stop'}];return o};
+ let opts=mk();
+ if(S.budget>=3000)opts.splice(2,0,{k:'review',label:'Have the City Attorney review it first ($3K)',sub:'Finds the fine print before you commit.'});
+ let k=await ask(t.title,opts);
+ let reviewed=false;
+ if(k==='review'){
+  addBudget(-3000,'attorney review');reviewed=true;
+  await pwFinch(`I reviewed the terms. ${t.real}`);
+  opts=mk();k=await ask(t.title,opts);
+ }
+ const d={k:t.k,title:t.title,week:S.week,real:t.real,secret:false,ended:false,leak:0};
+ if(k==='decline'){
+  chAdj(bad?-4:-6);adj('dev',bad?-3:-2);if(bad){adj('trust',1,'turned down a quiet deal');await say('mayor','Thank you, Wally. The council will decline this one.');await wallySays('Not yet, partner. Not yet.')}else{adj('trust',-1);await say('mayor','Thank you, Wally. The council will pass on this one.');await wallySays('A missed opportunity, Mayor. A missed opportunity.')}
+  minutes(`Declined the Chamber's ${t.title.toLowerCase()}.`,bad?'g':'b');showAgenda(chProject());return;
+ }
+ if(cost)addBudget(-cost,t.title.toLowerCase());
+ if(!bad){
+  applyOnce(t.once,t);if(t.apply&&ap)t.apply(ap);if(k==='amend')adj('trust',1);
+  if(t.weekly)d.weekly={...t.weekly};d.title=t.title;S.deals.push(d);chAdj(8);S.stats.goodDeals=(S.stats.goodDeals||0)+1;
+  await say('mayor',`The council accepts the ${t.title.toLowerCase()}.`);await wallySays(pick(['Partner! This is going to be a win-win-win!','I will bring the scissors.']));
+  minutes(`Chamber deal: ${t.title.toLowerCase()}.`,'g');
+ }else if(k==='amend'){
+  const half={...t.once};half.cash=half.cash?Math.round(half.cash*.3):0;half.corrupt=0;half.dev=Math.round((half.dev||0)/2);applyOnce(half,t);if(t.amend&&ap)t.amend(ap);
+  adj('trust',2,'public disclosure');chAdj(2);d.secret=false;d.ended=true;
+  await say('mayor','We will accept this with the terms published and a clawback if the developer misses its commitments.');await wallySays('Published! Of course! Transparency is my middle name. My real middle name is Gerald, but still.');
+  minutes(`Chamber deal accepted with public terms: ${t.title.toLowerCase()}.`,'g');
+ }else{
+  applyOnce(t.once,t);if(t.apply&&ap)t.apply(ap);
+  d.secret=true;d.leak=t.leak;d.weekly=t.weekly?{...t.weekly}:null;d.sev=t.k==='fee'||t.k==='land'?1:.6;d.proj=ap?`${ap.company} ${ap.type.name}`:'';chAdj(t.ch||5);S.deals.push(d);S.stats.badDeals=(S.stats.badDeals||0)+1;
+  await say('mayor',`The council accepts the ${t.title.toLowerCase()}.`);await wallySays('Wonderful. And between us, partner, the details stay between us.');
+  minutes(`Chamber deal: ${t.title.toLowerCase()}.`,'g');
+ }
+ showAgenda(chProject());
+}
+async function pwFinch(t){
+ const A={name:'Gerald Finch',role:'City Attorney',color:'#6b5b3a',skin:'#e6bd98',hair:'#8a8a8a',suit:'#3d3d46',glasses:true,hs:''};
+ await showSpeaker(A);await say(A,t);await hideSpeaker();
+}
+async function recordsRequest(d){
+ const R=scandalRep();
+ d.revealed=true;S.stats.records=(S.stats.records||0)+1;
+ banner('RECORDS REQUEST');sfx.alarm();
+ await say('mayor','Before we begin, the city clerk has asked to read a notice.');
+ await say('clerk',`Mayor, the Courier has filed an open records request for all communications between this office and the Chamber of Commerce about the ${(d.title||'').toLowerCase()}${d.proj?`, including the ${d.proj}`:''}. The law gives us ten business days.`);
+ await say('wong','If there is nothing to hide, there is nothing to worry about.');
+ await say('bradley','Open records requests are how reporters go fishing.');
+ const k=await ask('Open records request',[{k:'release',label:'Release everything on time',sub:'The law requires it. It will hurt, and it ends the secrecy.'},{k:'redact',label:'Redact heavily and use the full ten days',sub:'Buys time. Risky if a judge disagrees.'},{k:'fight',label:'Fight it in court ($15K)',sub:'A long shot. Looks like hiding something.',cls:'stop'},{k:'wally',label:'Call Wally first',sub:'He will have a plan. He always has a plan.'}]);
+ const sev=d.sev||.6;let bad=true;
+ if(k==='release'){await say('mayor','We will release the records in full, on time.');adj('trust',-Math.round(3+5*sev),'records released');adj('corrupt',-2)}
+ else if(k==='redact'){
+  if(Math.random()<.5){await say('mayor','We will release the records with appropriate redactions.');adj('trust',-Math.round(4+5*sev));adj('corrupt',2)}
+  else{await say('mayor','We will redact what the law allows.');await say('clerk','Mayor, the Courier has gone to the judge, and the judge wants the unredacted file.');adj('trust',-Math.round(9+4*sev),'redactions overturned');addBudget(-10000,'legal costs');adj('corrupt',4);queueStory({h:'CITY ACCUSED OF HIDING CHAMBER DEAL',sub:'A judge ordered the city to release unredacted records of the '+(d.title||'deal').toLowerCase()+'.',who:'mayor',mood:'angry',trust:-1,kind:'scandal',min:'The Courier reported the city was ordered to release records.'})}
+ }else if(k==='fight'){
+  addBudget(-15000,'legal fees');
+  if(Math.random()<.3){await say('mayor','The records are exempt under state law, and we will say so in court.');adj('trust',-1);bad=false;d.secret=true;d.revealed=false;d.week=S.week;minutes('The city won a records fight.','g')}
+  else{await say('mayor','We will fight this in court.');await say('clerk','Mayor, the judge ruled against us this morning.');adj('trust',-Math.round(10+4*sev),'lost the records fight');adj('corrupt',5)}
+ }else{
+  await say('mayor','Hold on. I need to make a call first.');await wallySays('Leave it with me, partner. I will have a plan before lunch.');
+  if(Math.random()<.4){await wallySays('Done! I gave the Courier a friendly briefing. It is a story about economic development, not secrecy.');adj('trust',-2,'Chamber spin');adj('dev',-1)}
+  else{await wallySays('So I may have said the word "unfortunate" on the radio.');adj('trust',-Math.round(6+4*sev),'Chamber spin backfired');adj('corrupt',3)}
+  chAdj(-4);
+ }
+ if(bad){
+  queueStory({h:`DOCUMENTS REVEAL SECRET "${(d.title||'DEAL').toUpperCase()}"`,sub:`Records released to the Courier show the Chamber and the city quietly agreed to the ${(d.title||'deal').toLowerCase()}. ${d.real||''}`,who:'mayor',mood:'angry',trust:-1.5,kind:'scandal',min:'The Courier published records of a secret Chamber deal.'});
+  await say('chen','The public deserves to know what the city has promised in its name.');
+  const k2=await ask('Now that it is public',[{k:'void',label:'Void the deal and publish the terms',sub:'Cleans it up. Wally will be furious.'},{k:'amend',label:'Keep it, but add public safeguards',sub:'A compromise. Some will call it a half measure.'},{k:'keep',label:'Keep the deal as is',sub:'Stubborn. Residents will not forget it.',cls:'stop'}]);
+  if(k2==='void'){d.ended=true;chAdj(-12);adj('dev',-4);adj('trust',3,'voided the deal');await say('mayor','We are voiding the agreement and publishing every term.');await wallySays('Voided! I am heartbroken, partner. Genuinely. Look at my eyes.')}
+  else if(k2==='amend'){d.weekly=null;chAdj(-3);adj('trust',1);await say('mayor','The deal stays, with public safeguards, a clawback and a real oversight process.')}
+  else{adj('trust',-4,'kept a secret deal');chAdj(2);adj('corrupt',3);await say('mayor','The agreement stands as written.')}
+ }
+ minutes(`Open records request: ${(d.title||'Chamber deal').toLowerCase()}.`,'b');
+}
+async function chamberLeakCheck(){
+ const act=(S.deals||[]).filter(d=>d.secret&&!d.revealed&&!d.ended);
+ for(const d of act){
+  if(S.week-d.week>=2&&Math.random()<(d.leak||.08)){await recordsRequest(d);return true}
+ }
+ return false;
+}
+async function actChamber(ap){
+ await wallyIntro();
+ openRoom('CHAMBER BREAKFAST WITH WALLY',WALLY());
+ await say('office','You meet Wally Handshaw for breakfast at the Chamber. There are twelve kinds of muffin and one very large pair of scissors.');
+ await wallySays(pick(['Mayor! Partner! Have a muffin. Have two. The blueberry is a win-win-win.','Mayor! I saved you the seat under Whiskers. He sees everything.','Partner! Sit! Eat! I have a few ideas, and they are all good ones.']));
+ const k=await ask('Breakfast with Wally',[{k:'intel',label:'Ask what is coming down the pipeline',sub:'Wally knows who is circling. Early information on the next project.'},{k:'benefit',label:'Ask the Chamber for a community benefit pledge',sub:'Trust up. Wally will cringe.'},{k:'private',label:'Listen to a private proposal',sub:'Wally always has one. It may be good. It may be very good for somebody.'},{k:'muffin',label:'Just eat the muffin',sub:'Small goodwill with the Chamber.'}]);
+ if(k==='intel'){const t=['water','noise','traffic','power','chem','fiscal','jobs'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0];const R=makeReport(ap,t);ap.reports=(ap.reports||[]).concat(R);await wallySays(`Between you and me, partner, the ${ap.type.name} people are worried about ${TLABEL[t]}. Here is what my guy found.`);await say('office',R.text);chAdj(3);S.chamber=clamp(S.chamber)}
+ else if(k==='benefit'){await say('mayor','The Chamber has done well in Clifton. I would like to see the Chamber do well by Clifton, in writing.');await wallySays('A pledge! In writing! I love writing! I will draft something with a catfish on it.');adj('trust',1);adj('dev',-1);chAdj(-2)}
+ else if(k==='private'){closeOverlay('office');await chamberDeal(Math.random()<.65);return}
+ else{await say('mayor','This is an excellent muffin.');await wallySays('It is! I will tell the baker! She is on the board!');chAdj(3);adj('dev',1)}
+ closeOverlay('office');
+}
+/* ---------- Orion Power: the utility rep who never quite answers ---------- */
+let _orion=null;
+function orionRep(){return _orion||(_orion={...lookPro(),name:'Terry Amperson',role:'Community Relations Manager, Orion Power',color:'#1f3f7a',suit:'#1b2a4a',shirt:'#e8eef7',tie:'#e8a317',hair:'#4a3a2a',acc:'pin',hs:'short'})}
+const orionAdj=v=>{S.orion=clamp((S.orion===undefined?50:S.orion)+v)};
+async function orionSays(t){const O=orionRep();await showSpeaker(O);await say(O,t);await hideSpeaker()}
+const ORION_DODGE=[
+ 'Great question, and I want to thank you for it. Did you know Orion Power planted a tree for every customer last Arbor Day?',
+ 'I hear you. We hear everyone. Have you downloaded our mobile app? It has a very nice picture of a lightbulb.',
+ 'Reliability is a journey, not a destination. Also, have you considered turning off a light at night?',
+ 'Orion Power is committed to being a partner in the community. I would love to come back and tell you about our partnership with the Boy Scouts.',
+ 'That is a complicated topic. Energy is a complicated topic. Electrons are, frankly, hard to explain.',
+ 'Everyone pays something. That is what makes a community a community.',
+ 'Our experts are looking into that, and I will circle back. I have circled back on several things. They are circling still.',
+ 'The grid is a living system, like a rainforest, or a very large pool.',
+ 'We take every concern seriously, which is why we have a feedback form. It is on our website. It is not on the front page.',
+ 'We are thrilled about every customer. Customers are our favorite thing, after the electrons.'
+];
+const ORION_TOPIC={
+ rates:['Rates are, in a word, great. I would say more, but legal asks me not to use numbers.','Rates are set by a very fair formula that nobody here would enjoy hearing about.'],
+ outage:['Outages are really "temporary service interruptions," and they only feel long when you are in them.','The outage was caused by weather, squirrels, and an unrelated event that we are not at liberty to discuss.'],
+ data:['Orion Power can serve any customer of any size, at any time, subject to conditions, availability, and the laws of physics.','The data center will be a wonderful neighbor. Neighbors use a lot of power. That is the nature of neighbors.'],
+ solar:['The sun is a wonderful partner, and we have a webinar about it every Thursday.','We love solar. Solar loves us. It is a very warm relationship.']
+};
+const ORION_REPLIES=['That was not an answer.','I asked about my bill, and you told me about a mobile app.','He talked for two minutes and said nothing.','Is that a trained speaker, or a hostage?','I have more questions than I did before he started.'];
+async function orionAnswers(c){
+ if(Math.random()>.55)return false;
+ await say('mayor','A representative from Orion Power has asked to respond.');
+ await orionSays(pick(ORION_DODGE));
+ await showSpeaker(c);await say(c,pick(ORION_REPLIES));heckle('BOO!','no');await hideSpeaker();
+ S.stats.orionDodges=(S.stats.orionDodges||0)+1;
+ await say(pick(['wong','jennings']),pick(['I counted three sentences and zero facts.','That was a lot of words for no information.','He answered a question nobody asked.']));
+ const k=await ask('Orion Power dodged the question',[{k:'press',label:'Press Orion for a straight answer',sub:'Real information, and a little friction with the utility.'},{k:'let',label:'Let it go',sub:'Keeps the peace with Orion. Residents notice.'}]);
+ if(k==='press'){
+  await say('mayor','Mr. Amperson, the resident asked a direct question. I would like a direct answer.');
+  const gl=gridLoad();
+  await orionSays(`Fine, Mayor. The grid is running at about ${gl} percent of capacity. ${gl>=75?'That is tighter than we would like, and I would not describe that as comfortable.':'We have headroom, for now.'}`);
+  adj('trust',1,'got a straight answer');orionAdj(-2);S.stats.orionPress=(S.stats.orionPress||0)+1;
+ }else{adj('trust',-1,'Orion dodged the question');orionAdj(2)}
+ if((S.stats.orionDodges||0)>=3&&!S.orionStory){S.orionStory=1;queueStory({h:'ORION POWER DODGES RESIDENTS\' QUESTIONS',sub:'Three meetings, three non-answers. One resident said the utility\'s representative "could talk his way out of a paper bag, then charge us for the bag."',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported on Orion Power\'s non-answers.'})}
+ return true;
+}
+async function orionStatement(ev){
+ if(Math.random()>.6)return;
+ const grid=ev.grid||ev.topic==='power';if(!grid)return;
+ await say('mayor','Orion Power has asked to make a statement.');
+ await orionSays(pick(ORION_TOPIC.outage));
+ await say('rodriguez','Tell that to the people without power.');
+ await orionSays('We understand the frustration. Our crews are working around the clock, and by "around the clock," we mean "during business hours with some exceptions."');
+ orionAdj(-1);
+}
+async function orionHearing(p){
+ const O=orionRep();
+ await say('mayor','A representative from Orion Power is here regarding the energy demand.');
+ await orionSays(p.type.k==='datacenter'||p.power>=9?pick(ORION_TOPIC.data):pick(ORION_DODGE));
+ const Q=p.power>=9?'How much of the grid will this take?':'Can the grid handle this?';
+ await say(pick(['jennings','wong','chen']),Q);
+ await orionSays(pick(['Orion Power is prepared to work with all stakeholders to understand the complexity of the question. I will take that back to the team.','Orion has the capacity, the expertise and the enthusiasm. Capacity is a broad term.']));
+ if(p.power>=9){await say('jennings','I will take that as "somewhere between none and all."');p.orionNote=true}
+}
+async function orionRate(){
+ showAgendaCard('Orion Power rate request','Grid modernization surcharge',[['Request','$4.10 per month'],['Orion standing',['Strained','Neutral','Warm'][S.orion===undefined?1:S.orion<35?0:S.orion>=65?2:1]],['Grid load',gridLoad()+'%']]);
+ await say('mayor','Orion Power is requesting a rate adjustment for grid modernization.');
+ await orionSays('Mayor, council, we are not asking for a rate increase. We are asking for a modest modernization surcharge that we hope will be perceived as an investment. In you.');
+ await say('wong','What does the surcharge pay for, exactly?');
+ await orionSays(pick(ORION_DODGE));
+ await say('jennings','I asked what it pays for. That was a very long way of saying "I do not know."');
+ const k=await ask('Orion Power rate request',[{k:'yes',label:'Approve the surcharge',sub:'Orion is delighted and invests in the grid. Residents will see it on their bills.'},{k:'cap',label:'Approve a smaller surcharge and require public reliability reports',sub:'A compromise. Small upgrades, a little transparency.'},{k:'books',label:'Demand to see Orion\'s books first',sub:'Orion will be annoyed. Residents will notice you asked.'},{k:'no',label:'Deny it',sub:'Popular. Orion may remember it in the next heat wave.',cls:'stop'}]);
+ if(k==='yes'){adj('trust',-3,'higher power bills');adj('dev',3);S.gridBoost=(S.gridBoost||0)+6;orionAdj(8);S.rateHike=(S.rateHike||0)+1;await say('mayor','The surcharge is approved. Please spend it on the grid, Mr. Amperson.');await orionSays('We will spend it on opportunities. Among them, the grid.')}
+ else if(k==='cap'){adj('trust',-1);adj('dev',1);S.gridBoost=(S.gridBoost||0)+3;orionAdj(3);await say('mayor','We will approve one dollar fifty a month, with a quarterly reliability report to the public.');await orionSays('A report! Wonderful. I love a report. I will write it myself, in a very large font.')}
+ else if(k==='books'){adj('trust',1,'asked for the books');orionAdj(-4);adj('dev',-1);await say('mayor','Before the council votes, I would like to see the books.');await orionSays('The books are very long, and we would not want to confuse you with them.');await say('jennings','I like long books. I have a very good magnifying glass.');if(Math.random()<.5)queueStory({h:'COUNCIL ASKS ORION TO OPEN ITS BOOKS',sub:'The utility\'s quarterly profit was $18 million. Orion called the request "premature."',who:'mayor',mood:'happy',trust:1,min:'The Courier reported on Orion\'s profits.'})}
+ else{adj('trust',2,'denied the rate hike');orionAdj(-8);adj('dev',-2);S.gridBoost=(S.gridBoost||0)-2;await say('mayor','The request is denied.');await orionSays('We are disappointed, and the grid is also disappointed. We cannot speak for the squirrels.')}
+ minutes(`Orion Power rate request: ${k==='yes'?'approved':k==='cap'?'smaller surcharge':k==='books'?'books requested':'denied'}.`);
+ showAgenda(null);
+}
 async function scandalCheck(){
  if(S.corrupt>=100)return;
  const li=S.leaks.findIndex(l=>l.week<S.week&&Math.random()<l.prob);
@@ -1491,7 +1722,7 @@ async function runEvent(p,evDef,promised,mode){
   await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
   if(ev.chief)await chiefSays(ev.chief);
-  if(ev.topic==='power'||ev.grid)await sunQuip(.4);
+  if(ev.topic==='power'||ev.grid){await orionStatement(ev);await sunQuip(.4)}
  }
  const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
  if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
@@ -1613,6 +1844,15 @@ function roomSVG(th){
   o+=cam(130,220,1.1)+cam(830,235,1.1)+cam(60,260,.8)+cam(900,262,.8);
   o+=`<g class="flash" style="--dl:-.3s"><circle cx="190" cy="330" r="46" fill="#fff"/></g><g class="flash f2"><circle cx="780" cy="340" r="52" fill="#fff"/></g><g class="flash f3"><circle cx="130" cy="300" r="40" fill="#fff"/></g>`;
   o+=`<g transform="translate(40,420)"><rect width="150" height="50" fill="#0e1524" rx="4"/><text x="75" y="22" font-size="11" font-weight="800" text-anchor="middle" fill="#e63946">LIVE</text><text x="75" y="40" font-size="10" text-anchor="middle" fill="#fff">CLIFTON NEWS 6</text></g>`;
+ }else if(th==='chamber'){
+  o+=D('#cfe3d6',0,0,960,345)+D('#8fb59f',0,280,960,65)+D('#7ba08a',0,276,960,5)+D('#5b4a3a',0,345,960,195)+D('#6b5a48',0,345,960,18);
+  o+=`<path d="M0,420 H960 M0,480 H960" stroke="rgba(0,0,0,.12)" stroke-width="2"/>`;
+  o+=win(60,50,200,170,'cw3');
+  o+=`<g><rect x="320" y="40" width="330" height="86" rx="6" fill="#1f5a3d" stroke="#d9b36a" stroke-width="5"/><text x="485" y="76" font-size="22" font-weight="800" text-anchor="middle" fill="#fff" letter-spacing="2">CLIFTON AREA</text><text x="485" y="104" font-size="18" font-weight="800" text-anchor="middle" fill="#f2d28a" letter-spacing="3">CHAMBER OF COMMERCE</text></g>`;
+  o+=`<g transform="translate(700,60)"><circle cx="70" cy="60" r="58" fill="#e8f1f8" stroke="#8aa6bd" stroke-width="5"/><path d="M26,66 Q70,26 114,66 Q70,100 26,66Z" fill="#5a86a8"/><circle cx="52" cy="58" r="8" fill="#fff"/><circle cx="52" cy="58" r="3.5" fill="#222"/><path d="M114,66 L138,50 L138,84Z" fill="#5a86a8"/><path d="M40,80 Q70,92 100,80" stroke="#fff" stroke-width="3" fill="none"/><text x="70" y="136" font-size="11" font-weight="800" text-anchor="middle" fill="#234">WHISKERS</text></g>`;
+  o+=`<g transform="translate(340,208)"><rect x="0" y="0" width="150" height="20" rx="4" fill="#6b4a2b"/><path d="M20,0 L60,-60 L70,-54 L36,0Z M110,0 L70,-60 L60,-54 L96,0Z" fill="#c9ced3" stroke="#6b7078"/><circle cx="26" cy="10" r="6" fill="#e63946"/><circle cx="124" cy="10" r="6" fill="#e63946"/><text x="75" y="42" font-size="10" font-weight="800" text-anchor="middle" fill="#234">87 RIBBONS IN ONE YEAR</text></g>`;
+  o+=`<rect x="560" y="180" width="120" height="60" fill="#f3ead2" stroke="#6b4a2b" stroke-width="5"/><text x="620" y="205" font-size="10" font-weight="800" text-anchor="middle" fill="#6b4a2b">BOOSTER OF THE</text><text x="620" y="222" font-size="10" font-weight="800" text-anchor="middle" fill="#6b4a2b">MONTH x 31</text>`;
+  o+=plant(60,345,1)+plant(900,345,1.1);
  }else{
   o+=D('#d6dde3',0,0,960,345)+D('#bfc9d2',0,300,960,45)+D('#6b7480',0,345,960,195);
   o+=`<path d="M0,400 H960 M0,450 H960 M0,500 H960" stroke="rgba(0,0,0,.12)" stroke-width="2"/>`;
@@ -1621,9 +1861,9 @@ function roomSVG(th){
   o+=clock(810,100)+`<g><rect x="770" y="150" width="140" height="90" fill="#e9d79a" stroke="#8a6a22" stroke-width="4"/><path d="M780,170 h110 M780,190 h80 M780,210 h100" stroke="#8a6a22" stroke-width="3"/><rect x="800" y="140" width="16" height="16" fill="#e63946"/></g>`;
   o+=plant(910,345,1)+plant(24,345,.8);
  }
- return `<svg class="room-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice"><rect x="0" y="-80" width="960" height="140" fill="${{office:'#d9c7a3',lunch:'#e8c9a0',press:'#2b3b5c',work:'#d6dde3'}[th]}"/><g transform="translate(0,45)">${o}</g></svg>`;
+ return `<svg class="room-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice"><rect x="0" y="-80" width="960" height="140" fill="${{office:'#d9c7a3',lunch:'#e8c9a0',press:'#2b3b5c',work:'#d6dde3',chamber:'#cfe3d6'}[th]}"/><g transform="translate(0,45)">${o}</g></svg>`;
 }
-const ROOMTHEME=l=>/LUNCH/.test(l)?'lunch':/PRESS/.test(l)?'press':/WORK SESSION/.test(l)?'work':'office';
+const ROOMTHEME=l=>/CHAMBER/.test(l)?'chamber':/LUNCH/.test(l)?'lunch':/PRESS/.test(l)?'press':/WORK SESSION/.test(l)?'work':'office';
 function openRoom(label,vis){
  const om={...MAYOR,role:'In your office'};delete om.el;
  openOverlay('office',`${roomSVG(ROOMTHEME(label))}<div class="lock">${label}</div>
@@ -1987,6 +2227,7 @@ async function staffReports(p,returning){
  await say(F,p.waived?'The fire review was waived as well. For the record, I did not sign off on anything.':ft[fl]);
  await hideSpeaker();
  await chiefInput(p,false);
+ if(p.power>=7||p.type.k==='datacenter')await orionHearing(p);
  if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
  else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
 }
@@ -2567,6 +2808,7 @@ function weeklyStreets(){
 }
 function weeklyUtilities(){
  weeklyStreets();
+ chamberWeekly();
  const nc=S.projects.filter(p=>p.stage===OPER&&isSurv(p)&&!(p.curtail>0)).length;if(nc)S.trust=clamp(S.trust+Math.min(.3,.1*nc));
  const L=LFD();L.used=Math.min(L.cap*1.2,L.used+trashRate());if(L.cd>0)L.cd--;
  if(L.fee)S.budget+=6000;
@@ -3363,7 +3605,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
@@ -3438,7 +3680,7 @@ async function newProject(){
  await gavel(1);
  const list=genCitizens(p,{},ri(3,5));showCrowd(list);await sleep(AUTO?10:700);
  let opp=0,sup=0;
- for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker();if(c.topic==='power')await sunQuip(.45)}
+ for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker();if(c.topic==='power'){if(!(await orionAnswers(c)))await sunQuip(.45)}}
  await maybeDemean(.14);
  await hideCrowd();
  await say('mayor',fresh('pc-close',[`Public comment is closed. We heard ${opp} opposed and ${sup} in support.`,`Thank you all. That is ${opp} against and ${sup} in favor. Public comment is closed.`,`We have heard from the public: ${opp} opposed, ${sup} in support. We will close comment.`]));
@@ -3560,6 +3802,10 @@ const ACHS=[
  {k:'teflon',name:'Teflon Mayor',desc:'Weather three scandals and still finish with 50 trust or more.',test:()=>(S.stats.scandals||0)>=3&&S.trust>=50},
  {k:'cleared',name:'Cleared of Wrongdoing',desc:'Be cleared by the county ethics board.',test:()=>(S.stats.cleared||0)>=1},
  {k:'protector',name:'Whistleblower Protector',desc:'Order an outside audit after a worker raises a complaint.',test:()=>(S.stats.protected||0)>=1},
+ {k:'champion',name:'Chamber Champion',desc:'Accept three good Chamber deals.',test:()=>(S.stats.goodDeals||0)>=3},
+ {k:'sunlight',name:'Sunlight Policy',desc:'Finish with at least two deals made public and no secret ones leaked.',test:()=>(S.deals||[]).filter(d=>d.ended||!d.secret).length>=2&&!(S.deals||[]).some(d=>d.revealed&&d.secret)},
+ {k:'records',name:'Open Book',desc:'Survive an open records request.',test:()=>(S.stats.records||0)>=1},
+ {k:'straight',name:'Straight Answers',desc:'Press Orion Power for a straight answer at least twice.',test:()=>(S.stats.orionPress||0)>=2},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -3595,7 +3841,7 @@ function ending(code){
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
  <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
- <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}${S.stats.scandals?` &middot; scandals weathered ${S.stats.scandals}`:''}.</p>
+ <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}${S.stats.scandals?` &middot; scandals weathered ${S.stats.scandals}`:''}${(S.stats.goodDeals||S.stats.badDeals)?` &middot; Chamber deals: ${S.stats.goodDeals||0} good, ${S.stats.badDeals||0} secret`:''}.</p>
  <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
  <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
  ${ok?`<div class="achs">${ACHS.map(a=>{const e=earned.includes(a),nw=fresh_.includes(a),old=!e&&have[a.k];return `<div class="ach ${nw?'new':e||old?'':'off'}"><b>${e||old?a.name:'???'}${nw?' &middot; NEW':''}</b><small>${e||old?a.desc:'Locked'}</small></div>`}).join('')}</div>`:'<p class="mut">Finish a full term to earn achievements.</p>'}
@@ -3750,6 +3996,7 @@ const ACT={
  press:{label:'Press interview',sub:'Shape the story. Reporters ask hard questions.',fn:actPress},
  session:{label:'Work session',sub:'Fund utility upgrades or commission an early report on the next project.',fn:actSession},
  lunch:{label:'Lunch with a council member',sub:'Build a relationship, or ask for a vote on the next big item.',fn:actLunch},
+ chamber:{label:'Breakfast with the Chamber',sub:'Meet Wally Handshaw. Get early intel, ask for a pledge, or hear a private proposal.',ok:()=>S.week>=4&&!!S.agenda,fn:actChamber},
  campaign:{label:'Campaign against the recall',sub:'Hold a rally, buy ads, knock on doors, or debate a challenger.',ok:()=>!!S.recall,fn:actCampaign}
 };
 async function offWeek(){
@@ -3790,7 +4037,7 @@ async function runGame(){
     e=checkEnd();if(e)return ending(e);
     await scandalCheck();
     e=checkEnd();if(e)return ending(e);
-    await scandalSystem();
+    if(!(await chamberLeakCheck()))await scandalSystem();
     e=checkEnd();if(e)return ending(e);
     await cityBusiness();
     await memberMoment();
