@@ -31,6 +31,11 @@ Play a quick 12-week term in about an hour, or the full 52-week term. There is n
 - Off-week scenes with a tower crane and moving construction crews, buildings that rise each time you visit, and wealthy, middle-class or struggling neighborhoods on your community walks
 - The Clifton Courier: gaffes by you or the council can make the front page, with a snap poll of residents and a reporter who asks about it later
 - A final-edition epilogue with a grade, a then-and-now table, 14 achievements and a share card
+- A city map with every project and utility, history charts, and a hall of fame
+- A Planning Commission that reviews projects first, a mid-term election where challengers can replace council members, and interest groups that endorse you
+- Schools, rents and homelessness, fire and EMS response times, parks, transit, fiber and public health
+- Town halls where promises you make come due, referendum petitions, state mandates and grants, and federal disaster aid
+- Difficulty settings, a daily challenge, and an endless mode in the full version
 - Plays on phones as well as desktops, with text size, color-blind and reduce-motion options
 - Autosaves every week
 
