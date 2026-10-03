@@ -1263,6 +1263,7 @@ async function runEvent(p,evDef,promised,mode){
   await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
   if(ev.chief)await chiefSays(ev.chief);
+  if(ev.topic==='power'||ev.grid)await sunQuip(.4);
  }
  const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
  if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
@@ -1564,14 +1565,33 @@ function startSiteProgress(pg1){
  requestAnimationFrame(()=>requestAnimationFrame(()=>{if(svg)svg.style.setProperty('--pg',pg1);if(bar)bar.style.width=Math.round(pg1*100)+'%'}));
 }
 
-function streetSVG(){
+function streetSVG(tier){
+ tier=tier||'mid';
  const car=(c)=>`<g><path d="M0,22 L6,10 Q10,4 22,4 L40,4 Q50,4 56,12 L66,16 Q72,18 72,24 L72,30 L0,30 Z" fill="${c}" stroke="rgba(0,0,0,.3)"/><path d="M14,10 L22,6 L38,6 L46,12 L14,12Z" fill="#a9cde6"/><circle cx="16" cy="31" r="7" fill="#222"/><circle cx="56" cy="31" r="7" fill="#222"/><circle cx="16" cy="31" r="3" fill="#999"/><circle cx="56" cy="31" r="3" fill="#999"/></g>`;
- return `<svg class="site-svg street-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice"><rect width="960" height="540" fill="#bfe0f5"/><g class="cloud" style="--dur:90s;--dl:-20s"><ellipse cx="200" cy="70" rx="50" ry="13" fill="#fff"/><ellipse cx="230" cy="62" rx="32" ry="12" fill="#fff"/></g><g class="cloud" style="--dur:120s;--dl:-70s"><ellipse cx="600" cy="110" rx="58" ry="12" fill="#fff"/></g><path d="M0,300 Q200,270 420,296 T960,284 L960,350 L0,350Z" fill="#9fc08f"/><rect y="340" width="960" height="200" fill="#7fb26a"/><rect y="440" width="960" height="46" fill="#5a5f66"/><path d="M0,463 H960" stroke="#e8d36a" stroke-width="3" stroke-dasharray="26 18"/>${[[60,'#e9d9b8'],[330,'#cfe0ee'],[600,'#efd5d5'],[840,'#e9d9b8']].map(([x,c])=>`<g transform="translate(${x},0)"><rect x="0" y="330" width="110" height="80" fill="${c}" stroke="#b7a37a"/><path d="M-10,330 L55,282 L120,330Z" fill="#a85a3a"/><rect x="14" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="74" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="46" y="370" width="20" height="40" fill="#6b4a2b"/></g>`).join('')}<rect y="432" width="960" height="8" fill="#c9c9c0"/><g class="v-drive" style="--dur:14s;--dl:-3s"><g transform="translate(0,438)">${car('#c0392b')}</g></g><g class="v-drive rev" style="--dur:19s;--dl:-9s"><g transform="translate(0,458)"><g transform="translate(72,0) scale(-1,1)">${car('#2d6a9f')}</g></g></g><g class="v-drive" style="--dur:26s;--dl:-18s"><g transform="translate(0,438)">${car('#e8b923')}</g></g>${[80,300,560,820].map((x,i)=>`<g transform="translate(${x},0)"><rect x="9" y="${352-i%2*6}" width="6" height="80" fill="#6b4a2b"/><circle cx="12" cy="${340-i%2*6}" r="26" fill="${i%2?'#4a8a3c':'#3f7d34'}"/></g>`).join('')}</svg>`;
+ const P={
+  rich:{sky:'#a8d8f6',hill:'#8fcf86',ground:'#6fbf5a',road:'#4f545c',cars:['#1a1a2e','#e8e8ee','#7a1f2b']},
+  mid:{sky:'#bfe0f5',hill:'#9fc08f',ground:'#7fb26a',road:'#5a5f66',cars:['#c0392b','#2d6a9f','#e8b923']},
+  poor:{sky:'#b4bcc4',hill:'#8a9677',ground:'#8d9a6c',road:'#4a4d52',cars:['#7a5a3a','#6b6f73','#8a4a2a']}
+ }[tier];
+ let houses='',trees='',extra='';
+ if(tier==='rich'){
+  houses=[[30,'#f4efe6'],[350,'#e6edf5'],[670,'#efe3d3']].map(([x,c])=>`<g transform="translate(${x},0)"><rect x="0" y="318" width="190" height="92" fill="${c}" stroke="#bdb6a6"/><rect x="0" y="286" width="190" height="34" fill="${c}" stroke="#bdb6a6"/><path d="M-12,286 L95,244 L202,286Z" fill="#4a4f5a"/><path d="M-8,320 L98,282" stroke="none"/>${[18,70,122].map(wx=>`<rect x="${wx}" y="294" width="26" height="20" fill="#bfe3ff" stroke="#8aa6bd"/><rect x="${wx}" y="338" width="26" height="22" fill="#fff3b0" stroke="#8aa6bd"/>`).join('')}<rect x="150" y="360" width="34" height="50" fill="#d9d4c6" stroke="#bdb6a6"/><rect x="82" y="360" width="26" height="50" fill="#5a3b2a"/><rect x="76" y="352" width="38" height="8" fill="#fff" stroke="#bdb6a6"/><path d="M-6,410 H196" stroke="#fff" stroke-width="6" stroke-dasharray="4 5"/>${[10,40,160].map(fx=>`<circle cx="${fx}" cy="406" r="6" fill="${['#e86a9a','#f2c200','#ff7f50'][fx%3]}"/>`).join('')}</g>`).join('');
+  trees=[250,560,900].map((x,i)=>`<g transform="translate(${x},0)"><rect x="9" y="352" width="6" height="80" fill="#6b4a2b"/><circle cx="12" cy="338" r="30" fill="#4a9a3c"/>${[0,1,2,3,4].map(k=>`<circle cx="${-6+k*9}" cy="${330+(k%2)*10}" r="2.6" fill="${['#ffd1e1','#fff','#ffe08a'][(k+i)%3]}"/>`).join('')}</g>`).join('');
+  extra=`<g>${[130,520,860].map(x=>`<rect x="${x}" y="394" width="4" height="40" fill="#3a3f48"/><circle cx="${x+2}" cy="392" r="6" fill="#fff3b0"/>`).join('')}</g>`;
+ }else if(tier==='mid'){
+  houses=[[60,'#e9d9b8'],[330,'#cfe0ee'],[600,'#efd5d5'],[840,'#e9d9b8']].map(([x,c])=>`<g transform="translate(${x},0)"><rect x="0" y="330" width="110" height="80" fill="${c}" stroke="#b7a37a"/><path d="M-10,330 L55,282 L120,330Z" fill="#a85a3a"/><rect x="14" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="74" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="46" y="370" width="20" height="40" fill="#6b4a2b"/></g>`).join('');
+  trees=[80,300,560,820].map((x,i)=>`<g transform="translate(${x},0)"><rect x="9" y="${352-i%2*6}" width="6" height="80" fill="#6b4a2b"/><circle cx="12" cy="${340-i%2*6}" r="26" fill="${i%2?'#4a8a3c':'#3f7d34'}"/></g>`).join('');
+ }else{
+  houses=[[50,'#b9ad94'],[330,'#a3a8a0'],[590,'#b5a08a'],[840,'#9a9488']].map(([x,c],i)=>`<g transform="translate(${x},0)"><rect x="0" y="332" width="110" height="78" fill="${c}" stroke="#7d7566"/><path d="M-10,332 L50,290 L${60+i%2*8},296 L120,334Z" fill="#5d4a3e"/><path d="M0,350 L110,356" stroke="rgba(0,0,0,.18)" stroke-width="2"/><g><rect x="14" y="346" width="22" height="20" fill="${i%2?'#6b5a45':'#8aa0ac'}" stroke="#5a5446"/><path d="M14,346 L36,366 M36,346 L14,366" stroke="#4a4236" stroke-width="2"/></g><rect x="74" y="346" width="22" height="20" fill="#3f4a52" stroke="#5a5446"/><path d="M76,348 L82,356 L78,364" stroke="#b9c7cf" stroke-width="1.2" fill="none"/><rect x="46" y="370" width="20" height="40" fill="#4a3a2c"/>${i===1?'<path d="M10,392 q8,-10 16,0 q8,-10 16,0" stroke="#c0392b" stroke-width="3" fill="none"/><text x="14" y="404" font-size="8" font-weight="800" fill="#2b6cb0">X</text>':''}<path d="M-8,412 L22,412 M30,412 L52,410 M66,412 L118,412" stroke="#6b5a45" stroke-width="3"/><path d="M-6,404 v8 M12,402 v10 M96,404 v8" stroke="#6b5a45" stroke-width="3"/></g>`).join('');
+  trees=[170,470,730].map((x,i)=>`<g transform="translate(${x},0)"><rect x="9" y="356" width="5" height="76" fill="#5a4a3a"/><path d="M11,360 L-6,336 M11,366 L30,342 M11,352 L4,326 M11,350 L22,330" stroke="#5a4a3a" stroke-width="3" fill="none"/></g>`).join('');
+  extra=`<g><ellipse cx="250" cy="426" rx="14" ry="7" fill="#2b2f36"/><ellipse cx="540" cy="426" rx="10" ry="5" fill="#2b2f36"/><g transform="translate(405,402)"><path d="M0,22 L6,10 Q10,4 22,4 L40,4 Q50,4 56,12 L62,16 Q66,18 66,24 L66,30 L0,30 Z" fill="#8a5a3a" stroke="rgba(0,0,0,.3)"/><circle cx="14" cy="31" r="6" fill="#222"/><rect x="48" y="24" width="14" height="10" fill="#3a3f46"/><path d="M14,10 L22,6 L38,6 L46,12Z" fill="#6b7a85"/></g><g fill="#7d7566"><circle cx="150" cy="430" r="4"/><circle cx="430" cy="434" r="3"/><circle cx="700" cy="430" r="4"/><rect x="620" y="424" width="14" height="10" rx="3" fill="#2b2f36"/><rect x="650" y="428" width="12" height="9" rx="3" fill="#3a3f48"/></g><path d="M0,438 L960,438" stroke="rgba(0,0,0,.25)" stroke-width="2" stroke-dasharray="40 30"/></g>`;
+ }
+ return `<svg class="site-svg street-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice"><rect width="960" height="540" fill="${P.sky}"/><g class="cloud" style="--dur:90s;--dl:-20s"><ellipse cx="200" cy="70" rx="50" ry="13" fill="${tier==='poor'?'#9aa3ab':'#fff'}"/><ellipse cx="230" cy="62" rx="32" ry="12" fill="${tier==='poor'?'#9aa3ab':'#fff'}"/></g><g class="cloud" style="--dur:120s;--dl:-70s"><ellipse cx="600" cy="110" rx="58" ry="12" fill="${tier==='poor'?'#9aa3ab':'#fff'}"/></g><path d="M0,300 Q200,270 420,296 T960,284 L960,350 L0,350Z" fill="${P.hill}"/><rect y="340" width="960" height="200" fill="${P.ground}"/>${trees}${houses}<rect y="440" width="960" height="46" fill="${P.road}"/><path d="M0,463 H960" stroke="#e8d36a" stroke-width="3" stroke-dasharray="26 18"/><rect y="432" width="960" height="8" fill="${tier==='poor'?'#a9a79c':'#c9c9c0'}"/>${extra}<g class="v-drive" style="--dur:14s;--dl:-3s"><g transform="translate(0,438)">${car(P.cars[0])}</g></g><g class="v-drive rev" style="--dur:19s;--dl:-9s"><g transform="translate(0,458)"><g transform="translate(72,0) scale(-1,1)">${car(P.cars[1])}</g></g></g><g class="v-drive" style="--dur:26s;--dl:-18s"><g transform="translate(0,438)">${car(P.cars[2])}</g></g></svg>`;
 }
 function openField(kind,label,vis,sp,pg0,pg1){
  const om={...MAYOR,role:'Out in the field'};delete om.el;
  const hat=kind==='site'?'<div class="hardhat"></div>':'';
- const bg=kind==='site'?siteHTML(sp,pg0,pg1,label):`<div class="flabel">${label}</div>${streetSVG()}`;
+ const bg=kind==='site'?siteHTML(sp,pg0,pg1,label):`<div class="flabel">${label}</div>${streetSVG(sp)}`;
  openOverlay('field',`${bg}<div class="och" id="fM" style="left:38%;bottom:${kind==='site'?44:30}px">${figHTML(om)}${hat}</div><div class="och" id="fV" style="left:62%;bottom:${kind==='site'?38:24}px">${figHTML(vis)}${hat}</div>`);
  $('#field').className='show '+kind;
  om.el=$('#fM');vis.el=$('#fV');sfx.pop();banner(label);
@@ -1947,6 +1967,7 @@ async function runCrisis(c,mode){
  await say('mayor',fresh('cr-intro',['We have a developing situation.','I have just been handed an urgent report.','The council needs to hear this right away.']));
  const W={name:d.who.name,role:d.who.role,color:'#a8412b',...lookPro(),suit:'#a8412b'};
  await showSpeaker(W);await say(W,d.text);await hideSpeaker();
+ if(c.k==='heat'||c.k==='storm')await sunQuip(.5);
  if(d.apply)d.apply();
  hud();
  await say(pick(COUNCIL).id,fresh('cr-react',['This is the kind of thing we have to get ahead of.','Mayor, the whole town is watching how we handle this.','Whatever we decide, we decide it quickly.','I hope we have prepared for something like this.']));
@@ -2053,6 +2074,16 @@ function trafficIdx(){
 }
 /* ---------- sewer and trash ---------- */
 const POPGOAL=()=>S.maxWeeks>20?16500:12500;
+async function sunQuip(chance){
+ if(Math.random()>=(chance===undefined?.35:chance))return;
+ const m=pick(COUNCIL);
+ await say(m.id,"But energy comes from the sun, doesn't it?");
+ sfx.pop();audMood('happy',1200);
+ const r=Math.random();
+ if(r<.5)await say('mayor',fresh('sun-m',['Technically, yes. Please keep going, Councilmember, and do not explain.','That is the beginning of an answer, and I will leave it there.','The sun does not send an invoice, but the utility does.','Let the record show the sun was not available for comment.']));
+ else if(r<.8){await say('clerk',fresh('sun-c',['Mayor, I am not sure how to minute that.','Mayor, do I write down the part about the sun?']));await say('mayor',fresh('sun-m2',['Write down that the council noted the sun.','Please just write "energy."']))}
+ else await say(pick(COUNCIL.filter(x=>x.id!==m.id)).id,fresh('sun-o',['It also goes down at night. That is when the grid falls over.','And the sun does not own a transformer.']));
+}
 let _chief=null;
 function policeChief(){return _chief||(_chief={...lookPro(),name:'Chief Ray Delacroix',role:'Police Chief',color:'#1b3a6b',cl:'uniform',hs:'cap',suit:'#1b3a6b',hair:'#1b1b1b'})}
 async function chiefSays(t){const C=policeChief();await showSpeaker(C);await say(C,t);await hideSpeaker()}
@@ -2741,7 +2772,7 @@ async function newProject(){
  await gavel(1);
  const list=genCitizens(p,{},ri(3,5));showCrowd(list);await sleep(AUTO?10:700);
  let opp=0,sup=0;
- for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker()}
+ for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);if(c.stance==='opp')heckle('BOO!','no');else heckle('YEAH!','yes');await hideSpeaker();if(c.topic==='power')await sunQuip(.45)}
  await hideCrowd();
  await say('mayor',fresh('pc-close',[`Public comment is closed. We heard ${opp} opposed and ${sup} in support.`,`Thank you all. That is ${opp} against and ${sup} in favor. Public comment is closed.`,`We have heard from the public: ${opp} opposed, ${sup} in support. We will close comment.`]));
  minutes(`Public comment on the ${p.type.name}: ${opp} opposed, ${sup} in support.`);
@@ -2892,13 +2923,32 @@ async function actHours(){
  }
 }
 async function actWalk(ap){
- const R=lookR();
- openField('street','COMMUNITY WALK',R);
- await say('office',`You walk the neighborhood nearest ${ap.site} and stop to talk with residents.`);
+ const tier=pick(['rich','mid','mid','poor','poor','rich']);
+ const R={...lookR(),...(tier==='rich'?{cl:pick(['blazer','suit','cardigan']),suit:pick(['#2b3a55','#5a4a6a','#2e5d4a'])}:tier==='poor'?{cl:pick(['hoodie','tee','polo']),suit:pick(['#6b6b6b','#7a5a4a','#4a5a6a'])}:{})};
+ const LABEL={rich:'WEALTHY NEIGHBORHOOD',mid:'MIDDLE-CLASS NEIGHBORHOOD',poor:'STRUGGLING NEIGHBORHOOD'}[tier];
+ openField('street','COMMUNITY WALK: '+LABEL,R,tier);
+ await say('office',tier==='rich'?`You walk a leafy, well-kept neighborhood near ${ap.site}. The lawns are trimmed and the cars are new.`:tier==='poor'?`You walk a worn-down neighborhood near ${ap.site}. There are boarded windows, potholes, and trash along the curb.`:`You walk an ordinary neighborhood near ${ap.site} and stop to talk with residents.`);
  const t=['water','noise','traffic','power','chem'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0],sev=severity(ap,t);
- if(sev>.3){await say(R,fill(fresh('walk-'+t,TOPICS[t].opp),ap,{}));ap.biasTopic=t;await say('office',`The mood is worried. The big concern is ${TLABEL[t]}. You expect more of it at public comment.`)}
- else{await say(R,fresh('walk-ok',['Honestly, we could use the jobs. I hope the council says yes.','I do not love it, but it is not in my backyard. I will live with it.','People are curious more than angry. That is a good sign.']));await say('office','The mood is cautiously open.')}
- adj('trust',2,'walked the neighborhood');
+ if(tier==='rich'){
+  await say(R,fresh('walk-rich',['We pay a lot in property taxes, Mayor, and we expect quiet streets and stable values. What is the city doing to protect that?','This is a nice neighborhood because we fought to keep it nice. We will fight this too, if we have to.','I have no problem with growth. I have a problem with growth next to my driveway.']));
+  if(sev>.3||ap.sizeF>.3){ap.biasTopic=sev>.3?t:'nimby';await say('office',sev>.3?`The residents are organized and well-funded. Their big concern is ${TLABEL[t]}. Expect lawyers.`:'The residents are organized and well-funded. Expect a letter-writing campaign and a packed public comment.')}
+  else await say('office','The residents are polite but wary. They will watch how you vote.');
+  adj('trust',2,'walked the neighborhood');adj('dev',-1);
+ }else if(tier==='poor'){
+  await say(R,fresh('walk-poor',['The streetlight on this corner has been out since spring. Nobody comes out here unless it is to write a ticket.','We need jobs, Mayor. Any jobs. But we also need the potholes fixed and the vacant house torn down.','Every promise this city makes ends at the other side of the tracks. Prove me wrong.']));
+  await say('office',ap.jobs>=8?`The residents want jobs badly. ${num(ap.jobs)} of them would matter here.`:'The mood is tired, and hopeful in a cautious way.');
+  const opts=[];if(S.budget>=8000)opts.push({k:'fix',label:'Promise a quick fix ($8K)',sub:'Streetlights, a pothole crew, a lot cleanup. Trust gain.'});
+  opts.push({k:'note',label:'Take notes and refer it to Public Works',sub:'Small trust gain, no cost.'},{k:'skip',label:'Keep walking',sub:'Costs trust.'});
+  const k=await ask('Residents raise neglected streets',opts);
+  if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
+  else if(k==='note'){adj('trust',2,'walked the neighborhood');await say('mayor','I have written it down, and it goes to Public Works today.')}
+  else{adj('trust',-2,'walked past residents');await say('mayor','Thank you for your time.')}
+  if(sev>.3){ap.biasTopic=t}
+ }else{
+  if(sev>.3){await say(R,fill(fresh('walk-'+t,TOPICS[t].opp),ap,{}));ap.biasTopic=t;await say('office',`The mood is worried. The big concern is ${TLABEL[t]}. You expect more of it at public comment.`)}
+  else{await say(R,fresh('walk-ok',['Honestly, we could use the jobs. I hope the council says yes.','I do not love it, but it is not in my backyard. I will live with it.','People are curious more than angry. That is a good sign.']));await say('office','The mood is cautiously open.')}
+  adj('trust',2,'walked the neighborhood');
+ }
  const act=S.projects.filter(p=>p.stage>=1);
  if(act.length&&Math.random()<.3){const p=pick(act);p.tip=true;await say(R,`Also, a neighbor swears the ${p.type.name} crew dumped something near the creek at night.`);await say('office',`You make a note to inspect the ${p.type.name}.`)}
  closeOverlay('field');
