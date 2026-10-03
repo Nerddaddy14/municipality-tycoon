@@ -40,38 +40,39 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 .flag i:after{content:'';position:absolute;left:0;top:0;width:24px;height:22px;background:#3c3b6e}
 .flag.cityf i{background:linear-gradient(90deg,#1f4a8a 50%,#f2b84b 50%)}.flag.cityf i:after{display:none}
 @keyframes wave{0%,100%{transform:skewY(0)}50%{transform:skewY(5deg) scaleX(.96)}}
-.ch{position:absolute;width:76px;margin-left:-38px;z-index:3;transform:scale(.8);transform-origin:50% 100%}
-.ch.mayor{z-index:4;transform:scale(.92)}
+.ch{position:absolute;width:76px;margin-left:-38px;z-index:3;transform:scale(1);transform-origin:50% 100%}
+.ch.mayor{z-index:4;transform:scale(1.14)}
 .aud{position:absolute;width:76px;margin-left:-38px;transform:scale(.8);transform-origin:50% 100%;z-index:2}
 .aud:before{content:'';position:absolute;left:8px;top:58px;width:60px;height:48px;background:#5a2d2d;border-radius:8px 8px 0 0;z-index:5;box-shadow:inset 0 3px 0 rgba(255,255,255,.12)}
 .aud .fig{z-index:2}
-.aud .eye,.aud .mouth,.aud .gl,.aud .tie{display:none}
-.aud .hair{top:8px!important;left:22px!important;width:32px!important;height:35px!important;border-radius:50% 50% 46% 46%!important}
-.aud .hair.long:before,.aud .hair.long:after{top:22px;height:22px}
 #aud.angry .fig{animation:angry .3s infinite}
 #aud.angry .arm.r{transform:rotate(-160deg)}
 #aud.happy .fig{animation:tbob .5s infinite}
 #aud.happy .arm.l{transform:rotate(160deg)}
-.ch.clerk{transform:scale(.78)}
-.fig{position:relative;width:76px;height:98px;animation:idle 3.4s ease-in-out infinite;animation-delay:var(--d,0s)}
+.ch.clerk{transform:scale(.95)}
+.fig{display:block;position:relative;width:76px;height:98px;overflow:visible;animation:idle 3.4s ease-in-out infinite;animation-delay:var(--d,0s)}
 @keyframes idle{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
-.head{position:absolute;left:22px;top:8px;width:32px;height:35px;border-radius:50% 50% 46% 46%;background:var(--skin);z-index:3}
-.hair{position:absolute;left:19px;top:2px;width:38px;height:22px;border-radius:50% 50% 12% 12%;background:var(--hair);z-index:4}
-.hair.long:before,.hair.long:after{content:'';position:absolute;top:8px;width:7px;height:30px;background:var(--hair);border-radius:0 0 7px 7px}
-.hair.long:before{left:-3px}.hair.long:after{right:-3px}
-.hair.bald{height:11px;top:10px;border-radius:40% 40% 0 0;width:40px;left:18px}
-.eye{position:absolute;top:15px;width:4px;height:4px;border-radius:50%;background:#222}
-.eye:nth-child(1){left:8px}.eye:nth-child(2){right:8px}
-.mouth{position:absolute;left:11px;bottom:6px;width:10px;height:3px;border-radius:0 0 7px 7px;background:#7a2b2b}
-.gl{position:absolute;left:3px;top:11px;width:26px;height:10px;border:2px solid #222;border-radius:6px;opacity:.85}
-.body{position:absolute;left:11px;top:42px;width:54px;height:58px;border-radius:20px 20px 4px 4px;background:var(--suit);z-index:2}
-.tie{position:absolute;left:23px;top:0;width:8px;height:30px;background:linear-gradient(#fff 0 8px,#b22 8px);clip-path:polygon(0 0,100% 0,60% 100%,40% 100%)}
-.arm{position:absolute;top:48px;width:12px;height:36px;border-radius:8px;background:var(--suit);transform-origin:50% 5px;z-index:2;transition:transform .25s}
-.arm:after{content:'';position:absolute;bottom:-4px;left:1px;width:10px;height:10px;border-radius:50%;background:var(--skin)}
-.arm.l{left:4px}.arm.r{right:4px}
-.speaking .mouth{animation:talk .22s infinite}
+.fig .sk{fill:var(--skin)}.fig .hr{fill:var(--hair)}.fig .su{fill:var(--suit)}.fig .sh{fill:var(--shirt)}.fig .ac{fill:var(--acc)}
+.fig .head{transform-origin:38px 26px}
+.fig .eye{transform-box:fill-box;transform-origin:center;animation:blink 4.6s infinite;animation-delay:var(--bd,0s)}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+.fig .brow{transform-box:fill-box;transform-origin:center;stroke:var(--hair);fill:none;stroke-width:1.7;stroke-linecap:round;filter:brightness(.75)}
+.fig .cheek{opacity:.16}
+.m-happy .cheek{opacity:.45}.m-angry .cheek{opacity:.35}
+.m-angry .brow.l{transform:rotate(16deg) translateY(.6px)}
+.m-angry .brow.r{transform:rotate(-16deg) translateY(.6px)}
+.m-happy .brow{transform:translateY(-.8px)}
+.fig .mouth path{fill:none;stroke:#7a2b2b;stroke-width:1.5;stroke-linecap:round}
+.fig .mouth .open{opacity:0;transform-box:fill-box;transform-origin:center;transform:scaleY(.2)}
+.speaking .mouth .open{animation:mopen .24s infinite}
+@keyframes mopen{0%,100%{opacity:0;transform:scaleY(.2)}50%{opacity:1;transform:scaleY(1)}}
+.speaking .brow{animation:browup .5s infinite}
+@keyframes browup{0%,100%{translate:0 0}50%{translate:0 -1px}}
+.fig .arm{transition:transform .25s}
+.back-only{display:none}
+.aud .face,#speaker .face,.aud .front,#speaker .front{display:none}
+.aud .back-only,#speaker .back-only{display:inline}
 .speaking .fig{animation:tbob .38s infinite}
-@keyframes talk{0%,100%{height:3px}50%{height:9px;border-radius:50%}}
 @keyframes tbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 .aye .arm.r{transform:rotate(180deg)}
 .nay .head{animation:nod .35s 3}
@@ -95,9 +96,6 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 #podium:before{content:'';position:absolute;top:-26px;left:61px;width:6px;height:22px;background:#222;border-radius:3px}
 #podium:after{content:'';position:absolute;top:-30px;left:56px;width:16px;height:7px;border-radius:4px;background:#111}
 #podium span{display:none}
-#speaker .eye,#speaker .mouth,#speaker .gl,#speaker .tie{display:none}
-#speaker .hair{top:8px!important;left:22px!important;width:32px!important;height:35px!important;border-radius:50% 50% 46% 46%!important}
-#speaker .hair.long:before,#speaker .hair.long:after{top:22px;height:22px}
 #speaker{position:absolute;left:50%;margin-left:-38px;bottom:94px;width:76px;z-index:9;transform:scale(1.05) translateY(40px);opacity:0;transform-origin:50% 100%}
 #speaker.in{opacity:1;animation:pup .5s forwards cubic-bezier(.2,1.3,.4,1)}
 #speaker.out{opacity:1;animation:pout .35s forwards}
@@ -126,7 +124,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 #office .shelf:before{content:'';position:absolute;inset:6px;background:repeating-linear-gradient(#5b3b22 0 30px,#2b1a0c 30px 34px)}
 #office .lock{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 12px system-ui;letter-spacing:3px;color:#7a1f1f}
 #office .odesk{position:absolute;left:14%;width:56%;bottom:46px;height:84px;z-index:3;background:linear-gradient(#a06a3a,#6e4524);border-top:5px solid #c68a52;border-radius:6px 6px 0 0;box-shadow:0 6px 12px rgba(0,0,0,.4)}
-#office .och{position:absolute;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
+#office .och{position:absolute;z-index:2;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
 #office .chair{position:absolute;width:70px;height:90px;margin-left:-35px;background:#3a2318;border-radius:14px 14px 4px 4px;z-index:1}
 #office .nameplate{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#e9d79a;color:#3b2a10;font-size:11px;font-weight:700;padding:2px 10px;border-radius:3px}
 #office .prop{position:absolute;z-index:4;font-size:30px}
@@ -136,9 +134,9 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 #field.show{display:block}
 #field.site{background:linear-gradient(#a8d4f2 0 50%,#b99b6b 50%)}
 #field.street{background:linear-gradient(#a8d4f2 0 48%,#7fb26a 48%)}
-#field .och{position:absolute;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
+#field .och{position:absolute;z-index:2;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
 .flabel{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 13px system-ui;letter-spacing:3px;color:#5a3a10;text-shadow:0 1px 0 #fff;z-index:2}
-.hardhat{position:absolute;left:21px;top:3px;width:34px;height:14px;background:#f2c200;border-radius:17px 17px 3px 3px;z-index:6;box-shadow:0 3px 0 #c89c00}
+.hardhat{position:absolute;left:23px;top:3px;width:30px;height:13px;background:#f2c200;border-radius:17px 17px 3px 3px;z-index:6;box-shadow:0 3px 0 #c89c00}
 .crane{position:absolute;left:14%;bottom:50%;width:12px;height:200px;background:#f2a900}
 .crane i{position:absolute;left:-90px;top:-6px;width:260px;height:10px;background:#f2a900;transform-origin:96px 5px;animation:jib 6s ease-in-out infinite}
 @keyframes jib{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
@@ -357,26 +355,121 @@ const sfx={
 };
 
 /* ---------- cast ---------- */
-const MAYOR={id:'mayor',name:'Mayor (You)',role:'Presiding Officer',color:'#b8892b',skin:'#e3b88f',hair:'#3a2a1c',suit:'#1f2a44',glasses:false};
+const MAYOR={id:'mayor',name:'Mayor Skip Gavelsworth',role:'You, presiding',color:'#b8892b',skin:'#e3b88f',hair:'#3a2a1c',hs:'side',cl:'suit',suit:'#1f2a44',tie:'#c0392b',acc:'chain'};
 const COUNCIL=[
- {id:'chen',name:'Dr. Sarah Chen',short:'Dr. Chen',role:'Environmental Scientist',color:'#2e7d4f',skin:'#e8c39e',hair:'#1b1b1b',hs:'long',suit:'#2e7d4f',glasses:true,w:{env:1.0,jobs:.1,tax:.1,res:.4,dev:-.2},greed:.05},
- {id:'bradley',name:'Tom Bradley',short:'Tom Bradley',role:'Business Owner',color:'#2a5aa8',skin:'#f1c9a5',hair:'#6b4a2b',suit:'#264b8a',w:{env:.1,jobs:.5,tax:.6,res:.1,dev:.7},greed:.35},
- {id:'rodriguez',name:'Miguel Rodriguez',short:'Rodriguez',role:'Union Organizer',color:'#a33b2c',skin:'#b98560',hair:'#111',suit:'#a33b2c',w:{env:.3,jobs:1.0,tax:.3,res:.3,dev:.1},greed:.15},
- {id:'wong',name:'Patricia Wong',short:'Patricia Wong',role:'Neighborhood Advocate',color:'#7a3fa0',skin:'#f0d0b0',hair:'#9a9a9a',hs:'long',suit:'#7a3fa0',w:{env:.4,jobs:.2,tax:.2,res:1.0,dev:-.1},greed:.05},
- {id:'jennings',name:'Harold Jennings',short:'Jennings',role:'Retired Accountant',color:'#5a6270',skin:'#e0b48f',hair:'#dcdcdc',hs:'bald',suit:'#555c68',glasses:true,w:{env:.2,jobs:.2,tax:1.0,res:.3,dev:.2},greed:.3}
+ {id:'chen',name:'Dr. Marigold Pondwater',short:'Dr. Pondwater',role:'Environmental Scientist',color:'#2e7d4f',skin:'#e8c39e',hair:'#1b1b1b',hs:'long',cl:'blazer',suit:'#2e7d4f',shirt:'#f4f1e8',gl:'round',acc:'pin',w:{env:1.0,jobs:.1,tax:.1,res:.4,dev:-.2},greed:.05},
+ {id:'bradley',name:'Chad Cashmore',short:'Chad Cashmore',role:'Business Owner',color:'#2a5aa8',skin:'#f1c9a5',hair:'#6b4a2b',hs:'side',cl:'suit',suit:'#264b8a',tie:'#b22234',w:{env:.1,jobs:.5,tax:.6,res:.1,dev:.7},greed:.35},
+ {id:'rodriguez',name:'Gus Hammerstein',short:'Hammerstein',role:'Union Organizer',color:'#a33b2c',skin:'#b98560',hair:'#111',hs:'short',cl:'polo',suit:'#a33b2c',fh:'goatee',acc:'pin',w:{env:.3,jobs:1.0,tax:.3,res:.3,dev:.1},greed:.15},
+ {id:'wong',name:'Doris Porchlight',short:'Doris Porchlight',role:'Neighborhood Advocate',color:'#7a3fa0',skin:'#f0d0b0',hair:'#a8a8b0',hs:'bun',cl:'cardigan',suit:'#7a3fa0',shirt:'#f4f4f4',acc:'pearls',w:{env:.4,jobs:.2,tax:.2,res:1.0,dev:-.1},greed:.05},
+ {id:'jennings',name:'Wendell Ledgerwood',short:'Ledgerwood',role:'Retired Accountant',color:'#5a6270',skin:'#e0b48f',hair:'#dcdcdc',hs:'balding',cl:'vest',suit:'#555c68',shirt:'#fff',tie:'#8a2b2b',gl:'square',w:{env:.2,jobs:.2,tax:1.0,res:.3,dev:.2},greed:.3}
 ];
-const CAST={mayor:MAYOR,clerk:{id:'clerk',name:'City Clerk',role:'Clerk of the Council',color:'#6a6a6a',skin:'#d9b08c',hair:'#4a3a2a',hs:'long',suit:'#6a6a6a',glasses:true},
+const CAST={mayor:MAYOR,clerk:{id:'clerk',name:'City Clerk',role:'Clerk of the Council',color:'#6a6a6a',skin:'#d9b08c',hair:'#4a3a2a',hs:'bob',cl:'cardigan',suit:'#6a6a6a',gl:'round',acc:'lanyard'},
  outside:{name:'Outside City Hall',role:'',color:'#555'},office:{name:'Your office',role:'',color:'#555'}};
 COUNCIL.forEach(m=>CAST[m.id]=m);
 
-const SKINS=['#f1c9a5','#e0b48f','#c68e63','#a8704a','#7a4b2d','#f6d8bd'];
-const HAIRS=['#1b1b1b','#3b2a1a','#6b4a2b','#a6743a','#8a8a8a','#d6d6d6','#7a2b1f'];
-const SHIRTS=['#c0392b','#2980b9','#27ae60','#8e44ad','#d68910','#16a085','#5d6d7e','#cb4335'];
 const FIRST=['Karen','Dale','Maria','Jerome','Susan','Ravi','Ellen','Hank','Tasha','Walt','Nina','Omar','Bev','Carl','Joanne','Luis','Priscilla','Doug','Mei','Frank'];
-const LAST=['Alvarez','Brooks','Chen','Dobbs','Evans','Fitch','Garza','Hollis','Ivers','Jackson','Kowalski','Lindgren','Moreau','Nguyen','Okafor','Pruitt','Quinn','Reyes','Stone','Tate'];
-const look=()=>({skin:pick(SKINS),hair:pick(HAIRS),suit:pick(SHIRTS),hs:Math.random()<.35?'long':(Math.random()<.12?'bald':''),glasses:Math.random()<.2});
-
-function figHTML(o){return `<div class="fig" style="--skin:${o.skin};--hair:${o.hair};--suit:${o.suit};--d:${(Math.random()*-3).toFixed(2)}s"><div class="hair ${o.hs||''}"></div><div class="head"><i class="eye"></i><i class="eye"></i><b class="mouth"></b>${o.glasses?'<u class="gl"></u>':''}</div><div class="body"><s class="tie"></s></div><div class="arm l"></div><div class="arm r"></div></div>`}
+const LAST=['Alvarez','Brooks','Mercer','Dobbs','Evans','Fitch','Garza','Hollis','Ivers','Jackson','Kowalski','Lindgren','Moreau','Nguyen','Okafor','Pruitt','Quinn','Reyes','Stone','Tate'];
+/* ---------- characters: SVG figures ---------- */
+const HAIR_BACK={
+ long:'<path d="M23,26 C21,10 31,6 38,6 C45,6 55,10 53,26 L54.5,53 Q38,55 21.5,53Z"/>',
+ bob:'<path d="M23,26 C21,10 31,6 38,6 C45,6 55,10 53,26 L53.5,40 Q38,44 22.5,40Z"/>',
+ bun:'<circle cx="38" cy="6.5" r="6"/>',
+ ponytail:'<path d="M48,13 C63,10 67,29 60,46 C58,37 55,31 50,27Z"/>',
+ afro:'<ellipse cx="38" cy="19" rx="18.5" ry="16"/>',
+ curly:'<circle cx="25" cy="23" r="6"/><circle cx="51" cy="23" r="6"/><circle cx="27" cy="14.5" r="6"/><circle cx="49" cy="14.5" r="6"/><circle cx="33" cy="9.5" r="6"/><circle cx="43" cy="9.5" r="6"/><circle cx="38" cy="8" r="6"/>'
+};
+const HAIR_FRONT={
+ short:'<path d="M24.5,27 C22.5,11 30,7.5 38,7.5 C46,7.5 53.5,11 51.5,27 C49.5,21 46,17 38,17 C30,17 26.5,21 24.5,27Z"/>',
+ side:'<path d="M24.5,27 C22.5,11 31,7 40,8 C49,9 54,14 51.5,27 C50,21.5 46,16.5 38,16.5 C32,17 27.5,20 24.5,27Z"/><path d="M34,9 C31,12 30,15 30,17.5" stroke="rgba(255,255,255,.4)" stroke-width="1" fill="none"/>',
+ buzz:'<path d="M24.8,26 C23.8,13 30,10 38,10 C46,10 52.2,13 51.2,26 C49.5,21.5 46,19 38,19 C30,19 26.5,21.5 24.8,26Z" opacity=".8"/>',
+ long:'<path d="M24,28 C21.5,11 30,7 38,7 C46,7 54.5,11 52,28 C50.5,21 46,15.5 38,15.5 C30,15.5 25.5,21 24,28Z"/>',
+ bob:'<path d="M24,28 C21.5,11 30,7 38,7 C46,7 54.5,11 52,28 C50.5,21 46,15.5 38,15.5 C30,15.5 25.5,21 24,28Z"/>',
+ bun:'<path d="M24.5,26 C23,12 30,8 38,8 C46,8 53,12 51.5,26 C49.5,20.5 46,17 38,17 C30,17 26.5,20.5 24.5,26Z"/>',
+ ponytail:'<path d="M24.5,26 C23,12 30,8 38,8 C46,8 53,12 51.5,26 C49.5,20.5 46,17 38,17 C30,17 26.5,20.5 24.5,26Z"/>',
+ afro:'<path d="M24.5,24 C23,12 30,8 38,8 C46,8 53,12 51.5,24 C49,19 46,17 38,17 C30,17 27,19 24.5,24Z"/>',
+ curly:'<path d="M24.5,24 C23,13 30,9 38,9 C46,9 53,13 51.5,24 C49,19 46,17.5 38,17.5 C30,17.5 27,19 24.5,24Z"/>',
+ balding:'<path d="M24.6,30 C23.4,22 25.5,17.5 28.8,19 L27.8,30Z"/><path d="M51.4,30 C52.6,22 50.5,17.5 47.2,19 L48.2,30Z"/>',
+ bald:'',
+ cap:'<path d="M23.5,19.5 C26,5 50,5 52.5,19.5Z" style="fill:var(--suit)"/><rect x="21" y="18" width="34" height="3.6" rx="1.8" fill="#111"/><circle cx="38" cy="12" r="2" fill="#e8c85a"/>'
+};
+const BEARD={
+ beard:'<path class="hr" d="M25.2,30 C25.5,41 31,46 38,46 C45,46 50.5,41 50.8,30 C48.5,36.5 44,38.5 38,38.5 C32,38.5 27.5,36.5 25.2,30Z"/>',
+ mustache:'<path class="hr" d="M31,33.2 Q34.5,31.2 38,32.8 Q41.5,31.2 45,33.2 Q42,36 38,34.8 Q34,36 31,33.2Z"/>',
+ goatee:'<path class="hr" d="M31,33.2 Q34.5,31.2 38,32.8 Q41.5,31.2 45,33.2 Q42,36 38,34.8 Q34,36 31,33.2Z"/><path class="hr" d="M34.5,38 Q38,36.8 41.5,38 Q41,44 38,45 Q35,44 34.5,38Z"/>',
+ stubble:'<path class="hr" opacity=".18" d="M25.2,30 C25.5,41 31,46 38,46 C45,46 50.5,41 50.8,30 C48.5,36.5 44,38.5 38,38.5 C32,38.5 27.5,36.5 25.2,30Z"/>'
+};
+const MOUTH={neutral:'M34,35.4 Q38,37.2 42,35.4',happy:'M33,34.4 Q38,39.2 43,34.4',angry:'M33.5,37 Q38,33.6 42.5,37'};
+function torsoSVG(cl){
+ const base='<path class="su" d="M9,98 L9,60 Q9,46 23,45 L53,45 Q67,46 67,60 L67,98Z"/>';
+ const shade='<path d="M9,86 L67,86 L67,98 L9,98Z" fill="rgba(0,0,0,.08)"/>';
+ const lap='<path d="M31,45 L38,64 L27,59 L25.5,48Z" fill="rgba(0,0,0,.22)"/><path d="M45,45 L38,64 L49,59 L50.5,48Z" fill="rgba(0,0,0,.22)"/>';
+ const btn=(ys)=>ys.map(y=>`<circle cx="38" cy="${y}" r="1.1" fill="rgba(0,0,0,.3)"/>`).join('');
+ switch(cl){
+  case 'blazer':return base+shade+'<g class="front"><path class="sh" d="M31,45 L45,45 L38,64Z"/>'+lap+btn([78])+'</g>';
+  case 'uniform':return base+shade+'<g class="front"><path class="sh" d="M31,45 L45,45 L38,62Z"/>'+lap+'<path d="M36.4,46 L39.6,46 L40.2,52 L38,60 L35.8,52Z" fill="#111"/><path d="M47,55 h8 v6 q-4,5 -8,0z" fill="#e8c85a"/>'+btn([72,82])+'</g><rect x="9" y="46" width="11" height="4" rx="1.5" fill="#c9a24a"/><rect x="56" y="46" width="11" height="4" rx="1.5" fill="#c9a24a"/>';
+  case 'blouse':return base+shade+'<g class="front"><path class="sk" d="M30,45 Q38,58 46,45Z"/><path d="M30,45 Q38,58 46,45" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="1.6"/></g>';
+  case 'cardigan':return base+shade+'<g class="front"><path class="sh" d="M29,45 L47,45 L47,98 L29,98Z"/><path class="sk" d="M32,45 L44,45 L38,56Z"/><path d="M29,45 L29,98 M47,45 L47,98" stroke="rgba(0,0,0,.3)" stroke-width="1.4"/>'+btn([64,74,84])+'</g>';
+  case 'polo':return base+shade+'<g class="front"><path class="sk" d="M32,45 L44,45 L38,52Z"/><path d="M29,45 L38,50 L32.5,57Z" fill="rgba(255,255,255,.4)"/><path d="M47,45 L38,50 L43.5,57Z" fill="rgba(255,255,255,.4)"/><path d="M38,50 L38,67" stroke="rgba(0,0,0,.3)" stroke-width="1.2"/>'+btn([55,61])+'</g>';
+  case 'tee':return base+shade+'<g class="front"><ellipse class="sk" cx="38" cy="46" rx="7.8" ry="4.2"/><path d="M30.2,46 Q38,53.5 45.8,46" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="1.5"/></g>';
+  case 'hoodie':return base+shade+'<g class="front"><path d="M25,46 Q38,62 51,46 L51,43 Q38,50 25,43Z" fill="rgba(0,0,0,.3)"/><path class="sk" d="M32,45 Q38,53 44,45Z"/><path d="M34,52 L33,66 M42,52 L43,66" stroke="rgba(255,255,255,.7)" stroke-width=".9"/><path d="M24,80 Q38,85 52,80 L52,93 L24,93Z" fill="rgba(0,0,0,.14)"/></g>';
+  case 'vest':return '<path class="sh" d="M9,98 L9,60 Q9,46 23,45 L53,45 Q67,46 67,60 L67,98Z"/>'+shade+'<path class="su" d="M9,60 Q9,46 23,45 L31,45 L36,70 L31,98 L9,98Z"/><path class="su" d="M67,60 Q67,46 53,45 L45,45 L40,70 L45,98 L67,98Z"/><g class="front"><path d="M31,45 L36,70 M45,45 L40,70" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/><path class="ac" d="M31,44 L37,47 L31,50Z M45,44 L39,47 L45,50Z"/><circle class="ac" cx="38" cy="47" r="1.9"/><circle cx="34.5" cy="76" r="1" fill="rgba(0,0,0,.3)"/><circle cx="41.5" cy="76" r="1" fill="rgba(0,0,0,.3)"/></g>';
+  default:return base+shade+'<g class="front"><path class="sh" d="M31,45 L45,45 L38,64Z"/>'+lap+'<path class="ac" d="M36.2,46 L39.8,46 L40.8,52 L38,63.5 L35.2,52Z"/><rect class="ac" x="36" y="45.4" width="4" height="3.2" rx="1"/>'+btn([78])+'</g>';
+ }
+}
+function accSVG(a){
+ if(a==='chain')return '<g class="front"><path d="M30,46 Q38,62 46,46" fill="none" stroke="#e0b53c" stroke-width="1.5"/><circle cx="38" cy="59.5" r="3.3" fill="#e8c85a" stroke="#a9811c" stroke-width=".8"/><circle cx="38" cy="59.5" r="1.3" fill="#a9811c"/></g>';
+ if(a==='pearls')return '<g class="front">'+[[31.5,47.2],[33.2,50],[35.4,52.2],[38,53],[40.6,52.2],[42.8,50],[44.5,47.2]].map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="1.4" fill="#f6f1e8" stroke="#cfc6b4" stroke-width=".4"/>`).join('')+'</g>';
+ if(a==='lanyard')return '<g class="front"><path d="M31,45 L38,66 L45,45" fill="none" stroke="#2a6fb0" stroke-width="1.6"/><rect x="34" y="66" width="8" height="10" rx="1.5" fill="#fff" stroke="#999" stroke-width=".6"/><rect x="35.5" y="68" width="5" height="2" fill="#2a6fb0"/></g>';
+ if(a==='pin')return '<g class="front"><circle cx="29" cy="57" r="2.3" fill="#e0b53c"/><circle cx="29" cy="57" r="1" fill="#fff" opacity=".6"/></g>';
+ return '';
+}
+function glassesSVG(g){
+ if(g==='square')return '<g class="gl" fill="none" stroke="#222" stroke-width="1.2"><rect x="27.6" y="22" width="9.4" height="7.6" rx="1.8"/><rect x="39" y="22" width="9.4" height="7.6" rx="1.8"/><path d="M37,25.5 L39,25.5 M27.6,24.5 L25.4,23.5 M48.4,24.5 L50.6,23.5"/></g>';
+ if(g)return '<g class="gl" fill="none" stroke="#222" stroke-width="1.2"><circle cx="32.5" cy="26" r="4.7"/><circle cx="43.5" cy="26" r="4.7"/><path d="M37.2,25.8 L38.8,25.8 M27.9,25 L25.5,24 M48.1,25 L50.5,24"/></g>';
+ return '';
+}
+function figHTML(o){
+ const hs=HAIR_FRONT[o.hs]!==undefined?o.hs:'short',cl=o.cl||'suit',gl=o.gl||(o.glasses?'round':''),mood=o.mood||'neutral',fh=o.fh||'';
+ const vars=`--skin:${o.skin};--hair:${o.hair};--suit:${o.suit};--shirt:${o.shirt||'#f4f4f4'};--acc:${o.tie||'#b22'};--d:${(Math.random()*-3).toFixed(2)}s;--bd:${(Math.random()*-5).toFixed(2)}s`;
+ const arm=(x,px,side)=>`<g class="arm ${side}" style="transform-origin:${px}px 50px"><rect class="su" x="${x}" y="47" width="12.5" height="37" rx="6.2"/><rect x="${x}" y="79" width="12.5" height="3.2" fill="rgba(255,255,255,.55)"${(cl==='suit'||cl==='blazer'||cl==='uniform')?'':' opacity="0"'}/><circle class="sk" cx="${px}" cy="85" r="5.2"/></g>`;
+ const back=HAIR_BACK[o.hs]||'';
+ return `<svg class="fig m-${mood}" viewBox="0 0 76 98" width="76" height="98" style="${vars}">`
+  +'<rect class="sk" x="33.5" y="36" width="9" height="13" rx="3"/>'
+  +torsoSVG(cl)+accSVG(o.acc)
+  +arm(3.4,9.6,'l')+arm(60.1,66.4,'r')
+  +`<g class="hr hairback">${back}</g>`
+  +'<g class="head">'
+  +'<circle class="sk" cx="25.3" cy="28" r="3.1"/><circle class="sk" cx="50.7" cy="28" r="3.1"/><ellipse cx="25.8" cy="28.5" rx="1.1" ry="1.8" fill="rgba(0,0,0,.12)"/><ellipse cx="50.2" cy="28.5" rx="1.1" ry="1.8" fill="rgba(0,0,0,.12)"/>'
+  +'<ellipse class="sk" cx="38" cy="26" rx="12.6" ry="14.2"/><path class="sk" d="M25.6,28 Q26.5,41.5 38,42 Q49.5,41.5 50.4,28Z"/><path d="M27,36 Q38,46 49,36 Q38,42 27,36Z" fill="rgba(0,0,0,.07)"/>'
+  +'<g class="face">'
+  +'<circle class="cheek" cx="30" cy="31.5" r="2.7" fill="#e86a6a"/><circle class="cheek" cx="46" cy="31.5" r="2.7" fill="#e86a6a"/>'
+  +'<path d="M38,27 Q36.1,31 38,31.9" fill="none" stroke="rgba(0,0,0,.28)" stroke-width="1.1" stroke-linecap="round"/>'
+  +(BEARD[fh]||'')
+  +`<g class="mouth"><path d="${MOUTH[mood]||MOUTH.neutral}"/><ellipse class="open" cx="38" cy="36" rx="3.4" ry="3" fill="#5a1e1e"/></g>`
+  +'<g class="eye"><ellipse cx="32.5" cy="26" rx="2.7" ry="2.9" fill="#fff"/><circle cx="32.8" cy="26.3" r="1.7" fill="#2b2118"/><circle cx="33.4" cy="25.6" r=".6" fill="#fff"/></g>'
+  +'<g class="eye"><ellipse cx="43.5" cy="26" rx="2.7" ry="2.9" fill="#fff"/><circle cx="43.8" cy="26.3" r="1.7" fill="#2b2118"/><circle cx="44.4" cy="25.6" r=".6" fill="#fff"/></g>'
+  +'<path class="brow l" d="M29,21.8 Q32.5,19.4 36,21.2"/><path class="brow r" d="M40,21.2 Q43.5,19.4 47,21.8"/>'
+  +glassesSVG(gl)
+  +'</g>'
+  +`<g class="hr">${HAIR_FRONT[hs]||''}</g>`
+  +'<ellipse class="hr back-only" cx="38" cy="25.5" rx="13.3" ry="15.3"/>'
+  +'</g>'
+  +`<g class="hr back-only">${back}</g>`
+  +'</svg>';
+}
+const SKINS=['#f6d8bd','#f1c9a5','#e0b48f','#c68e63','#a8704a','#7a4b2d','#5b3a24'];
+const HAIRS=['#1b1b1b','#3b2a1a','#6b4a2b','#a6743a','#7a2b1f','#c9a24a','#8a8a8a','#d6d6d6'];
+const SHIRTS=['#c0392b','#2980b9','#27ae60','#8e44ad','#d68910','#16a085','#5d6d7e','#cb4335','#34495e','#e67e22'];
+const HSTYLES=['short','side','long','bob','bun','ponytail','curly','afro','buzz','balding','bald'];
+const MALEISH=['short','side','buzz','balding','bald'];
+const CLOTHES=['suit','blouse','cardigan','polo','tee','hoodie','vest','blazer'];
+const look=()=>{
+ const hs=pick(HSTYLES),gray=['balding','bald'].includes(hs)?Math.random()<.5:Math.random()<.15;
+ return{skin:pick(SKINS),hair:gray?pick(['#8a8a8a','#d6d6d6']):pick(HAIRS.slice(0,6)),suit:pick(SHIRTS),shirt:pick(['#f4f4f4','#fff3d6','#dbe9ff','#f0e4ff']),hs,
+  fh:MALEISH.includes(hs)&&Math.random()<.4?pick(['beard','mustache','goatee','stubble']):'',cl:pick(CLOTHES),gl:Math.random()<.22?pick(['round','square']):'',
+  acc:Math.random()<.14?pick(['pearls','pin','lanyard']):'',tie:pick(['#b22','#1f5fa8','#2e7d4f','#8e44ad','#d68910'])};
+};
+const lookPro=()=>({...look(),cl:pick(['suit','blazer','cardigan','vest','suit'])});
 
 function buildScene(){
  const cast=$('#cast'),plates=$('#plates');
@@ -386,7 +479,7 @@ function buildScene(){
  COUNCIL.forEach((m,i)=>place(m,xs[i],152));
  place(CAST.clerk,92,156,'clerk');
  const plate=(txt,left,top)=>{const p=document.createElement('div');p.className='plate';p.textContent=txt;p.style.left=left+'%';p.style.top=top+'px';plates.appendChild(p)};
- plate('MAYOR',50,252);
+ plate('MAYOR GAVELSWORTH',50,252);
  COUNCIL.forEach((m,i)=>plate(m.short,xs[i],246));
  plate('CLERK',92,246);
  const aud=$('#aud');
@@ -543,7 +636,7 @@ function genProject(){
  p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;p.ordFree=[];p.style=DEVSTYLE[p.company]||'blunt';
  S.ords.forEach(k=>{const o=ORDS.find(x=>x.k===k);if(!o)return;(o.free||[]).forEach(c=>{p.free[c]=true;p.ordFree.push(c)});if(k==='fast')p.durs[0]=1;if(k==='abate')p.tax=Math.round(p.tax*.7)});
  p.offered=offerConds(p);
- p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
+ p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...lookPro(),suit:'#262833',hair:pick(HAIRS),glasses:false};
  return p;
 }
 const T=(...ks)=>p=>ks.includes(p.type.k);
@@ -839,7 +932,7 @@ EV.push(
   {k:'ignore',label:'Let construction continue',sub:'Fast. Dangerous if it gets out.',dev:4,trust:-5,soft:true,mult:0,say:'Staff reviewed the site and construction will continue.'}]})},
  {bad:1,id:'strike',st:[2],when:p=>p.jobs>=10,make:p=>({title:'Subcontractor strike',text:`Workers at the ${p.type.name} site walked off the job, saying a subcontractor underpaid them. Pickets are up at the gate.`,dev:'This is a dispute between a subcontractor and its workers. We are not a party to it.',env:0,fine:0,topic:'safety',resp:[
   {k:'mediate',label:'Mediate between the union and the contractor',sub:'Costs a week. Costs nobody much goodwill.',delay:1,trust:2,dev:-3,rel:{rodriguez:3},say:'I am calling both sides to city hall tomorrow morning.'},
-  {k:'union',label:'Publicly back the workers',sub:'Rodriguez will love it. The developer will not.',delay:1,trust:3,dev:-8,rel:{rodriguez:7},say:'These workers deserve to be paid what they were promised.'},
+  {k:'union',label:'Publicly back the workers',sub:'Hammerstein will love it. The developer will not.',delay:1,trust:3,dev:-8,rel:{rodriguez:7},say:'These workers deserve to be paid what they were promised.'},
   {k:'stay',label:'Stay out of it',sub:'The developer is relieved. Labor is not.',soft:true,trust:-3,dev:3,rel:{rodriguez:-6},say:'This is a private dispute, and the city will not take sides.'}]})},
  {bad:1,id:'fatal',st:[2],when:p=>p.traffic>=6,make:p=>({title:'Haul-road fatality',text:`A cyclist was struck and killed by a truck serving the ${p.type.name} site. The community is stunned.`,dev:'We are heartbroken. We will cooperate fully with the investigation.',env:0,fine:0,topic:'traffic',resp:[
   {k:'shutdown',label:'Suspend trucking until a safety plan is approved',sub:'The strongest response. Costs a week.',delay:1,trust:4,dev:-10,say:'Trucking is suspended until a real safety plan is approved.'},
@@ -1102,7 +1195,7 @@ async function hallScene(){
  if(S.stats.gallons>0||S.env<50)signs.push('SAVE OUR WATER','PROTECT OUR CREEK');
  if(S.stats.grid)signs.push('NO MORE BLACKOUTS','STOP THE POWER GRAB');
  let html=`<div class="label">${riot?'ANGRY CROWD AT CITY HALL':'PROTEST AT CITY HALL'}</div><div class="flagp"><i></i></div><div class="ped"></div><div class="name">CLIFTON CITY HALL</div><div class="bldg"></div><div class="cols">${'<i></i>'.repeat(6)}</div><div class="door"></div><div class="steps"></div>`;
- if(riot)for(let i=0;i<4;i++)html+=`<div class="cop" style="left:${36+i*9}%;width:76px;margin-left:-38px;transform:scale(.75);transform-origin:50% 100%">${figHTML({skin:pick(SKINS),hair:'#1b1b1b',suit:'#1b3a6b'})}</div>`;
+ if(riot)for(let i=0;i<4;i++)html+=`<div class="cop" style="left:${36+i*9}%;width:76px;margin-left:-38px;transform:scale(.75);transform-origin:50% 100%">${figHTML({skin:pick(SKINS),hair:'#1b1b1b',hs:'cap',cl:'uniform',suit:'#1b3a6b'})}</div>`;
  for(let i=0;i<n;i++)html+=`<div class="cm angry" style="left:${(6+Math.random()*88).toFixed(1)}%;--b:${ri(0,56)}px;--dl:${(i*.1).toFixed(2)}s"><div class="sign"><span>${pick(signs)}</span></div>${figHTML(look())}</div>`;
  openOverlay('hall',html);sfx.pop();sfx.boo();ambience(true);
  banner(riot?'ANGRY CROWD':'PROTEST');
@@ -1126,7 +1219,7 @@ async function hallScene(){
 }
 
 function openRoom(label,vis){
- const om={name:MAYOR.name,role:'In your office',color:MAYOR.color,skin:MAYOR.skin,hair:MAYOR.hair,suit:MAYOR.suit};
+ const om={...MAYOR,role:'In your office'};delete om.el;
  openOverlay('office',`<div class="lock">${label}</div><div class="win"></div><div class="frame" style="left:30%">MAYOR OF THE YEAR</div><div class="frame" style="left:44%;width:58px">PROCLAMATION</div><div class="shelf"></div>
   <div class="chair" style="left:36%;bottom:108px"></div><div class="och" id="oM" style="left:36%;bottom:104px">${figHTML(om)}</div><div class="odesk"><div class="nameplate">MAYOR</div></div>
   <div class="chair" style="left:82%;bottom:28px"></div><div class="och" id="oV" style="left:82%;bottom:30px">${figHTML(vis)}</div>`);
@@ -1134,7 +1227,7 @@ function openRoom(label,vis){
  return om;
 }
 function openField(kind,label,vis){
- const om={name:MAYOR.name,role:'Out in the field',color:MAYOR.color,skin:MAYOR.skin,hair:MAYOR.hair,suit:MAYOR.suit};
+ const om={...MAYOR,role:'Out in the field'};delete om.el;
  const bg=kind==='site'?'<div class="crane"><i></i></div><div class="fence"></div><div class="trailer">SITE OFFICE</div><div class="pile"></div>':'<div class="house h1"></div><div class="house h2"></div><div class="house h3"></div><div class="walk"></div>';
  const hat=kind==='site'?'<div class="hardhat"></div>':'';
  openOverlay('field',`<div class="flabel">${label}</div>${bg}<div class="och" id="fM" style="left:38%;bottom:${kind==='site'?44:30}px">${figHTML(om)}${hat}</div><div class="och" id="fV" style="left:62%;bottom:${kind==='site'?38:24}px">${figHTML(vis)}${hat}</div>`);
@@ -1146,7 +1239,7 @@ async function officeMeeting(p){
  if(Math.random()>clamp(.35+S.corrupt/200+p.sizeF*.15,.3,.9))return;
  const bribeP=clamp(.1+S.corrupt/130+(p.cost>=1e7?.12:0)+(p.style==='slippery'?.1:0),.08,.75);
  const kind=Math.random()<bribeP?'bribe':pick(['offer','offer','waiver']);
- const vis=kind==='bribe'?{name:'Vince Carrow',role:'Lobbyist, '+p.company,color:'#4a3b6a',...look(),suit:'#222',hair:'#222'}:p.rep;
+ const vis=kind==='bribe'?{name:'Vince Carrow',role:'Lobbyist, '+p.company,color:'#4a3b6a',...lookPro(),suit:'#222',hair:'#222'}:p.rep;
  const om=openRoom('CLOSED-DOOR MEETING',vis);
  p.met=true;
  await say('office',`After hours, your assistant closes the door. ${vis.name} of ${p.company} takes the chair across from your desk.`);
@@ -1262,7 +1355,7 @@ async function reportsScene(p){
  await say('mayor',fresh('rep-intro',['Before the developer speaks, we have the reports the council requested last week.','First up tonight, the studies this council asked for.','Staff has returned with the reports requested at our last meeting.']));
  for(const rq of p.requests){
   const R=makeReport(p,rq.topic);p.reports.push(R);p.asked[rq.m]=R;
-  const sp={name:R.who,role:R.role,color:'#4a6a6a',...look(),suit:'#3b4a63'};
+  const sp={name:R.who,role:R.role,color:'#4a6a6a',...lookPro(),suit:'#3b4a63'};
   await showSpeaker(sp);await say(sp,R.text);await hideSpeaker();
   showAgenda(p);
   await say(rq.m,fresh('react-'+R.res,REACT[R.res]));
@@ -1271,8 +1364,8 @@ async function reportsScene(p){
 }
 
 async function staffReports(p,returning){
- const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
- const F={name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...look(),suit:'#a8412b',hair:'#222'};
+ const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...lookPro(),suit:'#3b4a63'};
+ const F={name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...lookPro(),suit:'#a8412b',hair:'#222'};
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  const zt=[`Zoning review: the ${p.type.name} is a permitted use at ${p.site}. No variances are required. Staff has no objection.`,
   `Zoning review: the use is conditionally permitted at ${p.site}. Staff recommends a landscape buffer, strict enforcement of the ${Math.round(p.db)} dB limit, and a truck routing plan.`,
@@ -1329,7 +1422,7 @@ async function attorneyAdvice(p,returning){
  let k=await ask('The City Attorney has spoken. Your response?',[...base,{k:'second',label:'Get a second opinion ($20K)',sub:'Outside counsel tells you whether the advice is sound.'}]);
  if(k==='second'){
   addBudget(-20000,'outside counsel');
-  const O={name:'Maria Okafor',role:'Outside counsel',color:'#3a6b5b',...look(),suit:'#2b3b4a'};
+  const O={name:'Maria Okafor',role:'Outside counsel',color:'#3a6b5b',...lookPro(),suit:'#2b3b4a'};
   await showSpeaker(O);await say(O,good?fresh('o-g',['I reviewed that advice. It is sound. I would follow it.','I agree with the City Attorney on this one. Follow it.','Nothing wrong with that advice. It is conventional and defensible.']):fresh('o-b',['I reviewed that advice, and I disagree. Following it would expose the city. I would not do it.','I would not follow that. It leaves the city worse off than before.','That advice does not hold up. I would be careful.']));await hideSpeaker();
   k=await ask('Now what?',base);
  }
@@ -1491,15 +1584,15 @@ CRISES.push(
  {k:'bridge',name:'Bridge closure',w:()=>1,make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'Inspectors closed the Millbrook bridge after finding cracked supports. Forty thousand crossings a week now have to go the long way around.',
   opts:[{k:'repair',label:'Fund an emergency repair ($180K)',sub:'Reopens in a month.',cost:180000,trust:2},{k:'close',label:'Close it for six weeks and wait for the budget',sub:'Free now. Drivers will be furious.',trust:-4,risk:.3,bad:{trust:-2}},{k:'state',label:'Ask the state for emergency funding',sub:'Might work. Might not.',trust:0,risk:.5,bad:{cost:110000}}]})},
  {k:'teachers',name:'Teachers strike',w:()=>1,make:()=>({who:{name:'Tasha Brooks',role:'Teachers union representative'},text:'Clifton teachers walked out after contract talks collapsed. Schools are closed, and parents are scrambling.',
-  opts:[{k:'fund',label:'Offer to fund the raises ($70K)',sub:'Ends the strike. Rodriguez will approve.',cost:70000,trust:3,rel:{rodriguez:4}},{k:'district',label:'Back the school district',sub:'Holds the line. Labor will remember.',trust:-2,rel:{rodriguez:-6}},{k:'mediate',label:'Mediate at city hall',sub:'Might work. Might drag on.',risk:.4,bad:{trust:-3}}]})},
+  opts:[{k:'fund',label:'Offer to fund the raises ($70K)',sub:'Ends the strike. Hammerstein will approve.',cost:70000,trust:3,rel:{rodriguez:4}},{k:'district',label:'Back the school district',sub:'Holds the line. Labor will remember.',trust:-2,rel:{rodriguez:-6}},{k:'mediate',label:'Mediate at city hall',sub:'Might work. Might drag on.',risk:.4,bad:{trust:-3}}]})},
  {k:'viral',name:'Viral clip',w:()=>1,make:()=>({who:{name:'Dana Whitfield',role:'Clifton Courier reporter'},text:'A clip of you at last week\'s meeting went viral. Taken out of context, it looks like you laughed at a resident. The comments are not kind.',
   opts:[{k:'video',label:'Post a candid video response',sub:'Honest. Can backfire if it feels staged.',trust:2,risk:.3,bad:{trust:-3}},{k:'consult',label:'Hire a social media consultant ($20K)',sub:'Professional damage control.',cost:20000,trust:1},{k:'ignore',label:'Ignore it',sub:'Free. The internet is patient.',trust:-3}]})},
  {k:'mandate',name:'Unfunded mandate',w:()=>1,make:()=>({who:{name:'Nora Whitaker',role:'Finance Director'},text:'The state passed a mandate requiring expensive new water testing in every city, and sent us the bill.',
   opts:[{k:'comply',label:'Comply and pay ($60K)',sub:'Safe and boring.',cost:60000,trust:1},{k:'lobby',label:'Lobby against it',sub:'Might win. Might lose and pay more.',risk:.5,bad:{cost:90000}},{k:'devs',label:'Pass the cost to developers',sub:'Cheap for the city. Developers will complain.',dev:-6,trust:0}]})},
  {k:'sinkhole',name:'Sinkhole',w:()=>1+(waterLoad()>60?1:0),make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'A sinkhole swallowed half of Fourth Avenue. A delivery truck is stuck in it. The driver is fine, and furious.',
   opts:[{k:'repair',label:'Repair it immediately ($80K)',sub:'The responsible choice.',cost:80000,trust:2},{k:'barricade',label:'Barricade it and wait for next quarter',sub:'Cheap now. Risky if it grows.',trust:-3,risk:.5,bad:{cost:120000}},{k:'utility',label:'Make the water utility pay',sub:'Fair, if it holds up.',trust:-1,risk:.35,bad:{trust:-3}}]})},
- {k:'layoffs',name:'Mass layoffs',w:()=>1,make:()=>({who:{name:'Miguel Rodriguez',role:'Union Organizer'},text:'Clifton\'s largest private employer announced 300 layoffs. The plant gates have a line of families, and the council is looking at you.',
-  opts:[{k:'retrain',label:'Offer a retraining fund ($50K)',sub:'Helps workers. Rodriguez approves.',cost:50000,trust:3,rel:{rodriguez:4}},{k:'relief',label:'Offer the company tax relief to stay',sub:'Developers like it. Fiscal hawks will not.',dev:3,trust:1,rel:{jennings:-4}},{k:'shrug',label:'Call it a national trend',sub:'True, and tone deaf.',trust:-3}]})}
+ {k:'layoffs',name:'Mass layoffs',w:()=>1,make:()=>({who:{name:'Gus Hammerstein',role:'Union Organizer'},text:'Clifton\'s largest private employer announced 300 layoffs. The plant gates have a line of families, and the council is looking at you.',
+  opts:[{k:'retrain',label:'Offer a retraining fund ($50K)',sub:'Helps workers. Hammerstein approves.',cost:50000,trust:3,rel:{rodriguez:4}},{k:'relief',label:'Offer the company tax relief to stay',sub:'Developers like it. Fiscal hawks will not.',dev:3,trust:1,rel:{jennings:-4}},{k:'shrug',label:'Call it a national trend',sub:'True, and tone deaf.',trust:-3}]})}
 );
 const POPLOSS={tornado:{rebuild:80,federal:250,volunteer:150},flood:{repair:50,patch:150,aid:300},layoffs:{retrain:100,relief:150,shrug:300},derail:{evacuate:50,shelter:100,rail:150}};
 async function runCrisis(c,mode){
@@ -1507,7 +1600,7 @@ async function runCrisis(c,mode){
  if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
  sfx.alarm();banner(c.name.toUpperCase());
  await say('mayor',fresh('cr-intro',['We have a developing situation.','I have just been handed an urgent report.','The council needs to hear this right away.']));
- const W={name:d.who.name,role:d.who.role,color:'#a8412b',...look(),suit:'#a8412b'};
+ const W={name:d.who.name,role:d.who.role,color:'#a8412b',...lookPro(),suit:'#a8412b'};
  await showSpeaker(W);await say(W,d.text);await hideSpeaker();
  if(d.apply)d.apply();
  hud();
@@ -1775,7 +1868,7 @@ const BCIT={
  ok:['I do not mind paying if the services are good, and they are.','The city is living within its means. Thank you.','Keep the rate steady. Do not mess with a good thing.']
 };
 async function budgetHearing(){
- const FD={name:'Nora Whitaker',role:'Finance Director',color:'#4a6a6a',...look(),suit:'#3b4a63'},f=finCalc();
+ const FD={name:'Nora Whitaker',role:'Finance Director',color:'#4a6a6a',...lookPro(),suit:'#3b4a63'},f=finCalc();
  showAgendaCard('Quarterly budget hearing','Property tax and department funding',[['Treasury',money(S.budget)],['Tax rate',S.rate.toFixed(1)+'%'],['Net per week',signMoney(f.net)],['Debt',money(S.debt)]]);
  await say('mayor',fresh('bh-intro',['The first item is the quarterly budget hearing.','We begin with the budget. Our Finance Director will brief us.','Before anything else tonight, the quarterly budget.']));
  await showSpeaker(FD);
@@ -1869,7 +1962,7 @@ async function unionContract(){
  await say('mayor',fresh('uc-i',['Next is the public works union contract.','The Public Works union contract is up for renewal.']));
  await say('rodriguez',fresh('uc-r',['These crews keep the roads open and the water running. They deserve a raise that keeps up with rent.','My members are asking for six percent. That is not greedy. That is catching up.']));
  await say('jennings','Six percent compounds. I would counter at three and sleep better at night.');
- const k=await ask('Union contract',[{k:'yes',label:'Accept the 6 percent raise ($90K)',sub:'Rodriguez will be thrilled.',cls:'go'},{k:'counter',label:'Counter at 3 percent',sub:'A gamble. It could go quietly or end in a slowdown.'},{k:'no',label:'Reject the proposal',sub:'Hard line. A slowdown is likely.',cls:'stop'}]);
+ const k=await ask('Union contract',[{k:'yes',label:'Accept the 6 percent raise ($90K)',sub:'Hammerstein will be thrilled.',cls:'go'},{k:'counter',label:'Counter at 3 percent',sub:'A gamble. It could go quietly or end in a slowdown.'},{k:'no',label:'Reject the proposal',sub:'Hard line. A slowdown is likely.',cls:'stop'}]);
  if(k==='yes'){addBudget(-90000,'union raise');adjRel('rodriguez',8,'');adjRel('jennings',-3,'');await say('mayor','We have a deal.')}
  else if(k==='counter'){
   if(Math.random()<.55){adj('trust',1);adjRel('rodriguez',1,'');await say('mayor','The union accepted the counteroffer, with a little grumbling.')}
@@ -1888,7 +1981,7 @@ async function landmark(){
  showCrowd([{...H,stance:'sup'}]);await sleep(AUTO?10:300);
  await showSpeaker(H);await say(H,fresh('lm-h',['That mill built this town. Tear it down, and you tear out its heart.','There is a developer circling that site. Please protect it before it is too late.']));heckle('YEAH!','yes');await hideSpeaker();await hideCrowd();
  await say('bradley','It is a rotting pile of bricks. A developer would turn it into jobs and tax base tomorrow.');
- const k=await ask('Landmark designation',[{k:'yes',label:'Designate it a landmark',sub:'Trust up, developers cool. Chen and Wong approve.',cls:'go'},{k:'facade',label:'Preserve the facade only ($40K)',sub:'A compromise. Costs the city a little.'},{k:'no',label:'Deny the designation',sub:'Developers cheer. Preservationists will not.',cls:'stop'}]);
+ const k=await ask('Landmark designation',[{k:'yes',label:'Designate it a landmark',sub:'Trust up, developers cool. Pondwater and Porchlight approve.',cls:'go'},{k:'facade',label:'Preserve the facade only ($40K)',sub:'A compromise. Costs the city a little.'},{k:'no',label:'Deny the designation',sub:'Developers cheer. Preservationists will not.',cls:'stop'}]);
  if(k==='yes'){adj('trust',3);adj('dev',-4);adj('env',1);adjRel('chen',3,'');adjRel('wong',3,'');adjRel('bradley',-4,'');await say('mayor','The mill is now a designated landmark.')}
  else if(k==='facade'){addBudget(-40000,'facade preservation');adj('trust',2);adj('dev',-1);await say('mayor','We will preserve the facade and let the rest be redeveloped.')}
  else{adj('dev',2);adj('trust',-3);adjRel('wong',-4,'');adjRel('bradley',3,'');await say('mayor','The designation is denied.')}
@@ -1928,7 +2021,7 @@ const FESTIVALS=[
   {label:'Hold a modest parade ($8K)',cost:8000,trust:1,lines:['A small but dignified parade. A dog stole the show.','The parade was short and sweet, and the dog in the tiny top hat got the biggest cheer.']},
   {label:'Cancel it and save the money',trust:-3,lines:['Residents mutter that the town is losing its spirit.','The parade committee has been writing letters to the Courier all week.']}]},
  {t:'Summer concert series',intro:'The parks department is asking about a summer concert series on the green.',opts:[
-  {label:'Fund the full series ($20K)',cost:20000,trust:3,lines:['Hundreds of people came out with picnic blankets, and Rodriguez danced.','The concerts are a hit. Only one resident complained about the tuba.']},
+  {label:'Fund the full series ($20K)',cost:20000,trust:3,lines:['Hundreds of people came out with picnic blankets, and Hammerstein danced.','The concerts are a hit. Only one resident complained about the tuba.']},
   {label:'Let a local developer sponsor it',dev:3,trust:1,lines:['The concerts are free, and the banners say PROUDLY BROUGHT TO YOU BY A DEVELOPER.','The sponsor\'s logo is slightly bigger than the band.']},
   {label:'Skip it this year',trust:-2,lines:['It is a quiet summer on the green.','A few lawn chairs sit empty.']}]},
  {t:'Harvest festival and farmers market',intro:'The farmers market is asking for help expanding the autumn harvest festival.',opts:[
@@ -1956,7 +2049,7 @@ async function festival(){
 
 /* ---------- council story arcs ---------- */
 const ARCS=[
- {who:'chen',n:1,at:.2,title:'Dr. Chen\'s grant',text:'Mayor, my lab is applying for a state water-quality grant. The application needs a letter of support from your office.',opts:[
+ {who:'chen',n:1,at:.2,title:'Dr. Pondwater\'s grant',text:'Mayor, my lab is applying for a state water-quality grant. The application needs a letter of support from your office.',opts:[
   {label:'Sign the letter',sub:'She will not forget it.',rel:8,env:3,say:'I would be proud to sign it.',reply:'Thank you. This could fund monitoring for the whole creek.'},
   {label:'Sign it, and ask for her vote on a big item',sub:'A favor for a favor.',rel:2,commit:.3,say:'I will sign it. And I may ask for your support in return.',reply:'That seems fair. Ask when it matters.'},
   {label:'Decline politely',sub:'Safe, and a little cold.',rel:-4,say:'I cannot lend my name to every application, Doctor.',reply:'I understand. I had hoped for more.'}]},
@@ -1973,7 +2066,7 @@ const ARCS=[
   {label:'Give a balanced keynote',sub:'Honest, and a bit cooler.',rel:1,trust:2,dev:-1,say:'I will come, and I will talk about growth that works for everyone.',reply:'That is a speech I can live with.'},
   {label:'Send a deputy',sub:'Skipping it sends a message.',rel:-4,say:'My schedule is full. I will send someone.',reply:'The Chamber will notice.'}]},
  {who:'rodriguez',n:1,at:.3,title:'The union election',text:'Mayor, my local\'s election is next month. A word of support from you would put me over the top.',opts:[
-  {label:'Endorse him',sub:'Rodriguez will owe you.',rel:10,trust:-1,dev:-3,say:'I am happy to support you.',reply:'That means everything. I will be there for you.'},
+  {label:'Endorse him',sub:'Hammerstein will owe you.',rel:10,trust:-1,dev:-3,say:'I am happy to support you.',reply:'That means everything. I will be there for you.'},
   {label:'Stay neutral',sub:'Stay out of union business.',rel:-2,say:'I do not take sides in union elections.',reply:'I understand. I thought we were closer than that.'},
   {label:'Quietly back his rival',sub:'A risky move.',rel:-10,trust:1,say:'I think the other candidate has the right ideas.',reply:'I will remember that, Mayor.'}]},
  {who:'rodriguez',n:2,at:.75,title:'The rally at the plant',text:'Workers are rallying at the plant on Friday. I would love for you to say a few words.',opts:[
@@ -1989,9 +2082,9 @@ const ARCS=[
   {label:'Take on her committee work',sub:'Practical and kind.',rel:8,trust:1,say:'I will cover your committees. Do not worry about anything here.',reply:'Thank you, Mayor. I will not forget this.'},
   {label:'Send flowers and a card',sub:'Thoughtful, and the minimum.',rel:4,trust:1,say:'You will have our full support, and a very large bouquet.',reply:'That is sweet of you.'}]},
  {who:'jennings',n:1,at:.35,title:'The audit',text:'My audit found a $38,000 discrepancy in the parks budget. Someone either made an error or made a choice.',opts:[
-  {label:'Open a formal investigation',sub:'Thorough. Jennings will approve.',rel:8,trust:1,gain:20000,say:'Open a formal investigation. I want every receipt.',reply:'Good. I will have the first report in a week.'},
+  {label:'Open a formal investigation',sub:'Thorough. Ledgerwood will approve.',rel:8,trust:1,gain:20000,say:'Open a formal investigation. I want every receipt.',reply:'Good. I will have the first report in a week.'},
   {label:'Quietly correct it',sub:'Easy. It could look like a cover-up.',rel:-2,corrupt:2,say:'Fix it quietly and let us move on.',reply:'I will do it, but I do not love it.'},
-  {label:'Call it rounding',sub:'Jennings will be offended.',rel:-6,trust:-1,say:'It is thirty-eight thousand dollars on a very large budget.',reply:'Rounding. You said rounding.'}]},
+  {label:'Call it rounding',sub:'Ledgerwood will be offended.',rel:-6,trust:-1,say:'It is thirty-eight thousand dollars on a very large budget.',reply:'Rounding. You said rounding.'}]},
  {who:'jennings',n:2,at:.8,title:'Retirement',text:'I am seventy-one, Mayor. I have been thinking that it might be time.',opts:[
   {label:'Honor his service with a plaque ($5K)',sub:'Heartfelt. He deserves it.',rel:10,trust:1,cost:5000,say:'You have given this town more than anyone knows. We will honor it.',reply:'I am speechless, which my wife says is a first.'},
   {label:'Ask him to stay through the term',sub:'You still need him.',rel:6,commit:.25,say:'Stay through the end of this term. This council needs you.',reply:'For you, Mayor, I will stay.'},
@@ -2077,7 +2170,7 @@ async function minorProject(p){
  await say(p.rep,fresh('mi-dev',[`Thank you, Mayor. It is a straightforward project: ${num(p.jobs)} jobs and ${money(p.tax)} a year in taxes.`,`We think this is a good fit for the neighborhood. ${num(p.jobs)} local jobs and ${money(p.tax)} a year to the city.`,`Quick summary: a ${money(p.cost)} investment, ${num(p.jobs)} jobs, and we will work with staff on any concerns.`]));
  await hideSpeaker();
  const useFire=p.fl>p.zl||(p.fl===p.zl&&Math.random()<.5);
- const staff=useFire?{name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...look(),suit:'#a8412b',hair:'#222'}:{name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
+ const staff=useFire?{name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...lookPro(),suit:'#a8412b',hair:'#222'}:{name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...lookPro(),suit:'#3b4a63'};
  const lv=useFire?p.fl:p.zl;
  await showSpeaker(staff);
  await say(staff,lv===0?fresh('mi-s0',['Staff has no objection to this request.','This one checks all the boxes. No objection from staff.','Nothing to flag from my side on this one.']):lv===1?(useFire?'Fire has some concerns about access and hydrants. A safety plan would address them.':'Zoning recommends a buffer and a noise limit, but sees no major issue.'):(useFire?'Fire has a significant concern here. I would want a full safety plan.':'This conflicts with the neighboring zone. It needs a buffer and a noise cap at minimum.'));
@@ -2133,7 +2226,7 @@ async function variance(v){
  await showSpeaker(A);await say(A,v.req);await hideSpeaker();
  let O=null;
  if(hasObj){O={...lookR(),sign:'NOT NEXT DOOR',mood:'angry'};showCrowd([{...O,stance:'opp'}]);await sleep(AUTO?10:300);await showSpeaker(O);await say(O,v.obj);heckle('BOO!','no');await hideSpeaker();await hideCrowd()}
- const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
+ const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...lookPro(),suit:'#3b4a63'};
  await showSpeaker(Z);await say(Z,fresh('va-z',['By the code, this needs a variance. It is not unreasonable given the lot.','Staff finds this a close call. It would normally be denied, but the lot is unusual.','There is precedent on both sides. It is up to the council.']));await hideSpeaker();
  await silly(.25);
  const k=await ask(`Variance: ${v.t}`,[{k:'grant',label:'Grant the variance',sub:hasObj?'The neighbor will not be happy.':'No one objected.',cls:'go'},{k:'cond',label:'Grant with conditions',sub:'A compromise. Small trust gain either way.'},{k:'deny',label:'Deny the variance',sub:hasObj?'The neighbor will be relieved.':'The applicant will be disappointed.',cls:'stop'}]);
@@ -2334,7 +2427,7 @@ async function pickProject(list,title){
 async function actInspect(){
  const cand=S.projects.filter(p=>p.stage>=1);
  const p=cand.length===1?cand[0]:await pickProject(cand,'Which site do you inspect?');
- const F={name:'Frank Dolan',role:`Site foreman, ${p.company}`,color:'#a86a1f',...look(),suit:'#e8791a'};
+ const F={name:'Frank Dolan',role:`Site foreman, ${p.company}`,color:'#a86a1f',...lookPro(),suit:'#e8791a'};
  openField('site',`SITE INSPECTION: ${p.type.name.toUpperCase()}`,F);
  await say('office',`You put on a hard hat and walk the ${p.type.name} site with the foreman.`);
  await say(F,fresh('fore-in',['Welcome, Mayor. Everything is running smoothly out here. As you can see.','Mayor! We were not expecting you today. Watch your step.','Happy to give you the tour. We have nothing to hide.']));
@@ -2390,7 +2483,7 @@ async function actPress(){
  closeOverlay('office');
 }
 async function actSession(ap){
- const U={name:'Priya Shah',role:'Utility and Planning Director',color:'#4a6a6a',...look(),suit:'#3b4a63'};
+ const U={name:'Priya Shah',role:'Utility and Planning Director',color:'#4a6a6a',...lookPro(),suit:'#3b4a63'};
  openRoom('WORK SESSION',U);
  await say('office','You sit down with the utility board and planning commission.');
  const opts=[];
@@ -2408,7 +2501,7 @@ async function actSession(ap){
   addBudget(-25000,'early report');
   const t=['water','noise','traffic','power','chem','fiscal','jobs'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0];
   const R=makeReport(ap,t);ap.reports=(ap.reports||[]).concat(R);showAgenda(ap);
-  const sp={name:R.who,role:R.role,color:'#4a6a6a',...look(),suit:'#3b4a63'};
+  const sp={name:R.who,role:R.role,color:'#4a6a6a',...lookPro(),suit:'#3b4a63'};
   await say(sp,R.text);
   await say(U,`Separately, staff pre-review: zoning is ${['clear','conditional','in conflict'][ap.zl]}, and the fire marshal has ${['no concerns','some concerns','major concerns'][ap.fl]}.`);
  }
