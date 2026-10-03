@@ -460,6 +460,10 @@ const HAIR_BACK={
  afro:'<ellipse cx="38" cy="19" rx="18.5" ry="16"/>',
  curly:'<circle cx="25" cy="23" r="6"/><circle cx="51" cy="23" r="6"/><circle cx="27" cy="14.5" r="6"/><circle cx="49" cy="14.5" r="6"/><circle cx="33" cy="9.5" r="6"/><circle cx="43" cy="9.5" r="6"/><circle cx="38" cy="8" r="6"/>'
 };
+const HAIR_SIDES={
+ long:'<path d="M23.5,26 L21.5,53 Q26.5,55 31,53 L30.5,38 Q27,34 25.5,28Z"/><path d="M52.5,26 L54.5,53 Q49.5,55 45,53 L45.5,38 Q49,34 50.5,28Z"/>',
+ bob:'<path d="M23.5,26 L22.5,41 Q27,43 30.5,41 L29.5,33Z"/><path d="M52.5,26 L53.5,41 Q49,43 45.5,41 L46.5,33Z"/>'
+};
 const HAIR_FRONT={
  short:'<path d="M24.5,27 C22.5,11 30,7.5 38,7.5 C46,7.5 53.5,11 51.5,27 C49.5,21 46,17 38,17 C30,17 26.5,21 24.5,27Z"/>',
  side:'<path d="M24.5,27 C22.5,11 31,7 40,8 C49,9 54,14 51.5,27 C50,21.5 46,16.5 38,16.5 C32,17 27.5,20 24.5,27Z"/><path d="M34,9 C31,12 30,15 30,17.5" stroke="rgba(255,255,255,.4)" stroke-width="1" fill="none"/>',
@@ -519,7 +523,7 @@ function figHTML(o){
   +'<rect class="sk" x="33.5" y="36" width="9" height="13" rx="3"/>'
   +torsoSVG(cl)+accSVG(o.acc)
   +arm(3.4,9.6,'l')+arm(60.1,66.4,'r')
-  +`<g class="hr hairback">${back}</g>`
+  +`<g class="hr hairback">${HAIR_SIDES[o.hs]||back}</g>`
   +'<g class="head">'
   +'<circle class="sk" cx="25.3" cy="28" r="3.1"/><circle class="sk" cx="50.7" cy="28" r="3.1"/><ellipse cx="25.8" cy="28.5" rx="1.1" ry="1.8" fill="rgba(0,0,0,.12)"/><ellipse cx="50.2" cy="28.5" rx="1.1" ry="1.8" fill="rgba(0,0,0,.12)"/>'
   +'<ellipse class="sk" cx="38" cy="26" rx="12.6" ry="14.2"/><path class="sk" d="M25.6,28 Q26.5,41.5 38,42 Q49.5,41.5 50.4,28Z"/><path d="M27,36 Q38,46 49,36 Q38,42 27,36Z" fill="rgba(0,0,0,.07)"/>'
