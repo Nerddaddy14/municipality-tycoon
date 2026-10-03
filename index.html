@@ -160,6 +160,17 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 .npCols i{display:block;height:5px;background:#8a7c58;border-radius:2px;opacity:.7}
 .npPoll{margin-top:10px;border:1px solid #231c10;padding:5px 8px;font-size:12px;background:#ece1c3}
 @media(max-width:820px){.np{padding:10px 12px}.npPhoto{width:78px;height:84px}}
+#overlay .box.epi{max-width:720px}
+.epi h2{margin:18px 0 6px;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:var(--acc)}
+.epi .np{margin:16px auto 22px;animation:paperin 1s cubic-bezier(.2,.9,.3,1) both;max-height:none}
+.epi table{width:100%;border-collapse:collapse;font-size:14px}
+.epi td{padding:4px 0;border-bottom:1px solid #2a3750}.epi td:nth-child(2),.epi td:nth-child(3){text-align:right}
+.epi .arrow{color:var(--mut);padding:0 6px}
+.achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.ach{background:#151d2c;border:1px solid #2a3750;border-radius:10px;padding:8px 10px;font-size:13px}
+.ach b{display:block;color:#f2d28a}.ach.new{border-color:#c9a24a;box-shadow:0 0 0 1px #c9a24a inset}.ach.off{opacity:.45}
+.ach small{display:block;color:var(--mut);margin-top:2px}
+.sharebox{background:#0b1019;border:1px solid #34425c;border-radius:10px;padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:6px 0}
 @property --pg{syntax:'<number>';inherits:true;initial-value:0}
 .site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
 .site-svg .band{transition:none}
@@ -621,6 +632,7 @@ function buildHud(){
  $('#coffee').onclick=()=>{if(TIP_URL)window.open(TIP_URL,'_blank','noopener')};$('#menuBtn').onclick=()=>showMenu();$('#helpBtn').onclick=()=>showHelp();$('#fbBtn').onclick=()=>showFeedback();
 }
 function hud(){
+ S.stats.minTrust=Math.min(S.stats.minTrust===undefined?100:S.stats.minTrust,S.trust);
  $('#hWeek').textContent=`${Math.min(S.week,S.maxWeeks)} / ${S.maxWeeks} · ${S.week%2===1?'Meeting':'Off week'}`;
  $('#hBudget').textContent=money(S.budget);
  METERS.forEach(([k])=>{const e=$(`.stat[data-k=${k}]`);e.querySelector('i').style.width=S[k]+'%';e.querySelector('b').textContent=Math.round(S[k])});
@@ -1310,7 +1322,7 @@ async function runEvent(p,evDef,promised,mode){
  }else{
   if(k==='fine'){addBudget(fine,'fine')}
   if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
-  if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);
+  if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);if(k==='extra')S.stats.fixes=(S.stats.fixes||0)+1;
  }
  const short=custom&&k!=='extra'?r.label.replace(/ \(.*\)/,''):k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven';
  if(custom&&k!=='extra'&&r.soft&&r.say)gaffe('mayor',r.say.replace(/\.$/,''),'demeaning');
@@ -2145,7 +2157,7 @@ async function newsStep(){
  for(let i=0;i<N;i++){const r=Math.random();if(r<po)counts.outrage++;else if(r<po+pl)counts.laugh++;else counts.shrug++}
  const top=counts.outrage>=counts.laugh?'outrage':'laugh';
  if(counts[top]<=N/2){minutes('Recent remarks drew mixed reactions around town.');return}
- const el=await showPaper(g,top,counts,N);
+ const el=await showPaper(g,top,counts,N);S.stats.paper=(S.stats.paper||0)+1;
  await say('office',fresh('news-i',['The Courier hits porches across Clifton before the meeting.','The front page lands on every doorstep in town.','Somebody has left a copy of the Courier on your seat.']));
  el.classList.add('out');await sleep(AUTO?10:500);el.remove();
  const mayor=g.who==='mayor';
@@ -2158,7 +2170,7 @@ async function sunQuip(chance){
  if(Math.random()>=(chance===undefined?.35:chance))return;
  const m=pick(COUNCIL);
  await say(m.id,"But energy comes from the sun, doesn't it?");gaffe(m.id,"But energy comes from the sun, doesn't it?",'silly','sun');
- sfx.pop();audMood('happy',1200);
+ sfx.pop();audMood('happy',1200);S.stats.sun=(S.stats.sun||0)+1;
  const r=Math.random();
  if(r<.5)await say('mayor',fresh('sun-m',['Technically, yes. Please keep going, Councilmember, and do not explain.','That is the beginning of an answer, and I will leave it there.','The sun does not send an invoice, but the utility does.','Let the record show the sun was not available for comment.']));
  else if(r<.8){await say('clerk',fresh('sun-c',['Mayor, I am not sure how to minute that.','Mayor, do I write down the part about the sun?']));await say('mayor',fresh('sun-m2',['Write down that the council noted the sun.','Please just write "energy."']))}
@@ -2942,24 +2954,68 @@ function checkEnd(){
  if(S.week>S.maxWeeks)return'TERM|You finished your full term as mayor of Clifton.';
  return null;
 }
+const ACH_KEY='municipality-tycoon-achievements';
+const jobsNow=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
+const ACHS=[
+ {k:'clean',name:'Clean Hands',desc:'Finish a term without taking a single bribe.',test:()=>!(S.stats.bribes||0)&&S.corrupt<15},
+ {k:'wheeler',name:'Wheeler-Dealer',desc:'Take three or more bribes and still finish your term.',test:()=>(S.stats.bribes||0)>=3},
+ {k:'devfriend',name:'Friend of Developers',desc:'End with developer goodwill of 75 or more.',test:()=>S.dev>=75},
+ {k:'green',name:'Green Mayor',desc:'End with an environment score of 75 or more.',test:()=>S.env>=75},
+ {k:'boom',name:'Boom Town',desc:'Finish 10% above the population goal.',test:()=>S.pop>=POPGOAL()*1.1},
+ {k:'thrifty',name:'Penny Pincher',desc:'End with $3 million or more in the treasury.',test:()=>S.budget>=3e6},
+ {k:'fixer',name:'The Fixer',desc:'Order developers to fix problems at their own expense four times.',test:()=>(S.stats.fixes||0)>=4},
+ {k:'famous',name:'Front Page Famous',desc:'Make the Courier front page twice.',test:()=>(S.stats.paper||0)>=2},
+ {k:'sun',name:'Sunshine State',desc:'Hear "energy comes from the sun" three times.',test:()=>(S.stats.sun||0)>=3},
+ {k:'comeback',name:'Comeback Mayor',desc:'Sink to 25 trust or lower, then finish with 55 or more.',test:()=>(S.stats.minTrust!==undefined&&S.stats.minTrust<=25)&&S.trust>=55},
+ {k:'wastenot',name:'Waste Not',desc:'Adopt a recycling program or a hauling contract.',test:()=>!!(S.lf&&(S.lf.rec||S.lf.haul))},
+ {k:'bigbro',name:'Big Brother',desc:'Have a camera network operating at the end of your term.',test:()=>S.projects.some(p=>p.stage===OPER&&isSurv(p))},
+ {k:'builder',name:'Master Builder',desc:'Get twelve projects approved.',test:()=>S.stats.approved>=12},
+ {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
+];
+function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
+function saveAch(o){try{localStorage.setItem(ACH_KEY,JSON.stringify(o))}catch(e){}}
+function epiHeadline(t,met){
+ const big=S.projects.slice().sort((a,b)=>b.cost-a.cost)[0],L=LFD(),pc=trashPct();
+ if(t==='RECALLED')return{h:'VOTERS OUST MAYOR IN RECALL',sub:'Public trust collapsed and Clifton went to the polls. The council will name an interim mayor.'};
+ if(t==='EMERGENCY')return{h:'STATE TAKES OVER CLIFTON PERMITS',sub:'Regulators declared an environmental emergency and removed the mayor from the permitting process.'};
+ if(t==='INDICTED')return{h:'MAYOR INDICTED IN BRIBERY PROBE',sub:'Investigators say envelopes changed hands in closed-door meetings. The mayor was escorted out of chambers.'};
+ if(met)return{h:`MAYOR SWEPT BACK INTO OFFICE AS CLIFTON HITS ${num(S.pop)}`,sub:`${S.stats.approved} projects approved${big?`, led by the ${big.type.name}`:''}. ${pc>=85?'The landfill is nearly full, and the next mayor will have to deal with it.':S.trust>=75?'Residents give the mayor high marks.':'Residents are divided, but the numbers speak.'}`};
+ return{h:'MAYOR SURVIVES TERM; CITY FALLS SHORT OF GOAL',sub:`Clifton ended at ${num(S.pop)} residents, short of the ${num(POPGOAL())} target. ${S.trust>=60?'Voters like the mayor, but they wanted more growth.':'Voters are not in a forgiving mood.'}`};
+}
 function ending(code){
  clearSave();
  if(code.startsWith('TERM')||S.week>12)unlockSpeed();
  const [t,msg]=code.split('|');
- const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
+ const jobs=jobsNow();
  const score=Math.round(S.trust*3+S.env*3+S.dev+Math.min(S.budget/20000,150)+jobs*.4-S.corrupt*2+S.stats.perks*5-S.stats.incidents*3);
  const ok=t==='TERM',goal=POPGOAL(),met=ok&&S.pop>=goal;
  const sc2=score+(met?60:0);
  const grade=!ok?'F':!met&&sc2>360?'C':!met?'D':sc2>520?'A':sc2>440?'B':sc2>360?'C':'D';
- $('#overlay').innerHTML=`<div class="box"><h1>${met?'Re-elected: goal reached':ok?'Term complete: goal missed':t}</h1><p>${msg}</p>
- ${ok?`<p><b>Population goal:</b> ${num(goal)}. Clifton finished at <b>${num(S.pop)}</b>. ${met?'You kept the job and grew the city. That is a win.':'You kept the job, but the city did not grow enough to call it a win.'}</p>`:''}
- <p><b>Grade: ${grade}</b> &middot; Score ${sc2}</p>
- <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
- <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
+ // achievements
+ const have=loadAch(),earned=ok?ACHS.filter(a=>{try{return a.test()}catch(e){return false}}):[];
+ const fresh_=earned.filter(a=>!have[a.k]);earned.forEach(a=>{have[a.k]=1});if(earned.length)saveAch(have);
+ const hl=epiHeadline(t,met);
+ const counts={};S.projects.forEach(p=>{counts[p.type.name]=(counts[p.type.name]||0)+1});
+ const plist=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([n,c])=>`${c>1?c+' × ':''}${n}`).join(', ')||'none';
+ const shareTxt=`I served as Mayor of Clifton in Municipality Tycoon.\nResult: ${met?'Re-elected':ok?'Finished the term':t} · Grade ${grade} · Score ${sc2}\nPopulation ${num(S.pop)} (goal ${num(goal)}) · Trust ${Math.round(S.trust)} · Env ${Math.round(S.env)}\n${earned.length?'Achievements: '+earned.map(a=>a.name).join(', ')+'\n':''}Play free: https://nerddaddy.itch.io/municipality-tycoon`;
+ const row=(n,a,b)=>`<tr><td>${n}</td><td>${a}</td><td><b>${b}</b></td></tr>`;
+ $('#overlay').innerHTML=`<div class="box epi"><h1>${met?'Re-elected: goal reached':ok?'Term complete: goal missed':t}</h1><p>${msg}</p>
+ <div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Final edition</span><span>Week ${Math.min(S.week,S.maxWeeks)}</span><span>50&cent;</span></div><div class="npHead">${hl.h}</div><div class="npSub">${hl.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...MAYOR,mood:met?'happy':ok?'neutral':'angry'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div></div>
+ <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
+ <h2>Clifton, then and now</h2>
+ <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
+ <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}.</p>
+ <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
+ <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
+ ${ok?`<div class="achs">${ACHS.map(a=>{const e=earned.includes(a),nw=fresh_.includes(a),old=!e&&have[a.k];return `<div class="ach ${nw?'new':e||old?'':'off'}"><b>${e||old?a.name:'???'}${nw?' &middot; NEW':''}</b><small>${e||old?a.desc:'Locked'}</small></div>`}).join('')}</div>`:'<p class="mut">Finish a full term to earn achievements.</p>'}
+ <h2>Share your result</h2><div class="sharebox" id="shareTxt">${shareTxt.replace(/</g,'&lt;')}</div>
+ <div class="btnrow"><button class="go" id="shareCopy">Copy result</button><button id="shareAgain">Run for mayor again</button></div><div class="mut" id="shareMsg" style="margin-top:6px"></div>
  ${GATING?`<p><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener"><b>Play the full 52-week term</b></a> with recall elections, themes and more.</p>`:''}
- ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Dev a Coffee</a></p>`:''}
- <button onclick="location.reload()">Run for mayor again</button></div>`;
+ ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Dev a Coffee</a></p>`:''}</div>`;
  $('#overlay').classList.remove('hidden');
+ $('#shareAgain').onclick=()=>location.reload();
+ $('#shareCopy').onclick=async()=>{try{await navigator.clipboard.writeText(shareTxt);$('#shareMsg').textContent='Copied. Paste it anywhere.'}catch(e){const ta=document.createElement('textarea');ta.value=shareTxt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');$('#shareMsg').textContent='Copied. Paste it anywhere.'}catch(e2){$('#shareMsg').textContent='Could not copy. Select the text above.'}ta.remove()}};
+ if(fresh_.length)sfx.chime&&sfx.chime();
 }
 /* ---------- off-week activities ---------- */
 const lookR=()=>({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:'#2f7a55',...look()});
