@@ -42,7 +42,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 @keyframes wave{0%,100%{transform:skewY(0)}50%{transform:skewY(5deg) scaleX(.96)}}
 .ch{position:absolute;width:76px;margin-left:-38px;z-index:3;transform:scale(1);transform-origin:50% 100%}
 .ch.mayor{z-index:4;transform:scale(1.14)}
-.aud{position:absolute;width:76px;margin-left:-38px;transform:scale(.8);transform-origin:50% 100%;z-index:2}
+.aud{position:absolute;width:76px;margin-left:-38px;transform:scale(1);transform-origin:50% 100%;z-index:2}
 .aud:before{content:'';position:absolute;left:8px;top:58px;width:60px;height:48px;background:#5a2d2d;border-radius:8px 8px 0 0;z-index:5;box-shadow:inset 0 3px 0 rgba(255,255,255,.12)}
 .aud .fig{z-index:2}
 #aud.angry .fig{animation:angry .3s infinite}
@@ -108,7 +108,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 @keyframes wob{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
 #speaker .arm.r,.cm .arm.r{transform:rotate(-155deg)}
 #speaker .arm.l,.cm .arm.l{transform:rotate(155deg)}
-.cm{position:absolute;bottom:var(--b,6px);width:76px;margin-left:-38px;z-index:6;transform:scale(.85);transform-origin:50% 100%;animation:pup2 .55s var(--dl,0s) backwards cubic-bezier(.2,1.4,.4,1)}
+.cm{position:absolute;bottom:var(--b,6px);width:76px;margin-left:-38px;z-index:6;transform:scale(1);transform-origin:50% 100%;animation:pup2 .55s var(--dl,0s) backwards cubic-bezier(.2,1.4,.4,1)}
 .cm.angry .fig{animation:angry .28s infinite}
 .cm.happy .fig{animation:tbob .6s infinite}
 .cm.leave{animation:sink .4s forwards}
