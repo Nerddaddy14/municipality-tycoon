@@ -250,6 +250,7 @@ td.bad{color:var(--bad)}
    <div class="card" id="agenda"></div>
    <div class="card" id="council"></div>
    <div class="card" id="growth"></div>
+   <div class="card" id="ords"></div>
    <div class="card" id="fin"></div>
    <div class="card" id="sys"></div>
    <div class="card"><h3>Active Projects</h3><div id="projs"></div></div>
@@ -354,7 +355,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -376,6 +377,7 @@ function hud(){
  if(typeof renderFin==='function'&&$('#fin'))renderFin();
  if(typeof renderCouncil==='function'&&$('#council'))renderCouncil();
  if(typeof renderGrowth==='function'&&$('#growth'))renderGrowth();
+ if(typeof renderOrds==='function'&&$('#ords'))renderOrds();
 }
 function toast(t,good){const d=document.createElement('div');d.className='toast'+(good?'':' b');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
 function flash(k,good){const e=$(`.stat[data-k=${k}]`);if(!e)return;e.classList.add(good?'flashg':'flashb');setTimeout(()=>e.classList.remove('flashg','flashb'),700)}
@@ -461,7 +463,7 @@ const REPS=['Brad Kensington','Linda Marsh','Chad Whitcomb','Priya Nair','Greg D
 
 function genProject(){
  let cost=Math.pow(10,rnd(Math.log10(5e4),9));const m=Math.pow(10,Math.floor(Math.log10(cost))-1);cost=Math.round(cost/m)*m;
- const pool=[];TYPES.filter(t=>cost>=t.min&&cost<=t.max).forEach(t=>{for(let i=0;i<(t.k==='datacenter'?3:1);i++)pool.push(t)});
+ const pool=[];TYPES.filter(t=>cost>=t.min&&cost<=t.max&&!(S.ords.includes('dcban')&&t.k==='datacenter')).forEach(t=>{for(let i=0;i<(t.k==='datacenter'?3:1);i++)pool.push(t)});
  const t=pick(pool),mm=cost/1e6,sizeF=clamp((Math.log10(cost)-4.7)/4.3,0,1);
  const p={id:++S.pid,type:t,company:pick(DEVS),site:pick(SITES),cost,sizeF,
   water:Math.round(t.water*Math.pow(mm,.8)),db:t.noise+3*Math.log10(mm+1),jobs:Math.max(2,Math.round(t.jobs*Math.pow(mm,.75))),
@@ -471,7 +473,8 @@ function genProject(){
  const heavy=['quarry','chem','fab','crypto','datacenter','warehouse','bottling'].includes(t.k);
  p.zl=clamp((heavy&&sizeF>.35?1:0)+(p.db>=68?1:0)+(Math.random()<.25?1:0)-(sizeF<.15?1:0),0,2);
  p.fl=clamp((t.tags.includes('chem')?1:0)+(t.power>=9?1:0)+(t.k==='battery'?1:0)+(Math.random()<.2?1:0)-(sizeF<.2&&!t.tags.includes('chem')?1:0),0,2);
- p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;
+ p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;p.ordFree=[];
+ S.ords.forEach(k=>{const o=ORDS.find(x=>x.k===k);if(!o)return;(o.free||[]).forEach(c=>{p.free[c]=true;p.ordFree.push(c)});if(k==='fast')p.durs[0]=1;if(k==='abate')p.tax=Math.round(p.tax*.7)});
  p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
  return p;
 }
@@ -832,7 +835,7 @@ function chooseDecision(p){
   const lock=c=>p.free[c.k]||p.nocond&&true||(c.k==='bond'&&p.noBond);
   const zt=['no zoning issues','conditionally permitted','conflicts with neighboring zone'][p.waived?0:p.zl],ft=['no fire concerns','fire concerns','major fire concerns'][p.waived?0:p.fl];
   b.innerHTML=`<div class="cTitle">Your motion on the ${p.type.name}</div><div class="mut">Attach conditions to win over members, but a developer pushed too far will walk away. Staff: ${zt}; ${ft}.${p.nocond?' Counsel warned that conditions are unenforceable, so none can be added.':''}</div>
-  <div class="conds">${CONDS.map(c=>`<label><input type="checkbox" data-k="${c.k}" ${p.free[c.k]?'checked disabled':lock(c)?'disabled':''}><span>${c.name}${p.free[c.k]?' <b style="color:var(--good)">(offered free)</b>':''}<small>${c.desc}</small></span></label>`).join('')}</div>
+  <div class="conds">${CONDS.map(c=>`<label><input type="checkbox" data-k="${c.k}" ${p.free[c.k]?'checked disabled':lock(c)?'disabled':''}><span>${c.name}${p.free[c.k]?` <b style="color:var(--good)">(${(p.ordFree||[]).includes(c.k)?'required by ordinance':'offered free'})</b>`:''}<small>${c.desc}</small></span></label>`).join('')}</div>
   <div id="burden"></div>
   <div class="btnrow"><button class="go" data-a="approve">Recommend APPROVAL</button><button class="stop" data-a="deny">Recommend DENIAL</button>${p.tabled?'':'<button data-a="table">Table for a week</button>'}</div>`;
   const conds={...p.free};const upd=()=>{const bu=burden(conds,p);const st=bu>mx?'<b style="color:var(--bad)">They will walk away.</b>':bu>mx-1.5?'<b style="color:var(--acc)">Getting risky.</b>':'<b style="color:var(--good)">Acceptable to them.</b>';$('#burden').innerHTML=`Developer tolerance: ${st}`};
@@ -1096,6 +1099,63 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- ordinances ---------- */
+const ORDS=[
+ {k:'water',name:'Water efficiency standard',desc:'New projects must use closed-loop water recycling at no cost to the council.',vec:{env:1,jobs:-.2,tax:0,res:.2,dev:-.6},fx:{dev:-4,trust:1},free:['recycle']},
+ {k:'noise',name:'Noise ordinance',desc:'New projects must install noise barriers and meet a sound cap.',vec:{env:.2,jobs:-.1,tax:0,res:1,dev:-.4},fx:{dev:-3,trust:2},free:['noise']},
+ {k:'hire',name:'Local hire requirement',desc:'New projects must guarantee 70 percent local hiring.',vec:{env:0,jobs:1,tax:.1,res:.2,dev:-.4},fx:{dev:-3,trust:2},free:['hire']},
+ {k:'buffer',name:'Buffer and setback rules',desc:'New projects must provide landscape buffers and a fire safety plan.',vec:{env:.4,jobs:-.1,tax:0,res:.8,dev:-.4},fx:{dev:-3,trust:1},free:['buffer','fireplan']},
+ {k:'impact',name:'Development impact fee',desc:'Every approved project pays the city 1 percent of its cost up front.',vec:{env:.1,jobs:-.2,tax:1,res:.1,dev:-.9},fx:{dev:-6,trust:0}},
+ {k:'fast',name:'Fast-track permitting',desc:'Permitting takes one week. Developers love it. Reviews are thinner.',vec:{env:-.5,jobs:.5,tax:.3,res:-.2,dev:1},fx:{dev:6,trust:-1}},
+ {k:'abate',name:'Tax abatement program',desc:'Project taxes are cut 30 percent in exchange for developer goodwill.',vec:{env:-.1,jobs:.5,tax:-1,res:0,dev:.9},fx:{dev:6,trust:0}},
+ {k:'dcban',name:'Data center moratorium',desc:'No new data center proposals this term.',vec:{env:1,jobs:-.6,tax:-.4,res:.5,dev:-.8},fx:{dev:-5,trust:3}}
+];
+function ordScore(m,o,repeal){
+ let dot=0;for(const k of Object.keys(o.vec))dot+=(m.w[k]||0)*o.vec[k];
+ return .1+(repeal?-1:1)*dot*.6+(S.rel[m.id]-50)/200+(S.trust-50)/300+.12+rnd(-.1,.1);
+}
+function renderOrds(){
+ const el=$('#ords');if(!el)return;
+ el.innerHTML=`<h3>Ordinances</h3>${S.ords.length?S.ords.map(k=>`<div style="font-size:12px;margin:3px 0">&#10003; ${ORDS.find(o=>o.k===k).name}</div>`).join(''):'<div class="mut">None in force. Ordinance workshops let you write rules for future projects.</div>'}`;
+}
+async function ordinanceItem(){
+ const avail=ORDS.filter(o=>!S.ords.includes(o.k)),enabled=ORDS.filter(o=>S.ords.includes(o.k));
+ showAgendaCard('Ordinance workshop','Write a zoning rule for future projects',[['In force',String(enabled.length)],['Developer relations',String(Math.round(S.dev))]]);
+ await say('mayor',fresh('or-intro',['Next, an ordinance workshop. The council may adopt or repeal a rule that applies to future projects.','We now turn to ordinances. Any rule we adopt applies to every project from here on.','This item is an ordinance workshop. Let us decide what rules Clifton wants developers to follow.']));
+ const opts=shuffle(avail).slice(0,3).map(o=>({k:o.k,label:'Propose: '+o.name,sub:o.desc}));
+ enabled.slice(0,2).forEach(o=>opts.push({k:'rep-'+o.k,label:'Repeal: '+o.name,sub:'Remove this rule.',cls:'stop'}));
+ opts.push({k:'none',label:'Hold the workshop for a later meeting',sub:'No ordinance tonight.'});
+ const k=await ask('Which ordinance do you bring to the council?',opts,`Developer relations ${Math.round(S.dev)}`);
+ if(k==='none'){await say('mayor','I will hold this workshop for a later meeting.');showAgenda(null);return}
+ const repeal=k.startsWith('rep-'),o=ORDS.find(x=>x.k===(repeal?k.slice(4):k));
+ await say('mayor',repeal?`I move to repeal the ${o.name.toLowerCase()}.`:`I propose a new ordinance: ${o.name.toLowerCase()}. ${o.desc}`);
+ for(const m of shuffle(COUNCIL).slice(0,2)){
+  let best=null,bv=0;for(const key of Object.keys(o.vec)){const c=(m.w[key]||0)*o.vec[key]*(repeal?-1:1);if(Math.abs(c)>Math.abs(bv)){bv=c;best=key}}
+  const T=bv>=0?[`This speaks to ${PRIORITY[best]}, and that matters to me. I am inclined to support it.`,`I care about ${PRIORITY[best]}. This helps, and I will vote for it.`,`On ${PRIORITY[best]}, this is a step in the right direction.`]:[`This hurts ${PRIORITY[best]}. I cannot support it as written.`,`My concern is ${PRIORITY[best]}, and this makes it worse.`,`I came here to protect ${PRIORITY[best]}. This goes the wrong way.`];
+  await say(m.id,fresh('ord-'+m.id+(bv>=0?'p':'n'),T));
+ }
+ const proRule=repeal?false:(o.vec.env+o.vec.res-o.vec.dev*.5>0.3);
+ const cits=[0,1].map(()=>{const pro=Math.random()<(proRule?.65:.4);return{...lookR(),stance:pro?'sup':'opp',sign:pro?'ADOPT IT':'NO NEW RULES',mood:pro?'happy':'angry',text:pro?fresh('orc-p',['We need rules like this. Developers will not police themselves.','This protects the people who actually live here.','About time. Other towns have had this for years.']):fresh('orc-n',['More red tape will drive businesses to the next county.','We are making it harder to build anything here. Think of the jobs.','Rules like this are how a town stops growing.'])}});
+ showCrowd(cits);await sleep(AUTO?10:300);
+ let pro=0,con=0;
+ for(const c of cits){c.stance==='sup'?pro++:con++;await showSpeaker(c);await say(c,c.text);heckle(c.stance==='sup'?'YEAH!':'BOO!',c.stance==='sup'?'yes':'no');await hideSpeaker()}
+ await hideCrowd();
+ let yes=0,no=0;const votes={};
+ for(const m of COUNCIL){const y=ordScore(m,o,repeal)+(pro-con)*.04>0;votes[m.id]=y;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');sfx[y?'good':'bad']();y?yes++:no++;await sleep(AUTO?10:380)}
+ await gavel(1);
+ const passed=yes>=3;
+ await say('mayor',passed?(repeal?`The ordinance is repealed, ${yes} to ${no}.`:`The ordinance is adopted, ${yes} to ${no}.`):`The motion fails, ${yes} to ${no}.`);
+ clearTags();
+ COUNCIL.forEach(m=>adjRel(m.id,votes[m.id]?1:-.7,'',true));
+ if(passed){
+  const sgn=repeal?-1:1;
+  if(repeal)S.ords=S.ords.filter(x=>x!==o.k);else S.ords.push(o.k);
+  adj('dev',sgn*(o.fx.dev||0),repeal?'ordinance repealed':'ordinance adopted');if(o.fx.trust)adj('trust',sgn*o.fx.trust);
+  minutes(`${repeal?'Repealed':'Adopted'} ordinance: ${o.name}.`,'g');renderOrds();
+ }else{adj('trust',-1,'ordinance failed');minutes(`Ordinance failed: ${o.name}.`)}
+ showAgenda(null);
+}
+
 /* ---------- city growth ---------- */
 const housingRatio=()=>S.housing/(S.pop/2.5);
 function trafficIdx(){
@@ -1357,7 +1417,7 @@ async function minorProject(p){
  clearTags();
  COUNCIL.forEach(m=>adjRel(m.id,(k==='deny'?!r.votes[m.id]:r.votes[m.id])?1:-.7,'',true));
  if(r.passed){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.round(p.cost*.01),'impact fee');
   adj('trust',pub>0?2:pub<0?-3:0);adj('dev',k==='cond'?4:7);minutes(`Approved the ${p.type.name} (${r.yes}-${r.no}).`,'g');renderProjects();
  }else{
   S.stats.denied++;adj('trust',pub<0?3:-2);adj('dev',-5);minutes(`Denied the ${p.type.name} (${r.yes}-${r.no}).`,'b');
@@ -1401,12 +1461,14 @@ async function variance(v){
  showAgenda(null);
 }
 function buildExtras(){
- const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],usedP=new Set(),usedV=new Set();
+ const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],usedP=new Set(),usedV=new Set(),canOrd=ORDS.some(o=>!S.ords.includes(o.k));
+ if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  for(let i=0;i<n;i++){
   const r=Math.random();
-  if(r<.5){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
-  else if(r<.8){const pt=pick(PETITIONS.filter(x=>!usedP.has(x.t)));usedP.add(pt.t);out.push({k:'pet',pt,t:`Petition: ${pt.t}`})}
-  else{const v=pick(VARIANCES.filter(x=>!usedV.has(x.t)));usedV.add(v.t);out.push({k:'var',v,t:`Variance: ${v.t}`})}
+  if(r<.42){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
+  else if(r<.7){const pt=pick(PETITIONS.filter(x=>!usedP.has(x.t)));usedP.add(pt.t);out.push({k:'pet',pt,t:`Petition: ${pt.t}`})}
+  else if(r<.88||!canOrd||out.some(e=>e.k==='ord')){const v=pick(VARIANCES.filter(x=>!usedV.has(x.t)));usedV.add(v.t);out.push({k:'var',v,t:`Variance: ${v.t}`})}
+  else out.push({k:'ord',t:'Ordinance workshop'});
  }
  return out;
 }
@@ -1420,7 +1482,7 @@ async function runAgenda(){
  if(hearing){await budgetHearing();S.items[0].done=true}
  for(let i=0;i<extras.length;i++){
   const e=extras[i];
-  if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else await variance(e.v);
+  if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else if(e.k==='ord')await ordinanceItem();else await variance(e.v);
   S.items[i+off].done=true;
  }
  await say('mayor',fresh('ag-main',['Now to the main item of the evening.','That brings us to the main item tonight.','Finally, the item many of you came here for.']));
@@ -1518,7 +1580,7 @@ async function newProject(){
  }
  const pubSign=sup-opp;
  if(final){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.round(p.cost*.01),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(10-burden(p.conds,p)*1.5,2,12)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
