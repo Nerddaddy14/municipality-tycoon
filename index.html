@@ -132,17 +132,49 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 @keyframes slideenv{from{left:78%;bottom:100px}to{left:44%;bottom:126px}}
 #field{position:absolute;inset:0;z-index:20;display:none;overflow:hidden}
 #field.show{display:block}
-#field.site{background:linear-gradient(#a8d4f2 0 50%,#b99b6b 50%)}
-#field.street{background:linear-gradient(#a8d4f2 0 48%,#7fb26a 48%)}
 #field .och{position:absolute;z-index:2;width:76px;margin-left:-38px;transform:scale(1.35);transform-origin:50% 100%}
 .flabel{position:absolute;left:0;right:0;top:8px;text-align:center;font:800 13px system-ui;letter-spacing:3px;color:#5a3a10;text-shadow:0 1px 0 #fff;z-index:2}
 .hardhat{position:absolute;left:23px;top:3px;width:30px;height:13px;background:#f2c200;border-radius:17px 17px 3px 3px;z-index:6;box-shadow:0 3px 0 #c89c00}
-.crane{position:absolute;left:14%;bottom:50%;width:12px;height:200px;background:#f2a900}
-.crane i{position:absolute;left:-90px;top:-6px;width:260px;height:10px;background:#f2a900;transform-origin:96px 5px;animation:jib 6s ease-in-out infinite}
-@keyframes jib{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
-.fence{position:absolute;left:0;right:0;bottom:calc(50% - 4px);height:26px;background:repeating-linear-gradient(90deg,#e8791a 0 22px,#fff 22px 30px)}
-.trailer{position:absolute;right:8%;bottom:calc(50% + 4px);width:130px;height:60px;background:#dfe3e8;border:3px solid #8a8f98;font:700 10px system-ui;display:flex;align-items:center;justify-content:center;color:#444}
-.pile{position:absolute;left:48%;bottom:calc(50% - 10px);width:150px;height:50px;background:#8a6a42;clip-path:polygon(0 100%,35% 10%,60% 40%,100% 100%)}
+@property --pg{syntax:'<number>';inherits:true;initial-value:0}
+.site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
+.site-svg .band{transition:none}
+@keyframes drive{from{transform:translateX(-200px)}to{transform:translateX(1060px)}}
+@keyframes driveR{from{transform:translateX(1060px)}to{transform:translateX(-200px)}}
+.v-drive{animation:drive var(--dur,20s) linear infinite;animation-delay:var(--dl,0s)}
+.v-drive.rev{animation-name:driveR}
+@keyframes spin{to{transform:rotate(360deg)}}
+.wheel{animation:spin .7s linear infinite}
+.drum{animation:spin 2.2s linear infinite}
+.tread{animation:tread .5s linear infinite}
+@keyframes tread{to{transform:translateX(8px)}}
+@keyframes jibsw{0%,100%{transform:rotate(-1.2deg)}50%{transform:rotate(1.2deg)}}
+.jib{animation:jibsw 9s ease-in-out infinite}
+@keyframes trol{0%,100%{transform:translateX(300px)}50%{transform:translateX(480px)}}
+.trolley{animation:trol 14s ease-in-out infinite}
+@keyframes loadsw{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+.load{animation:loadsw 3s ease-in-out infinite}
+@keyframes dig{0%,100%{transform:rotate(0)}50%{transform:rotate(14deg)}}
+.dig{animation:dig 4s ease-in-out infinite}
+.bucket{animation:dig 4s ease-in-out infinite reverse}
+@keyframes wk{from{transform:translateX(0)}to{transform:translateX(140px)}}
+@keyframes wkb{0%,100%{transform:translateX(0)}50%{transform:translateX(140px)}}
+.worker{animation:wkb var(--dur,16s) linear infinite;animation-delay:var(--dl,0s)}
+@keyframes leg{0%,100%{transform:rotate(-24deg)}50%{transform:rotate(24deg)}}
+.worker .leg{transform-origin:center -9px;transform-box:fill-box;animation:leg .6s ease-in-out infinite}
+.worker .leg.l2{animation-direction:reverse}
+@keyframes cld{from{transform:translateX(-260px)}to{transform:translateX(1200px)}}
+.cloud{animation:cld var(--dur,90s) linear infinite;animation-delay:var(--dl,0s)}
+@keyframes rot{to{transform:rotate(360deg)}}
+.rotor{animation:rot 7s linear infinite}
+@keyframes smk{0%{transform:translateY(0) scale(.6);opacity:.9}100%{transform:translateY(-40px) scale(1.6);opacity:0}}
+.smoke{animation:smk 4s ease-out infinite}.smoke.s2{animation-delay:-2s}
+@keyframes flg{0%,100%{transform:skewY(0)}50%{transform:skewY(8deg)}}
+.flag{animation:flg 1.2s ease-in-out infinite}
+.siteinfo{position:absolute;right:12px;top:34px;width:210px;background:rgba(255,255,255,.92);border:2px solid #e8791a;border-radius:8px;padding:6px 9px;font:12px system-ui;color:#233;z-index:3;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.sitett{font-weight:800;font-size:13px}.sitesub{opacity:.75;font-size:11px;margin-bottom:4px}
+.sitebar{height:8px;background:#d9dde1;border-radius:4px;overflow:hidden}
+.sitebar i{display:block;height:100%;background:linear-gradient(90deg,#e8791a,#f2c200);transition:width 5s ease-in-out .5s}
+.sitepct{margin-top:3px;font-size:11px}.sitepct b{color:#2e7d4f}.sitepct b.neg{color:#c0392b}
 .house{position:absolute;bottom:calc(52% - 4px);width:120px;height:80px;background:#e9d9b8;border:3px solid #b7a37a}
 .house:before{content:'';position:absolute;left:-12px;right:-12px;top:-44px;height:44px;background:#a85a3a;clip-path:polygon(0 100%,50% 0,100% 100%)}
 .h1{left:6%}.h2{left:36%;background:#cfe0ee}.h3{left:70%;background:#efd5d5}
@@ -1226,13 +1258,173 @@ function openRoom(label,vis){
  om.el=$('#oM');vis.el=$('#oV');sfx.pop();banner(label);
  return om;
 }
-function openField(kind,label,vis){
+/* ---------- construction site scene ---------- */
+const ARCH={coffee:'shop',storage:'box',gas:'shop',apts:'tower',warehouse:'box',solar:'solar',battery:'box',datacenter:'box',crypto:'box',bottling:'plant',quarry:'pit',fab:'box',hotel:'tower',chem:'plant',mall:'shop',stadium:'stadium',casino:'tower',themepark:'stadium',arena:'stadium',wind:'wind',gasplant:'plant',hydro:'box'};
+const ARCHCOLOR={datacenter:'#556678',warehouse:'#8d9296',storage:'#c98d4e',fab:'#dfe6ee',crypto:'#414c58',battery:'#5d7c70',hydro:'#9aa9b3',apts:'#c6a283',hotel:'#bfd0df',casino:'#8e3b7a',coffee:'#b9824e',gas:'#d7d3c8',mall:'#c7b6a0'};
+function buildProgress(p){
+ if(p.stage>=4)return 1;
+ const d=p.durs,total=d.reduce((a,b)=>a+b,0)||1;
+ let done=0;for(let i=0;i<Math.min(p.stage,d.length);i++)done+=d[i];
+ done+=Math.max(0,(d[p.stage]||0)-Math.max(0,p.stageLeft));
+ return clamp(done/total,0,1);
+}
+const bandOp=(N,i,fn)=>`opacity:max(0,min(1,${fn.replace('N',N)} - ${i}))`;
+const SKEL=N=>`(var(--pg)*1.3 + .05)*${N}`,CLAD=N=>`((var(--pg) - .2)/.75)*${N}`;
+function siteBuilding(p){
+ const a=ARCH[p.type.k]||'box',col=ARCHCOLOR[p.type.k]||'#8d9296';
+ const band=(i,N,mode,inner,extra='')=>`<g class="band" style="--i:${i};opacity:max(0,min(1,${mode==='s'?SKEL(N):CLAD(N)} - ${i}));${extra}">${inner}</g>`;
+ const fin='opacity:max(0,min(1,(var(--pg) - .94)*18))';
+ if(a==='box'){
+  const x0=290,w=380,N=7,bh=20,base=345;let sk='',cl='';
+  for(let i=0;i<N;i++){
+   const y1=base-i*bh,y0=y1-bh;let cols='',br='';
+   for(let c=0;c<=10;c++){const x=x0+c*(w/10);cols+=`M${x},${y1} L${x},${y0} `}
+   for(let c=0;c<10;c++){if((c+i)%3===0){const xa=x0+c*(w/10),xb=xa+w/10;br+=`M${xa},${y1} L${xb},${y0} `}}
+   sk+=band(i,N,'s',`<path d="${cols}M${x0},${y0} L${x0+w},${y0} ${br}" stroke="#56606b" stroke-width="2.4" fill="none"/>`);
+   cl+=band(i,N,'c',`<rect x="${x0}" y="${y0}" width="${w}" height="${bh}" fill="${col}"/><path d="M${x0},${y1} L${x0+w},${y1}" stroke="rgba(0,0,0,.18)" stroke-width="1.5"/>`);
+  }
+  let extra='';
+  if(p.type.k==='datacenter'||p.type.k==='crypto'){for(let k=0;k<9;k++)extra+=`<rect x="${312+k*38}" y="285" width="26" height="40" fill="rgba(0,0,0,.28)"/><path d="M${312+k*38},${292} h26 M${312+k*38},${300} h26 M${312+k*38},${308} h26 M${312+k*38},${316} h26" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/>`;}
+  else if(p.type.k==='warehouse'||p.type.k==='storage'){for(let k=0;k<6;k++)extra+=`<rect x="${312+k*58}" y="${305}" width="40" height="40" fill="#e4e6e8" stroke="#7b8087"/><path d="M${312+k*58},312 h40 M${312+k*58},319 h40 M${312+k*58},326 h40 M${312+k*58},333 h40" stroke="#c4c8cc"/>`;}
+  else{for(let k=0;k<6;k++)extra+=`<rect x="${312+k*58}" y="${262}" width="40" height="22" fill="#a9cde6" stroke="#6d8aa0"/>`;}
+  return `<g>${sk}</g><g>${cl}</g>`
+   +`<g style="${fin}"><rect x="${x0-6}" y="${base-N*bh-8}" width="${w+12}" height="8" fill="#6c7279"/>${extra}<rect x="360" y="${base-N*bh-26}" width="44" height="18" fill="#9aa3ab"/><rect x="430" y="${base-N*bh-22}" width="36" height="14" fill="#9aa3ab"/><rect x="600" y="${base-N*bh-26}" width="44" height="18" fill="#9aa3ab"/><rect x="465" y="313" width="50" height="32" fill="#2c3946"/><rect x="420" y="222" width="140" height="26" fill="#fff" stroke="#bbb"/><text x="490" y="240" font-size="14" font-weight="800" text-anchor="middle" fill="#234">${p.type.name.toUpperCase().slice(0,16)}</text></g>`;
+ }
+ if(a==='tower'){
+  const x0=410,w=140,N=10,bh=22,base=345;let sk='',cl='';
+  for(let i=0;i<N;i++){
+   const y1=base-i*bh,y0=y1-bh;
+   sk+=band(i,N,'s',`<path d="M${x0},${y1} L${x0},${y0} M${x0+w/3},${y1} L${x0+w/3},${y0} M${x0+2*w/3},${y1} L${x0+2*w/3},${y0} M${x0+w},${y1} L${x0+w},${y0} M${x0},${y0} L${x0+w},${y0} M${x0},${y1} L${x0+w},${y0}" stroke="#56606b" stroke-width="2.4" fill="none"/>`);
+   let win='';for(let k=0;k<5;k++)win+=`<rect x="${x0+8+k*26}" y="${y0+5}" width="16" height="12" fill="#a9cde6" stroke="rgba(0,0,0,.25)"/>`;
+   cl+=band(i,N,'c',`<rect x="${x0}" y="${y0}" width="${w}" height="${bh}" fill="${col}"/>${win}<path d="M${x0},${y1} L${x0+w},${y1}" stroke="rgba(0,0,0,.2)" stroke-width="1.4"/>`);
+  }
+  const casino=p.type.k==='casino';
+  return `<g>${sk}</g><g>${cl}</g><g style="${fin}"><rect x="${x0-4}" y="${base-N*bh-8}" width="${w+8}" height="8" fill="#5f6469"/><rect x="${x0+50}" y="${base-N*bh-26}" width="40" height="18" fill="#9aa3ab"/><rect x="${x0+52}" y="${base-26}" width="36" height="26" fill="#2c3946"/><rect x="${x0+8}" y="${base-N*bh+14}" width="${w-16}" height="22" rx="3" fill="${casino?'#e83e8c':'#fff'}" stroke="#bbb"/><text x="${x0+w/2}" y="${base-N*bh+30}" font-size="13" font-weight="800" text-anchor="middle" fill="${casino?'#fff':'#234'}">${p.type.name.toUpperCase().slice(0,14)}</text></g>`;
+ }
+ if(a==='shop'){
+  const x0=370,w=220,N=4,bh=21,base=345;let sk='',cl='';
+  for(let i=0;i<N;i++){
+   const y1=base-i*bh,y0=y1-bh;let cols='';for(let c=0;c<=5;c++)cols+=`M${x0+c*w/5},${y1} L${x0+c*w/5},${y0} `;
+   sk+=band(i,N,'s',`<path d="${cols}M${x0},${y0} L${x0+w},${y0}" stroke="#56606b" stroke-width="2.4" fill="none"/>`);
+   cl+=band(i,N,'c',`<rect x="${x0}" y="${y0}" width="${w}" height="${bh}" fill="${col}"/>`);
+  }
+  const gas=p.type.k==='gas';
+  return `<g>${sk}</g><g>${cl}</g><g style="${fin}"><path d="M${x0-12},${base-N*bh} L${x0+w/2},${base-N*bh-26} L${x0+w+12},${base-N*bh} Z" fill="#7a3b2a"/><rect x="${x0+14}" y="${base-52}" width="${w-28}" height="40" fill="#a9cde6" stroke="#6d8aa0"/><rect x="${x0+w/2-12}" y="${base-44}" width="24" height="44" fill="#6b4a2b"/><rect x="${x0+w/2-46}" y="${base-N*bh-14}" width="92" height="16" rx="3" fill="#fff" stroke="#bbb"/><text x="${x0+w/2}" y="${base-N*bh-2}" font-size="11" font-weight="800" text-anchor="middle" fill="#a33">${p.type.name.toUpperCase().slice(0,12)}</text>${gas?'<rect x="420" y="268" width="140" height="8" fill="#e8c85a"/><rect x="430" y="276" width="6" height="40" fill="#999"/><rect x="544" y="276" width="6" height="40" fill="#999"/>':''}</g>`;
+ }
+ if(a==='solar'){
+  let out='';const rows=[296,316,336];let idx=0;const N=27;
+  rows.forEach(y=>{for(let k=0;k<9;k++){const x=290+k*44+(y-296)*.3;out+=`<g class="band" style="--i:${idx};opacity:max(0,min(1,var(--pg)*1.1*${N}-${idx}))"><path d="M${x},${y} l32,0 l-7,16 l-32,0 z" fill="#1d3a6e" stroke="#9db8e6" stroke-width="1"/><path d="M${x+11},${y} l-7,16 M${x+22},${y} l-7,16" stroke="#6f93c8" stroke-width=".8"/><rect x="${x+8}" y="${y+16}" width="3" height="7" fill="#777"/></g>`;idx++}});
+  return out+`<g style="${fin}"><rect x="640" y="300" width="34" height="38" fill="#cfd4d8" stroke="#8a9096"/><path d="M646,308 h22 M646,316 h22 M646,324 h22" stroke="#9aa0a6"/></g>`;
+ }
+ if(a==='wind'){
+  let out='';[[350,150],[480,175],[610,150]].forEach(([x,h],i)=>{out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*3.2 - ${i}))"><path d="M${x-5},345 L${x-2.6},${345-h} L${x+2.6},${345-h} L${x+5},345 Z" fill="#eef1f3" stroke="#bcc3c8"/><g class="rotor" style="transform-origin:${x}px ${345-h}px"><path d="M${x},${345-h} l-3,-52 l6,0 z M${x},${345-h} l45,26 l-3,5 z M${x},${345-h} l-45,26 l3,5 z" fill="#f4f6f8" stroke="#c9d0d5" stroke-width=".8"/></g><circle cx="${x}" cy="${345-h}" r="4" fill="#bbb"/></g>`});
+  return out;
+ }
+ if(a==='pit'){
+  let out='<path d="M300,345 L660,345 L640,352 L320,352 Z" fill="#7a6246"/>';const N=5;
+  for(let i=0;i<N;i++){const inset=i*18,y=345+i*13;out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*1.2*${N} - ${i}))"><path d="M${310+inset},${y} L${650-inset},${y} L${644-inset},${y+13} L${316+inset},${y+13} Z" fill="${i%2?'#6b5338':'#8a6c4a'}" stroke="rgba(0,0,0,.25)"/></g>`}
+  out+=`<g style="opacity:max(0,min(1,var(--pg)*1.6))"><path d="M360,330 l22,-34 l24,34 Z M440,330 l30,-44 l34,44 Z M540,330 l20,-30 l22,30 Z" fill="#9b8660"/></g>`;
+  out+=`<g style="${fin}"><path d="M580,332 L650,300" stroke="#444" stroke-width="5"/><rect x="640" y="262" width="44" height="76" fill="#7d8791" stroke="#555"/><rect x="650" y="276" width="24" height="16" fill="#a9cde6"/></g>`;
+  return out;
+ }
+ if(a==='stadium'){
+  let out='';const N=4;
+  for(let i=0;i<N;i++){out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*1.25*${N} - ${i}))"><path d="M${300+i*10},${345-i*22} Q${480},${300-i*22} ${660-i*10},${345-i*22} L${660-i*10},${323-i*22} Q${480},${278-i*22} ${300+i*10},${323-i*22} Z" fill="${['#cfd3d8','#b9bec5','#a3a9b2','#8d939d'][i]}" stroke="rgba(0,0,0,.25)"/><path d="M${316+i*10},${338-i*22} v-12 M${360+i*10},${322-i*22} v-12 M${420},${312-i*22} v-12 M${480},${309-i*22} v-12 M${540},${312-i*22} v-12" stroke="rgba(0,0,0,.25)" stroke-width="3"/></g>`}
+  out+=`<g style="${fin}">${[300,660].map(x=>`<path d="M${x},323 L${x},210 M${x-14},210 h28" stroke="#666" stroke-width="3"/><rect x="${x-16}" y="196" width="32" height="14" fill="#fff6b0"/>`).join('')}<rect x="420" y="232" width="120" height="22" fill="#1d3a6e"/><text x="480" y="248" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">${p.type.name.toUpperCase().slice(0,14)}</text></g>`;
+  return out;
+ }
+ // plant
+ let out='';
+ [[330,60,110],[410,56,90],[490,64,120]].forEach(([x,w,h],i)=>{out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*1.2*3 - ${i}))"><rect x="${x}" y="${345-h}" width="${w}" height="${h}" fill="#c9ced3" stroke="#8d949b"/><ellipse cx="${x+w/2}" cy="${345-h}" rx="${w/2}" ry="7" fill="#dfe3e7" stroke="#8d949b"/><path d="M${x},${345-h*.7} h${w} M${x},${345-h*.4} h${w}" stroke="rgba(0,0,0,.15)"/></g>`});
+ out+=`<g style="opacity:max(0,min(1,var(--pg)*1.5-.3))"><rect x="590" y="190" width="18" height="155" fill="#8a5a46" stroke="#5a3a2a"/><rect x="620" y="215" width="14" height="130" fill="#8a5a46" stroke="#5a3a2a"/><path d="M300,340 h320 M300,326 h320" stroke="#6b7580" stroke-width="3"/></g>`;
+ out+=`<g style="${fin}"><circle class="smoke" cx="599" cy="180" r="9" fill="rgba(235,235,235,.8)"/><circle class="smoke s2" cx="627" cy="205" r="7" fill="rgba(235,235,235,.8)"/></g>`;
+ return out;
+}
+function vehiclesSVG(){
+ const wheel=(cx,cy,r)=>`<g><circle cx="${cx}" cy="${cy}" r="${r}" fill="#222"/><g class="wheel" style="transform-origin:${cx}px ${cy}px"><circle cx="${cx}" cy="${cy}" r="${r*.55}" fill="#9aa0a6"/><path d="M${cx-r*.5},${cy} h${r} M${cx},${cy-r*.5} v${r}" stroke="#555" stroke-width="1.6"/></g></g>`;
+ const dump=`<g><path d="M0,26 L0,10 L58,10 L66,26 Z" fill="#f2b324" stroke="#b2801a"/><path d="M0,10 L58,10" stroke="#e8c85a" stroke-width="3"/><path d="M62,26 L62,8 L88,8 L98,18 L98,34 L62,34 Z" fill="#f2b324" stroke="#b2801a"/><path d="M82,12 h10 l5,8 h-15z" fill="#a9cde6"/><rect x="-4" y="26" width="104" height="8" fill="#444"/>${wheel(20,38,11)}${wheel(46,38,11)}${wheel(82,38,11)}</g>`;
+ const mixer=`<g><path d="M6,12 Q8,0 30,0 L64,6 Q70,18 62,30 L10,30 Q2,24 6,12 Z" fill="#e8e8e8" stroke="#999"/><g class="drum" style="transform-origin:36px 16px"><path d="M10,18 L62,10 M12,24 L64,16 M14,6 L58,2" stroke="#e8791a" stroke-width="4" stroke-dasharray="14 10"/></g><path d="M62,30 L62,12 L84,12 L96,22 L96,38 L62,38 Z" fill="#e8791a" stroke="#a5500e"/><path d="M80,16 h8 l4,7 h-12z" fill="#a9cde6"/><rect x="0" y="30" width="98" height="8" fill="#444"/>${wheel(18,42,11)}${wheel(44,42,11)}${wheel(80,42,11)}</g>`;
+ const dozer=`<g><rect x="6" y="22" width="78" height="20" rx="10" fill="#333"/><g class="tread"><path d="M14,32 h62" stroke="#777" stroke-width="3" stroke-dasharray="4 4"/></g><path d="M20,22 L24,2 L54,2 L64,22 Z" fill="#f2b324" stroke="#b2801a"/><rect x="30" y="6" width="22" height="14" fill="#a9cde6"/><path d="M70,8 L72,22 L80,22" stroke="#666" stroke-width="3" fill="none"/><path d="M82,12 L96,10 L96,38 L82,40 Z" fill="#d79a1c" stroke="#8a6210"/><rect x="26" y="-6" width="3" height="10" fill="#555"/></g>`;
+ const excavator=`<g><rect x="4" y="30" width="86" height="18" rx="9" fill="#333"/><g class="tread"><path d="M12,39 h70" stroke="#777" stroke-width="3" stroke-dasharray="4 4"/></g><rect x="14" y="14" width="62" height="18" rx="3" fill="#f2b324" stroke="#b2801a"/><path d="M52,14 L52,-2 L74,-2 L78,14 Z" fill="#f2b324" stroke="#b2801a"/><rect x="56" y="1" width="16" height="10" fill="#a9cde6"/><g class="dig" style="transform-origin:72px 22px"><path d="M72,22 L116,-14 L128,-6 L84,30 Z" fill="#f2b324" stroke="#b2801a"/><g class="bucket" style="transform-origin:124px -10px"><path d="M122,-14 L142,-4 L136,12 L118,2 Z" fill="#d79a1c" stroke="#8a6210"/></g></g></g>`;
+ const worker=`<g><circle cx="0" cy="-26" r="4.2" fill="#e0b48f"/><path d="M-4.6,-27 a4.6,4.6 0 0 1 9.2,0 z" fill="#f2c200"/><rect x="-5" y="-22" width="10" height="13" rx="2" fill="#e8791a"/><path d="M-5,-15 h10" stroke="#fff" stroke-width="1.5"/><g class="leg"><rect x="-4.5" y="-9" width="4" height="10" fill="#334"/></g><g class="leg l2"><rect x=".5" y="-9" width="4" height="10" fill="#334"/></g></g>`;
+ return `<g class="v-drive" style="--dur:21s;--dl:-4s;transform:translateX(0)"><g transform="translate(0,372)">${dump}</g></g>`
+  +`<g class="v-drive rev" style="--dur:30s;--dl:-12s"><g transform="translate(0,392)"><g transform="translate(100,0) scale(-1,1)">${mixer}</g></g></g>`
+  +`<g class="v-drive" style="--dur:46s;--dl:-20s"><g transform="translate(0,362) scale(.9)">${dozer}</g></g>`
+  +`<g transform="translate(110,312)">${excavator}</g>`
+  +`<g class="worker" style="--dur:16s;--dl:-3s"><g transform="translate(250,425)">${worker}</g></g>`
+  +`<g class="worker w2" style="--dur:22s;--dl:-9s"><g transform="translate(600,438)">${worker}</g></g>`
+  +`<g class="worker w3" style="--dur:13s;--dl:-1s"><g transform="translate(420,418)">${worker}</g></g>`;
+}
+function craneSVG(){
+ const lat=(x,y,w,h)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="url(#lat)"/>`;
+ return `<g class="crane-g" transform="translate(43,86.25) scale(.75)">`
+  +`<rect x="146" y="338" width="52" height="12" fill="#8d9296" stroke="#6b7075"/>`
+  +lat(160,100,24,240)
+  +`<path d="M160,100 L160,340 M184,100 L184,340" stroke="#e8a300" stroke-width="3"/>`
+  +`<rect x="150" y="90" width="44" height="14" fill="#f2a900" stroke="#b27a00"/>`
+  +`<rect x="176" y="92" width="22" height="16" rx="2" fill="#fff" stroke="#999"/><rect x="180" y="95" width="14" height="8" fill="#9ecbe6"/>`
+  +`<path d="M160,90 L172,44 L184,90" fill="none" stroke="#f2a900" stroke-width="4"/><circle cx="172" cy="42" r="3" fill="#f2a900"/><rect x="171" y="30" width="2" height="12" fill="#777"/><rect x="173" y="30" width="9" height="5" fill="#e63946"/>`
+  +`<g class="jib" style="transform-origin:172px 84px">`
+  +lat(172,78,400,13)+`<path d="M172,78 L572,82 M172,91 L572,88" stroke="#f2a900" stroke-width="2.4"/>`
+  +lat(88,78,84,13)
+  +`<rect x="92" y="90" width="22" height="22" fill="#6b7075" stroke="#444"/><rect x="116" y="90" width="22" height="22" fill="#6b7075" stroke="#444"/><rect x="140" y="90" width="22" height="22" fill="#6b7075" stroke="#444"/>`
+  +`<path d="M172,44 L360,80 M172,44 L520,82 M172,44 L100,80" stroke="#7b838a" stroke-width="1.4"/>`
+  +`<g class="trolley"><rect x="0" y="90" width="16" height="7" fill="#f2a900" stroke="#b27a00"/><g class="load" style="transform-origin:8px 97px"><path d="M8,97 L8,160" stroke="#555" stroke-width="1.5"/><rect x="1" y="160" width="14" height="8" fill="#e0b53c" stroke="#8a6a1c"/><path d="M-26,168 L42,168 L42,176 L-26,176 Z" fill="#7b838a" stroke="#4a5058"/><path d="M-26,172 h68" stroke="#aeb5bb"/></g></g>`
+  +`</g></g>`;
+}
+function trailerSVG(p){
+ const inc=p.incidents||0;
+ return `<g transform="translate(0,0)">`
+  +`<ellipse cx="790" cy="436" rx="108" ry="8" fill="rgba(0,0,0,.2)"/>`
+  +`<path d="M690,422 L664,430" stroke="#555" stroke-width="5"/><circle cx="662" cy="431" r="5" fill="#444"/>`
+  +`<rect x="690" y="364" width="196" height="58" rx="3" fill="#ece7d6" stroke="#b8b19b"/>`
+  +`<rect x="690" y="402" width="196" height="7" fill="#2b5fa8"/><rect x="690" y="364" width="196" height="5" fill="#d8d2bf"/>`
+  +`<rect x="684" y="357" width="208" height="8" rx="2" fill="#cfc9b6" stroke="#aaa491"/>`
+  +`<rect x="796" y="342" width="44" height="16" rx="2" fill="#a0a8b0" stroke="#707880"/><circle cx="808" cy="350" r="5" fill="#667" /><circle cx="828" cy="350" r="5" fill="#667"/><rect x="850" y="338" width="6" height="19" fill="#888"/>`
+  +[702,742,782].map(x=>`<rect x="${x}" y="376" width="28" height="19" fill="#9ecbe6" stroke="#6d8aa0"/><path d="M${x},382 h28 M${x},388 h28" stroke="rgba(255,255,255,.55)"/>`).join('')
+  +`<rect x="842" y="372" width="30" height="50" fill="#8a8f94" stroke="#555"/><rect x="848" y="378" width="18" height="16" fill="#9ecbe6" stroke="#556"/><circle cx="848" cy="404" r="2" fill="#ddd"/>`
+  +`<path d="M822,422 L842,422 L842,430 L818,430 Z" fill="#9b7a4a" stroke="#6b5230"/><path d="M820,430 L842,430 L842,438 L816,438 Z" fill="#9b7a4a" stroke="#6b5230"/><path d="M818,396 L818,426 M842,396 L842,426 M818,396 L842,396" stroke="#777" stroke-width="2" fill="none"/>`
+  +`<rect x="700" y="366" width="92" height="9" rx="1.5" fill="#fff" stroke="#999"/><text x="746" y="373.5" font-size="7" font-weight="800" text-anchor="middle" fill="#234">SITE OFFICE</text>`
+  +`<rect x="690" y="420" width="196" height="8" fill="#555"/><circle cx="726" cy="430" r="11" fill="#222"/><circle cx="726" cy="430" r="5" fill="#888"/><circle cx="800" cy="430" r="11" fill="#222"/><circle cx="800" cy="430" r="5" fill="#888"/>`
+  +`<path d="M896,300 L896,364" stroke="#888" stroke-width="2"/><path class="flag" d="M896,300 h20 v12 h-20z" fill="#e63946"/>`
+  +`<rect x="640" y="388" width="3" height="40" fill="#555"/><rect x="598" y="372" width="86" height="34" rx="3" fill="#fff" stroke="#444" stroke-width="2"/><rect x="598" y="372" width="86" height="9" fill="#2e7d4f"/><text x="641" y="379.5" font-size="6.5" font-weight="800" text-anchor="middle" fill="#fff">SAFETY FIRST</text><text x="641" y="393" font-size="6.5" text-anchor="middle" fill="#234">INCIDENTS ON THIS SITE</text><text x="641" y="402" font-size="10" font-weight="800" text-anchor="middle" fill="${inc?'#c0392b':'#2e7d4f'}">${inc}</text>`
+  +`<g transform="translate(560,424)"><path d="M0,0 l8,0 l-4,-14 z" fill="#e8791a"/><rect x="-1" y="-1" width="10" height="2" fill="#333"/></g><g transform="translate(580,430)"><path d="M0,0 l8,0 l-4,-14 z" fill="#e8791a"/><rect x="-1" y="-1" width="10" height="2" fill="#333"/></g>`
+  +`</g>`;
+}
+function siteHTML(p,pg0,pg1,label){
+ const fenceTop=345;
+ let posts='';for(let x=0;x<=960;x+=64)posts+=`<rect x="${x}" y="${fenceTop-6}" width="4" height="34" fill="#666"/>`;
+ const sky=`<defs><linearGradient id="sk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6fb0e6"/><stop offset="1" stop-color="#d9eefb"/></linearGradient><linearGradient id="gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#b79b6e"/><stop offset="1" stop-color="#8d7249"/></linearGradient><pattern id="lat" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0,0 L12,12 M12,0 L0,12" stroke="#f2a900" stroke-width="1.5"/><rect width="12" height="12" fill="none" stroke="#f2a900" stroke-width="1.5"/></pattern><pattern id="mesh" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#f2862a"/><path d="M0,0 L10,10 M10,0 L0,10" stroke="#c9631a" stroke-width="1"/></pattern></defs>`;
+ const bg=`<rect width="960" height="540" fill="url(#sk)"/><circle cx="820" cy="70" r="30" fill="#fff6c8" opacity=".9"/>`
+  +`<g class="cloud" style="--dur:80s;--dl:-10s"><ellipse cx="120" cy="80" rx="48" ry="14" fill="#fff" opacity=".9"/><ellipse cx="150" cy="70" rx="34" ry="14" fill="#fff" opacity=".9"/></g><g class="cloud" style="--dur:110s;--dl:-60s"><ellipse cx="520" cy="130" rx="60" ry="12" fill="#fff" opacity=".8"/><ellipse cx="550" cy="122" rx="38" ry="12" fill="#fff" opacity=".8"/></g>`
+  +`<path d="M0,300 Q120,262 240,292 T480,286 T720,296 T960,278 L960,345 L0,345 Z" fill="#9db8a4"/><path d="M0,318 Q160,292 320,314 T640,312 T960,306 L960,345 L0,345 Z" fill="#86a58d"/>`
+  +`<g fill="#b9c4cf"><rect x="700" y="262" width="22" height="60"/><rect x="726" y="246" width="26" height="76"/><rect x="756" y="270" width="20" height="52"/><rect x="40" y="276" width="24" height="46"/><rect x="68" y="262" width="20" height="60"/></g>`
+  +`<rect y="345" width="960" height="195" fill="url(#gr)"/><path d="M0,420 Q240,408 480,424 T960,418" stroke="rgba(0,0,0,.12)" stroke-width="12" fill="none"/><path d="M0,470 Q300,460 600,474 T960,468" stroke="rgba(0,0,0,.1)" stroke-width="9" fill="none"/>`;
+ const fence=`<rect y="${fenceTop}" width="960" height="24" fill="url(#mesh)" opacity=".92"/>${posts}<rect x="40" y="${fenceTop+2}" width="70" height="18" fill="#fff" stroke="#c0392b" stroke-width="2"/><text x="75" y="${fenceTop+15}" font-size="8" font-weight="800" text-anchor="middle" fill="#c0392b">NO ENTRY</text>`;
+ const piles=`<path d="M70,420 l30,-30 l34,30 Z" fill="#a38a5f"/><path d="M200,440 l24,-22 l28,22 Z" fill="#8f7852"/><g><rect x="520" y="434" width="70" height="26" fill="#2d6a9f" stroke="#1f4d75"/><path d="M530,434 v26 M545,434 v26 M560,434 v26 M575,434 v26" stroke="#1f4d75"/></g><g><rect x="30" y="448" width="12" height="12" rx="2" fill="#2d6a9f"/><rect x="46" y="448" width="12" height="12" rx="2" fill="#e8791a"/></g>`;
+ const pct=Math.round(pg1*100),delta=Math.round((pg1-pg0)*100);
+ const stageName=STAGES[Math.min(4,p.stage)];
+ const svg=`<svg class="site-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice" style="--pg:${pg0}">${sky}${bg}${craneSVG()}${siteBuilding(p)}${fence}${piles}${trailerSVG(p)}${vehiclesSVG()}</svg>`;
+ const info=`<div class="siteinfo"><div class="sitett">${p.type.icon} ${p.type.name}</div><div class="sitesub">${p.company} &middot; ${stageName}</div><div class="sitebar"><i style="width:${Math.round(pg0*100)}%"></i></div><div class="sitepct">${pct}% complete ${delta>0?`<b>+${delta}% since your last visit</b>`:delta<0?`<b class="neg">${delta}% (delays)</b>`:pg0===0&&pg1===0?'<b>Not started</b>':'<b>No change since your last visit</b>'}</div></div>`;
+ return `<div class="flabel">${label}</div>${svg}${info}`;
+}
+function startSiteProgress(pg1){
+ const svg=document.querySelector('#field .site-svg'),bar=document.querySelector('#field .sitebar i');
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{if(svg)svg.style.setProperty('--pg',pg1);if(bar)bar.style.width=Math.round(pg1*100)+'%'}));
+}
+
+function streetSVG(){
+ const car=(c)=>`<g><path d="M0,22 L6,10 Q10,4 22,4 L40,4 Q50,4 56,12 L66,16 Q72,18 72,24 L72,30 L0,30 Z" fill="${c}" stroke="rgba(0,0,0,.3)"/><path d="M14,10 L22,6 L38,6 L46,12 L14,12Z" fill="#a9cde6"/><circle cx="16" cy="31" r="7" fill="#222"/><circle cx="56" cy="31" r="7" fill="#222"/><circle cx="16" cy="31" r="3" fill="#999"/><circle cx="56" cy="31" r="3" fill="#999"/></g>`;
+ return `<svg class="site-svg street-svg" viewBox="0 0 960 540" preserveAspectRatio="xMidYMax slice"><rect width="960" height="540" fill="#bfe0f5"/><g class="cloud" style="--dur:90s;--dl:-20s"><ellipse cx="200" cy="70" rx="50" ry="13" fill="#fff"/><ellipse cx="230" cy="62" rx="32" ry="12" fill="#fff"/></g><g class="cloud" style="--dur:120s;--dl:-70s"><ellipse cx="600" cy="110" rx="58" ry="12" fill="#fff"/></g><path d="M0,300 Q200,270 420,296 T960,284 L960,350 L0,350Z" fill="#9fc08f"/><rect y="340" width="960" height="200" fill="#7fb26a"/><rect y="440" width="960" height="46" fill="#5a5f66"/><path d="M0,463 H960" stroke="#e8d36a" stroke-width="3" stroke-dasharray="26 18"/>${[[60,'#e9d9b8'],[330,'#cfe0ee'],[600,'#efd5d5'],[840,'#e9d9b8']].map(([x,c])=>`<g transform="translate(${x},0)"><rect x="0" y="330" width="110" height="80" fill="${c}" stroke="#b7a37a"/><path d="M-10,330 L55,282 L120,330Z" fill="#a85a3a"/><rect x="14" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="74" y="346" width="22" height="20" fill="#a9cde6" stroke="#6d8aa0"/><rect x="46" y="370" width="20" height="40" fill="#6b4a2b"/></g>`).join('')}<rect y="432" width="960" height="8" fill="#c9c9c0"/><g class="v-drive" style="--dur:14s;--dl:-3s"><g transform="translate(0,438)">${car('#c0392b')}</g></g><g class="v-drive rev" style="--dur:19s;--dl:-9s"><g transform="translate(0,458)"><g transform="translate(72,0) scale(-1,1)">${car('#2d6a9f')}</g></g></g><g class="v-drive" style="--dur:26s;--dl:-18s"><g transform="translate(0,438)">${car('#e8b923')}</g></g>${[80,300,560,820].map((x,i)=>`<g transform="translate(${x},0)"><rect x="9" y="${352-i%2*6}" width="6" height="80" fill="#6b4a2b"/><circle cx="12" cy="${340-i%2*6}" r="26" fill="${i%2?'#4a8a3c':'#3f7d34'}"/></g>`).join('')}</svg>`;
+}
+function openField(kind,label,vis,sp,pg0,pg1){
  const om={...MAYOR,role:'Out in the field'};delete om.el;
- const bg=kind==='site'?'<div class="crane"><i></i></div><div class="fence"></div><div class="trailer">SITE OFFICE</div><div class="pile"></div>':'<div class="house h1"></div><div class="house h2"></div><div class="house h3"></div><div class="walk"></div>';
  const hat=kind==='site'?'<div class="hardhat"></div>':'';
- openOverlay('field',`<div class="flabel">${label}</div>${bg}<div class="och" id="fM" style="left:38%;bottom:${kind==='site'?44:30}px">${figHTML(om)}${hat}</div><div class="och" id="fV" style="left:62%;bottom:${kind==='site'?38:24}px">${figHTML(vis)}${hat}</div>`);
+ const bg=kind==='site'?siteHTML(sp,pg0,pg1,label):`<div class="flabel">${label}</div>${streetSVG()}`;
+ openOverlay('field',`${bg}<div class="och" id="fM" style="left:38%;bottom:${kind==='site'?44:30}px">${figHTML(om)}${hat}</div><div class="och" id="fV" style="left:62%;bottom:${kind==='site'?38:24}px">${figHTML(vis)}${hat}</div>`);
  $('#field').className='show '+kind;
  om.el=$('#fM');vis.el=$('#fV');sfx.pop();banner(label);
+ if(kind==='site')startSiteProgress(pg1);
  return om;
 }
 async function officeMeeting(p){
@@ -2428,7 +2620,9 @@ async function actInspect(){
  const cand=S.projects.filter(p=>p.stage>=1);
  const p=cand.length===1?cand[0]:await pickProject(cand,'Which site do you inspect?');
  const F={name:'Frank Dolan',role:`Site foreman, ${p.company}`,color:'#a86a1f',...lookPro(),suit:'#e8791a'};
- openField('site',`SITE INSPECTION: ${p.type.name.toUpperCase()}`,F);
+ const pg1=buildProgress(p),pg0=clamp(p.siteSeen||0,0,pg1);
+ openField('site',`SITE INSPECTION: ${p.type.name.toUpperCase()}`,F,p,pg0,pg1);
+ p.siteSeen=pg1;
  await say('office',`You put on a hard hat and walk the ${p.type.name} site with the foreman.`);
  await say(F,fresh('fore-in',['Welcome, Mayor. Everything is running smoothly out here. As you can see.','Mayor! We were not expecting you today. Watch your step.','Happy to give you the tour. We have nothing to hide.']));
  const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));
