@@ -679,7 +679,7 @@ const TYPES=[
  {k:'gas',name:'Gas Station & Convenience Store',icon:'&#9981;',min:6e5,max:6e6,water:1500,noise:55,jobs:8,tax:.03,traffic:6,power:1,tags:['chem']},
  {k:'apts',name:'Apartment Complex',icon:'&#127970;',min:2e6,max:1.5e8,water:6000,noise:52,jobs:2,tax:.015,traffic:7,power:3,tags:[]},
  {k:'warehouse',name:'Distribution Warehouse',icon:'&#128666;',min:5e6,max:2e8,water:800,noise:62,jobs:5,tax:.012,traffic:9,power:3,tags:[]},
- {k:'solar',name:'Solar Farm',icon:'&#9728;&#65039;',min:5e6,max:3e8,water:300,noise:40,jobs:1.2,tax:.008,traffic:1,power:0,tags:[]},
+ {k:'solar',name:'Solar Farm',icon:'&#9728;&#65039;',min:5e6,max:3e8,water:300,noise:40,jobs:1.2,tax:.008,traffic:1,power:-1.6,land:1,tags:[]},
  {k:'battery',name:'Battery Storage Facility',icon:'&#128267;',min:1e7,max:4e8,water:500,noise:55,jobs:1,tax:.01,traffic:1,power:4,tags:['chem']},
  {k:'datacenter',name:'Data Center',icon:'&#128421;&#65039;',min:5e6,max:1e9,water:40000,noise:68,jobs:3,tax:.012,traffic:2,power:10,tags:[]},
  {k:'crypto',name:'Crypto Mining Facility',icon:'&#9939;&#65039;',min:1e6,max:5e7,water:20000,noise:82,jobs:1,tax:.01,traffic:1,power:10,tags:[]},
@@ -688,6 +688,7 @@ const TYPES=[
  {k:'fab',name:'Semiconductor Fab',icon:'&#128300;',min:1e8,max:1e9,water:70000,noise:64,jobs:3.5,tax:.011,traffic:4,power:9,tags:['chem']},
  {k:'hotel',name:'Hotel & Conference Center',icon:'&#127976;',min:1e7,max:2e8,water:9000,noise:50,jobs:6,tax:.025,traffic:6,power:3,tags:[]},
  {k:'chem',name:'Chemical Processing Plant',icon:'&#9879;&#65039;',min:5e7,max:1e9,water:60000,noise:70,jobs:3,tax:.015,traffic:7,power:6,tags:['chem']},
+ {k:'cams',name:'Automated Camera Network',icon:'&#128247;',min:1e5,max:2.5e7,water:50,noise:30,jobs:.3,tax:.004,traffic:1,power:1,tags:['surv']},
  {k:'mall',name:'Strip Mall',icon:'&#128717;&#65039;',min:1e6,max:6e7,water:3000,noise:52,jobs:8,tax:.03,traffic:8,power:2,tags:[]}
 ];
 const PACKS={
@@ -697,7 +698,7 @@ const PACKS={
   {k:'themepark',name:'Amusement Park',icon:'&#127906;',min:2e7,max:5e8,water:50000,noise:72,jobs:12,tax:.025,traffic:9,power:5,tags:[]},
   {k:'arena',name:'Concert Arena',icon:'&#127908;',min:2e7,max:3e8,water:12000,noise:80,jobs:4,tax:.02,traffic:9,power:4,tags:[]}]},
  energy:{name:'Energy pack',types:[
-  {k:'wind',name:'Wind Farm',icon:'&#127788;&#65039;',min:1e7,max:4e8,water:100,noise:55,jobs:.8,tax:.009,traffic:2,power:-3,tags:[]},
+  {k:'wind',name:'Wind Farm',icon:'&#127788;&#65039;',min:1e7,max:4e8,water:100,noise:55,jobs:.8,tax:.009,traffic:2,power:-2.2,land:.8,tags:[]},
   {k:'gasplant',name:'Natural Gas Plant',icon:'&#128293;',min:8e7,max:1e9,water:80000,noise:72,jobs:2,tax:.02,traffic:4,power:-6,tags:['chem']},
   {k:'hydro',name:'Hydroelectric Dam',icon:'&#127754;',min:1e8,max:1e9,water:5000,noise:50,jobs:1.5,tax:.015,traffic:3,power:-4,tags:[]}]}
 };
@@ -726,7 +727,14 @@ function genProject(){
  return p;
 }
 const T=(...ks)=>p=>ks.includes(p.type.k);
+const crimeProne=p=>['gas','mall','storage','warehouse','hotel','crypto'].includes(p.type.k);
+const isSurv=p=>p.type.tags.includes('surv');
 const CONDS=[
+ {k:'retain',spec:1,when:isSurv,name:'Data retention limit (30 days)',desc:'Plate data is deleted after a month. Less to misuse or leak.',b:1,risk:.8,appeal:{res:.5,dev:-.1}},
+ {k:'warrant',spec:1,when:isSurv,name:'Warrant required for searches',desc:'Officers need a judge before looking anyone up. Cuts wrongful stops and misuse.',b:2,risk:.6,appeal:{res:.7,dev:-.3}},
+ {k:'audit',spec:1,when:isSurv,name:'Public audit log and transparency portal',desc:'Every search is logged and published. Raises trust.',b:2,risk:.7,trust:2,appeal:{res:.6,dev:-.2}},
+ {k:'noshare',spec:1,when:isSurv,name:'No data sharing with outside agencies',desc:'Keeps the data in Clifton. Less federal and out-of-state access.',b:2,risk:.75,appeal:{res:.7,dev:-.3}},
+ {k:'lighting',spec:1,when:crimeProne,name:'Security lighting and private patrol',desc:'Cuts after-hours crime. The developer pays.',b:1,risk:.8,appeal:{res:.4,dev:-.1}},
  {k:'recycle',name:'Closed-loop water recycling',desc:'Cuts water use by about 65%.',b:2,when:p=>p.water>=8000},
  {k:'noise',name:'Noise barrier and sound cap',desc:'About 12 dB quieter at the property line.',b:1,when:p=>p.db>=55},
  {k:'fund',name:'Community benefit fund (1% of cost)',desc:'Neighbors and council like this.',b:2},
@@ -829,8 +837,8 @@ const maxBurden=p=>3+S.dev/20+p.sizeF*1.5;
 const eff=(p,c)=>{const cm=cmods(c);return{water:p.water*(c.recycle?.35:1)*cm.water,db:p.db-(c.noise?12:0)+cm.db}};
 function impacts(p,c){
  const e=eff(p,c),cm=cmods(c);
- return{env:clamp(e.water/1.5e6*.7+(p.power+cm.power)/10*.3+(p.type.tags.includes('chem')?.25:0)-(c.monitor?.08:0)-(c.bond?.05:0),0,1),
-  res:clamp((e.db-45)/40*.5+(p.traffic+cm.traffic)/10*.5-(c.road?.1:0),0,1),jobs:clamp(p.jobs*cm.jobs/250,0,1),tax:clamp(p.tax*cm.tax/1.5e6,0,1)};
+ return{env:clamp(e.water/1.5e6*.7+Math.max(0,p.power+cm.power)/10*.3+(p.type.land||0)*(.3+p.sizeF*.7)*.5+(p.type.tags.includes('chem')?.25:0)-(c.monitor?.08:0)-(c.bond?.05:0),0,1),
+  res:clamp((e.db-45)/40*.5+(p.traffic+cm.traffic)/10*.5-(c.road?.1:0)+(isSurv(p)?(.3+p.sizeF*.4)*(1-.5*(c.warrant?1:0)-.2*(c.retain?1:0)-.2*(c.noshare?1:0)):0),0,1),jobs:clamp(p.jobs*cm.jobs/250,0,1),tax:clamp(p.tax*cm.tax/1.5e6,0,1)};
 }
 function score(m,p,c,ctx){
  const I=impacts(p,c);
@@ -854,7 +862,7 @@ function showAgenda(p){
  a.innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${p.type.icon} ${p.type.name}</div><div class="mut">${p.company} at ${p.site}</div>
  <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>${p.units?`<tr><td>New homes</td><td>${num(p.units)}</td></tr>`:''}
  <tr><td>Water use</td><td class="${e.water>=2e5?'bad':''}">${num(e.water)} gal/day</td></tr><tr><td>Noise</td><td class="${e.db>=70?'bad':''}">${Math.round(e.db)} dB</td></tr>
- <tr><td>Workers hired</td><td>${num(Math.round(p.jobs))}</td></tr><tr><td>Sewer load</td><td>+${sewOf(p,p.conds).toFixed(1)} pts</td></tr><tr><td>Trash</td><td>+${((p.jobs/260+.25)).toFixed(1)} pts/wk</td></tr><tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
+ <tr><td>Workers hired</td><td>${num(Math.round(p.jobs))}</td></tr><tr><td>Sewer load</td><td>+${sewOf(p,p.conds).toFixed(1)} pts</td></tr><tr><td>Trash</td><td>+${((p.jobs/260+.25)).toFixed(1)} pts/wk</td></tr><tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr>${p.power<0?`<tr><td>Grid output</td><td style="color:var(--good)">-${Math.round(-p.power*(.4+p.sizeF*2.5))} pts of load</td></tr>`:`<tr><td>Power demand</td><td>${dots(p.power)}</td></tr>`}${p.type.land?`<tr><td>Land and habitat</td><td class="bad">${dots(p.type.land*(.3+p.sizeF*.7)*10)}</td></tr>`:''}</table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
 const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
@@ -924,6 +932,9 @@ const TOPICS={
  traffic:{sign:['TOO MANY TRUCKS','KIDS CROSS HERE'],opp:['Heavy trucks on a street where kids walk to school? Please.','Our road cannot handle this. It is a pothole festival already.']},
  power:{sign:['POWER BILLS!','NO BLACKOUTS'],opp:['If this thing pulls as much power as they say, who pays? Us. Through our bills.','We had brownouts last summer. Adding a giant power hog is reckless.']},
  chem:{sign:['NO TOXINS','CLEAN AIR'],opp:['What exactly is stored on this site? "Proprietary" is not an answer.','One spill and our creek is done. I want a cleanup bond, not promises.']},
+ land:{sign:['SAVE THE PRAIRIE','FARMS NOT PANELS','PROTECT HABITAT'],opp:['That used to be pasture and prairie. You are covering it in steel and glass and calling it green.','The deer, the hawks and the old fence rows are all gone from that field. Clean power should not cost us our land.']},
+ privacy:{sign:['STOP SPYING','NO DRAGNET','WARRANTS NOT CAMERAS'],opp:['A camera that reads every plate that passes is not safety, it is a diary of where I go.','Who can search that data? For how long? Nobody has answered me.','They will say it is for criminals. Then it is for everyone.']},
+ crime:{sign:['SAFE STREETS','CATCH THE CROOKS'],sup:['Somebody stole my truck in March. Nobody was ever caught. I want these cameras.','If it finds one missing kid, it is worth it.']},
  nimby:{sign:['NOT HERE','KEEP IT RURAL'],opp:['I am not against progress, I am against it next to my backyard.','Our property values will tank. Put it somewhere else.']},
  safety:{sign:['SAFE JOBS','PROTECT WORKERS'],opp:['A worker got hurt and they hid it for two days. Safety first, or no project.','This outfit cuts corners. Today it is a worker. Tomorrow it is a neighbor.']},
  jobs:{sign:['JOBS NOW','HIRE LOCAL'],sup:['I have been out of work eight months. {jobs} jobs would change my family\'s life.','Local jobs, Mr. Mayor. That is all I am asking.']},
@@ -940,6 +951,7 @@ Object.entries({
  traffic:{opp:['I count the trucks already. This would triple them.','My daughter bikes to school on that road. It is not built for this.']},
  power:{opp:['Our electric bills went up twice last year. This will not help.','The grid is stretched thin already. Who is going to say no when the lights flicker?']},
  chem:{opp:['I want the list of every chemical on this site, in writing.','There is a school half a mile away. Why is this even on the table?']},
+ land:{opp:['Every acre of farmland we pave over is gone for good.','Green energy is fine. Green energy on top of the creek bottom is not.']},
  nimby:{opp:['Build it anywhere else. I am serious. Anywhere else.','You are asking us to live next to it so someone else can profit.']},
  jobs:{sup:['I have three kids and a layoff notice. Please approve this.','Young people leave Clifton because there is nothing to stay for. This helps.']},
  tax:{sup:['Our property taxes are crushing. Let a developer carry some of the load.','The fire department has not had a raise in years. This revenue could fix that.']},
@@ -949,12 +961,12 @@ const TLABEL={water:'hydrology',noise:'acoustic',traffic:'traffic',power:'grid',
 function genCitizens(p,c,n){
  const I=impacts(p,c),e=eff(p,c);
  const pOpp=clamp(.22+I.env*.35+I.res*.3-I.jobs*.2-(S.trust-50)/300,.08,.9);
- let oppT=[];if(e.water>=2e4)oppT.push('water','water');if(e.db>=60)oppT.push('noise');if(p.traffic>=6)oppT.push('traffic');if(p.power>=7)oppT.push('power');if(p.type.tags.includes('chem')||p.fl>=1)oppT.push('chem');oppT.push('nimby');
+ let oppT=[];if(e.water>=2e4)oppT.push('water','water');if(e.db>=60)oppT.push('noise');if(p.traffic>=6)oppT.push('traffic');if(p.power>=7)oppT.push('power');if(p.type.tags.includes('chem')||p.fl>=1)oppT.push('chem');if(p.type.land)oppT.push('land','land');if(isSurv(p))oppT.push('privacy','privacy','privacy');oppT.push('nimby');
  const reps=p.reports||[];
  reps.forEach(r=>{if(r.res==='better')oppT=oppT.filter(t=>t!==r.topic);if(r.res==='worse'&&TOPICS[r.topic]&&TOPICS[r.topic].opp)oppT.push(r.topic,r.topic,r.topic)});
  if(p.biasTopic&&TOPICS[p.biasTopic]&&TOPICS[p.biasTopic].opp)oppT.push(p.biasTopic,p.biasTopic);
  if(!oppT.length)oppT=['nimby'];
- const supT=['jobs','tax','local'];
+ const supT=['jobs','tax','local'];if(isSurv(p))supT.push('crime','crime','crime','crime');
  if(p.type.k==='apts'&&housingRatio()<.92)supT.push('housing','housing','housing');
  if(trafficIdx()>75)oppT.push('traffic','traffic');
  const out=[];
@@ -978,6 +990,30 @@ function genCitizens(p,c,n){
 /* ---------- events ---------- */
 const EV=[
  {bad:1,st:[1,2],when:p=>p.water>=15000,make:p=>{const n=ri(4,23);return{title:'Unpermitted wells',text:`State inspectors found ${n} unpermitted wells drilled on the ${p.type.name} site. Not a single one had a permit on file.`,dev:'That is a paperwork mix-up, Mayor. Our drilling subcontractor got ahead of the schedule.',env:8,fine:n*15000,topic:'water'}}},
+{bad:1,id:'wrongful',st:[4],when:isSurv,make:p=>({title:'Wrongful arrest',text:`A false plate match at the ${p.type.name} led officers to stop a family at gunpoint. The car was not stolen. A lawyer is already on the phone with the Courier.`,dev:'The system flagged a plate that was entered incorrectly upstream. Human review is the department\'s job.',chief:'Mayor, that stop should never have happened. The alert said "stolen" and my officers acted on it. We need a human check before any stop based on a hit.',env:0,fine:90000,topic:'privacy',resp:[
+  {k:'settle',label:'Settle with the family ($60K)',sub:'Quiet and fair. Costs money.',cost:60000,trust:2,dev:2,say:'The city will settle with the family and apologize publicly.'},
+  {k:'suspend',label:'Suspend the camera program for 3 weeks',sub:'Strong signal. Hurts the vendor.',trust:4,dev:-8,delay:2,say:'I am suspending the camera program until we have a human check in place.'},
+  {k:'defend',label:'Defend the officers and the system',sub:'Cheap now. Residents will not forgive it.',trust:-6,dev:3,soft:true,say:'The officers followed procedure and the system worked as designed.'}],
+  extra:{label:'Require officer verification before any stop',sub:'Cuts the odds of repeat incidents.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.6}}})},
+ {bad:1,id:'misuse',st:[4],when:isSurv,make:p=>({title:'Officer misuse of camera data',text:`An internal review found an officer used the ${p.type.name} to track an ex-partner for weeks. Nobody noticed because nothing was logged.`,dev:'We provide the data. How it is used is a department matter.',chief:'This one is on me. I want that officer gone and charged. And I want every search logged from here on.',env:0,fine:70000,topic:'privacy',resp:[
+  {k:'prosecute',label:'Fire the officer and refer for prosecution',sub:'Clean break. Residents see accountability.',trust:4,dev:-2,say:'The officer is fired and referred to the county attorney.'},
+  {k:'audit',label:'Order a full audit of past searches ($30K)',sub:'Finds anything else hiding in the logs.',cost:30000,trust:3,dev:-3,say:'I am ordering a full audit of every past search.'},
+  {k:'internal',label:'Handle it internally',sub:'Quiet, and it will come out later.',trust:-5,dev:2,soft:true,say:'The department has handled it internally.'}],
+  extra:{label:'Require a public audit log for every search',sub:'Makes misuse visible and rare.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.65}}})},
+ {bad:1,id:'shared',st:[4],when:isSurv,make:p=>({title:'Data shared with outside agencies',text:`Records show plate data from the ${p.type.name} was searched by agencies in other states and a federal agency, for reasons the city was never told.`,dev:'Sharing is part of the service agreement every customer accepts.',chief:'We did not approve that, Mayor. If the contract allows it, the contract has to change.',env:0,fine:60000,topic:'privacy',resp:[
+  {k:'cut',label:'Cut off all outside sharing',sub:'Keeps the data in Clifton. The vendor will complain.',trust:4,dev:-6,say:'Effective today, none of this data leaves Clifton.'},
+  {k:'review',label:'Commission a legal review ($25K)',sub:'Slow, thorough, and defensible.',cost:25000,trust:2,dev:-2,say:'I am commissioning a legal review of the contract and the sharing.'},
+  {k:'shrug',label:'Point out that the contract allowed it',sub:'Technically true. Residents will not care.',trust:-5,dev:3,soft:true,say:'The contract allowed it, and I consider the matter closed.'}],
+  extra:{label:'Require no sharing with outside agencies',sub:'Closes the loophole for good.',dev:-5,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}})},
+ {bad:1,id:'breach',st:[4],when:isSurv,make:p=>({title:'Camera data breach',text:`Hackers got into the ${p.type.name} and posted weeks of plate and location records online.`,dev:'We have notified affected parties and hired a forensics firm.',chief:'My people did not store that data. The vendor did. We need shorter retention so there is less to steal.',env:0,fine:110000,topic:'privacy',extra:{label:'Require a 30-day retention limit',sub:'Less stored data, less to leak.',dev:-4,trust:2,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.75}}})},
+ {bad:1,id:'crimespike',st:[4],when:crimeProne,make:p=>({title:'Crime spike near the site',text:`Police logged ${ri(6,25)} thefts and break-ins around the ${p.type.name} this month, mostly after dark.`,dev:'We have beefed up our own security, but the area needs more patrols.',chief:'Mayor, my officers are stretched. Lighting and a private patrol on the property would cut these calls by half.',env:0,fine:35000,topic:'safety',extra:{label:'Require lighting and a private patrol',sub:'The developer pays. Cuts repeat crime.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.75}}})},
+ {bad:1,id:'copper',st:[2,3,4],when:p=>['solar','wind','battery','datacenter'].includes(p.type.k),make:p=>({title:'Copper and equipment theft',text:`Thieves cut fences and stripped wiring and equipment from the ${p.type.name} overnight. Police estimate the loss at ${money(ri(40,300)*1000)}.`,dev:'We are installing cameras and motion lighting, and filing claims.',chief:'These crews hit remote sites on weekends. A fence and a camera will not stop them. Lighting and patrols will help.',env:2,fine:25000,topic:'safety'})},
+ {good:1,id:'recovered',st:[4],when:isSurv,make:p=>({title:'Stolen vehicle recovered',text:`The ${p.type.name} flagged a stolen car heading out of town. Officers recovered it within the hour and arrested two suspects wanted in three counties.`,dev:'This is exactly what the system is for.',chief:'That is a case we would not have made a year ago. I will take wins like this all day.',trust:2,env:0})},
+ {good:1,id:'missing',st:[4],when:isSurv,make:p=>({title:'Missing person found',text:`A camera alert helped officers find a missing teenager at a bus station two counties away, safe and unharmed.`,dev:'We are glad it helped, and we will keep working with the department.',chief:'The family called us crying. I am not going to pretend that does not matter.',trust:3,env:0})},
+ {good:1,id:'ring',st:[4],when:isSurv,make:p=>({title:'Burglary ring arrested',text:`Plate reads tied one van to eleven burglaries across Clifton and Millbrook. Police made arrests Tuesday.`,dev:'We are proud of the role our system played.',chief:'Eleven burglaries, one van. That is a case that used to take months.',trust:2,env:0})},
+ {bad:1,st:[1,2],when:p=>!!p.type.land,make:p=>({title:'Habitat cleared',text:`Biologists found that crews cleared ${ri(40,400)} acres of native prairie and nesting ground at the ${p.type.name} site before the survey was finished.`,dev:'The clearing fell inside our permitted footprint. We will replant where we can.',env:6,fine:60000,topic:'land'})},
+ {bad:1,st:[4],when:p=>p.type.k==='wind',make:p=>({title:'Bird and bat kills',text:`The state wildlife office reports ${ri(60,400)} bird and bat deaths at the ${p.type.name} this season, including a protected raptor.`,dev:'Every wind farm has some losses. We will add detection systems and curtail at dusk.',env:5,fine:50000,topic:'land'})},
+ {bad:1,st:[2,3,4],when:p=>p.type.k==='solar',make:p=>({title:'Runoff and erosion',text:`Heavy rain washed topsoil off the graded slopes at the ${p.type.name} into the creek, burying a culvert and a neighbor's field.`,dev:'The storm exceeded our design event. We are installing silt fencing and replanting.',env:5,fine:55000,topic:'land'})},
  {bad:1,st:[1,2],make:p=>{const g=ri(2,9)*100000;return{title:'Groundwater contamination',text:`Test results confirm ${num(g)} gallons of groundwater were contaminated by ${pick(['diesel fuel from a ruptured tank','drilling slurry','leaking hydraulic fluid','cement wash-out'])} at the ${p.type.name} site.`,dev:'We take full responsibility and are cooperating with the state. This was an isolated incident.',env:11,fine:250000,topic:'water',gal:g}}},
  {bad:1,st:[2,3,4],when:p=>p.water>=8000,make:p=>{const g=ri(3,12)*100000;return{title:'Water wasted',text:`Meters show ${num(g)} gallons of treated city water wasted after contractors ${pick(['left a hydrant running overnight for dust control','flushed cooling loops straight into the storm drain','ruptured a main with an excavator','ran a leaking test line all weekend'])}.`,dev:'Against our total water budget that is a rounding error, but we will tighten our procedures.',env:6,fine:g/5,topic:'water',gal:g}}},
  {bad:1,st:[1,2],make:p=>({title:'Muddy runoff',text:`Silt-laden runoff from the ${p.type.name} site turned Cedar Creek brown for two miles. Fish kills are being reported downstream.`,dev:'Heavy rain overwhelmed our silt fences. These things happen.',env:6,fine:60000,topic:'water'})},
@@ -1209,6 +1245,7 @@ async function runEvent(p,evDef,promised,mode){
  if(evDef.good){
   await say('mayor',`Good news. ${promised?'As promised in the approval conditions: ':''}${ev.text}`);
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
+  if(ev.chief)await chiefSays(ev.chief);
   const m=pick(COUNCIL);await say(m.id,pick(['Well, that is a pleasant surprise.','That is what a good neighbor looks like.','I will gladly take good news for a change.']));
   sfx.good();adj('trust',ev.trust||0,ev.title);adj('env',ev.env||0);S.stats.perks++;adj('dev',promised?2:3);histNote(p.company,'perks');if(ev.rel)for(const[id,v]of Object.entries(ev.rel))adjRel(id,v,'');
   minutes(`${ev.title}: ${p.type.name}.`,'g');return;
@@ -1222,9 +1259,10 @@ async function runEvent(p,evDef,promised,mode){
   adj('trust',2,'caught it on inspection');
  }else{
   await say('mayor',mode==='queued'?`Last week the Planning Department logged an incident at the ${p.type.name} from ${p.company}: ${ev.text}`:`Troubling report on the ${p.type.name} from ${p.company}: ${ev.text}`);
-  const reactor=ev.topic==='water'?CAST.chen:ev.topic==='noise'||ev.topic==='traffic'?CAST.wong:ev.topic==='safety'?CAST.rodriguez:pick(COUNCIL);
+  const reactor=ev.topic==='water'||ev.topic==='land'?CAST.chen:ev.topic==='privacy'?CAST.wong:ev.topic==='noise'||ev.topic==='traffic'?CAST.wong:ev.topic==='safety'?CAST.rodriguez:pick(COUNCIL);
   await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
+  if(ev.chief)await chiefSays(ev.chief);
  }
  const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
  if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
@@ -1364,7 +1402,7 @@ function openRoom(label,vis){
  return om;
 }
 /* ---------- construction site scene ---------- */
-const ARCH={coffee:'shop',storage:'box',gas:'shop',apts:'tower',warehouse:'box',solar:'solar',battery:'box',datacenter:'box',crypto:'box',bottling:'plant',quarry:'pit',fab:'box',hotel:'tower',chem:'plant',mall:'shop',stadium:'stadium',casino:'tower',themepark:'stadium',arena:'stadium',wind:'wind',gasplant:'plant',hydro:'box'};
+const ARCH={cams:'poles',coffee:'shop',storage:'box',gas:'shop',apts:'tower',warehouse:'box',solar:'solar',battery:'box',datacenter:'box',crypto:'box',bottling:'plant',quarry:'pit',fab:'box',hotel:'tower',chem:'plant',mall:'shop',stadium:'stadium',casino:'tower',themepark:'stadium',arena:'stadium',wind:'wind',gasplant:'plant',hydro:'box'};
 const ARCHCOLOR={datacenter:'#556678',warehouse:'#8d9296',storage:'#c98d4e',fab:'#dfe6ee',crypto:'#414c58',battery:'#5d7c70',hydro:'#9aa9b3',apts:'#c6a283',hotel:'#bfd0df',casino:'#8e3b7a',coffee:'#b9824e',gas:'#d7d3c8',mall:'#c7b6a0'};
 function buildProgress(p){
  if(p.stage>=4)return 1;
@@ -1436,6 +1474,14 @@ function siteBuilding(p){
   let out='';const N=4;
   for(let i=0;i<N;i++){out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*1.25*${N} - ${i}))"><path d="M${300+i*10},${345-i*22} Q${480},${300-i*22} ${660-i*10},${345-i*22} L${660-i*10},${323-i*22} Q${480},${278-i*22} ${300+i*10},${323-i*22} Z" fill="${['#cfd3d8','#b9bec5','#a3a9b2','#8d939d'][i]}" stroke="rgba(0,0,0,.25)"/><path d="M${316+i*10},${338-i*22} v-12 M${360+i*10},${322-i*22} v-12 M${420},${312-i*22} v-12 M${480},${309-i*22} v-12 M${540},${312-i*22} v-12" stroke="rgba(0,0,0,.25)" stroke-width="3"/></g>`}
   out+=`<g style="${fin}">${[300,660].map(x=>`<path d="M${x},323 L${x},210 M${x-14},210 h28" stroke="#666" stroke-width="3"/><rect x="${x-16}" y="196" width="32" height="14" fill="#fff6b0"/>`).join('')}<rect x="420" y="232" width="120" height="22" fill="#1d3a6e"/><text x="480" y="248" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">${p.type.name.toUpperCase().slice(0,14)}</text></g>`;
+  return out;
+ }
+
+ if(a==='poles'){
+  let out='<rect x="300" y="344" width="360" height="5" fill="#6b7078"/>';
+  for(let i=0;i<7;i++){const x=320+i*50,h=60+(i%3)*14;
+   out+=`<g class="band" style="--i:${i};opacity:max(0,min(1,var(--pg)*1.2*7 - ${i}))"><rect x="${x}" y="${345-h}" width="6" height="${h}" fill="#8a9096"/><rect x="${x-10}" y="${345-h-8}" width="26" height="12" rx="3" fill="#2b3036"/><circle cx="${x+10}" cy="${345-h-2}" r="3.2" fill="#6fa8dc"/><path d="M${x+3},${345-h+10} h-14 l5,8 h4z" fill="#d9a441" opacity=".85"/></g>`}
+  out+=`<g style="${fin}"><rect x="650" y="300" width="34" height="44" fill="#cfd4d8" stroke="#8a9096"/><circle cx="667" cy="316" r="5" fill="#2b3036"/><path d="M656,330 h22" stroke="#6fa8dc" stroke-width="3"/></g>`;
   return out;
  }
  // plant
@@ -1679,6 +1725,7 @@ async function staffReports(p,returning){
   const changed=(p.reports||[]).some(r=>r.topic==='chem');
   await say(F,changed?fresh('f-ret-c',['The hazmat findings are noted. My conditions follow from them.','Given the hazmat report, I stand by my recommendations.']):fresh('f-ret',[`The Fire Marshal's position stands.${fl>0?' My conditions still apply.':''}`,`No change from Fire.${fl>0?' I still want the safety plan.':' I still have no objection.'}`]));
   await hideSpeaker();
+  await chiefInput(p,true);
   return;
  }
  await say('mayor','Now comments from staff. First, Zoning.');
@@ -1689,6 +1736,7 @@ async function staffReports(p,returning){
  await showSpeaker(F);
  await say(F,p.waived?'The fire review was waived as well. For the record, I did not sign off on anything.':ft[fl]);
  await hideSpeaker();
+ await chiefInput(p,false);
  if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
  else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
 }
@@ -2005,6 +2053,25 @@ function trafficIdx(){
 }
 /* ---------- sewer and trash ---------- */
 const POPGOAL=()=>S.maxWeeks>20?16500:12500;
+let _chief=null;
+function policeChief(){return _chief||(_chief={...lookPro(),name:'Chief Ray Delacroix',role:'Police Chief',color:'#1b3a6b',cl:'uniform',hs:'cap',suit:'#1b3a6b',hair:'#1b1b1b'})}
+async function chiefSays(t){const C=policeChief();await showSpeaker(C);await say(C,t);await hideSpeaker()}
+async function chiefInput(p,returning){
+ if(p.chiefIn===undefined)p.chiefIn=isSurv(p)?1:(crimeProne(p)&&p.sizeF>.1&&Math.random()<.55?1:0);
+ if(!p.chiefIn)return;
+ if(returning){await say('mayor','Chief Delacroix, anything to add on the reports?');await chiefSays(isSurv(p)?'My position has not changed. If the council wants cameras, it needs rules for how they are used.':'The crime concerns I raised still stand. Lighting and a patrol plan would go a long way.');return}
+ if(p.chiefPro===undefined)p.chiefPro=Math.random()<.55;
+ await say('mayor','The Police Chief is here as well. Chief Delacroix.');
+ if(isSurv(p)){
+  await chiefSays(p.chiefPro?fresh('ch-sp',['Mayor, plate readers have helped my officers recover stolen cars and close cases that would have gone cold. I want this network. I also want strict rules on who can search it and for how long.','Cameras at the edges of town would give us leads we do not have today. Burglary rings, stolen cars, missing persons. I am for it, with a retention limit and an audit trail.']):fresh('ch-sc',['I will be honest with you. These systems get false matches. A bad hit can put officers at a car with guns drawn on a family that did nothing wrong. If you approve, require a human check before any stop.','Cameras help, and they are also a temptation. Officers have misused systems like this to track people they know. Without audits, this is a liability.']));
+  await say(pick(['wong','chen']),pick(['Every camera is a promise that somebody will be watching us.','Whoever holds that data holds a map of where every one of us has been.']));
+  await say(pick(['bradley','jennings']),pick(['If it clears even a handful of cases, it pays for itself. I want to see the numbers.','Safety is a service. If the data is protected, I can support it.']));
+ }else{
+  const T=p.type.k;
+  await chiefSays(T==='gas'?'Late-night gas stations draw robberies. I want lighting, cameras, and a clear sightline from the register to the road.':T==='mall'?'Strip malls draw shoplifting and after-hours loitering. I would like lighting, patrol access to the rear lot, and a security plan.':T==='crypto'?'Mining sites hold expensive equipment and attract theft. I want fencing, lighting and an alarm tied to dispatch.':T==='hotel'?'Hotels bring crowds and, at times, trouble. I want a security plan and a direct line to dispatch.':'Storage and warehouse sites are theft targets after dark. Lighting, fencing and cameras make a real difference.');
+  await say('rodriguez','I will take the Chief at his word. Make the developer pay for the security.');
+ }
+}
 const LFD=()=>S.lf||(S.lf={used:38,cap:100,haul:0,rec:0,fee:0,cd:0,warn:0});
 const workers=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
 const sewOf=(p,c)=>Math.min(22,Math.sqrt(eff(p,c||{}).water)/150+p.jobs/60);
@@ -2014,6 +2081,7 @@ const trashPct=()=>Math.round(LFD().used/LFD().cap*100);
 const trashRate=()=>{const L=LFD();return(S.pop/12000*2+workers()/260+S.projects.filter(p=>p.stage===2).length*.25)*(L.haul?.45:1)*(L.rec?.8:1)};
 const weeksToFull=()=>{const L=LFD(),r=trashRate();return r>0?Math.max(0,Math.round((L.cap-L.used)/r)):99};
 function weeklyUtilities(){
+ const nc=S.projects.filter(p=>p.stage===OPER&&isSurv(p)&&!(p.curtail>0)).length;if(nc)S.trust=clamp(S.trust+Math.min(.3,.1*nc));
  const L=LFD();L.used=Math.min(L.cap*1.2,L.used+trashRate());if(L.cd>0)L.cd--;
  if(L.fee)S.budget+=6000;
  const pc=trashPct(),sl=sewerLoad();
