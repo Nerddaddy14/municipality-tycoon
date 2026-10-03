@@ -47,6 +47,12 @@ Play a quick 12-week term in about an hour, or the full 52-week term. There is n
 - No profanity. No gambling mechanics (a casino is just one project type).
 - Suitable for teens and up.
 
+## AI disclosure
+
+Portals now ask about generative AI. For this project the honest answer is **Yes**. The game's code, writing, dialogue, and the guide were produced with an AI tool (Claude, by Anthropic) working with the developer. There is no image or audio art: the characters and scenes are drawn in code, and the sound effects are synthesized in the browser. Suggested wording for a description:
+
+> Made with the help of generative AI. The game's code, writing, and dialogue were produced with Claude, an AI model, under the developer's direction. All visuals are drawn in code and all sounds are synthesized, with no AI image or audio generators.
+
 ## Technical facts
 
 - HTML5, a single file (`index.html`), about 280 KB, no external requests, no libraries
