@@ -810,6 +810,7 @@ const CONDS=[
  {k:'dropoff',spec:1,when:p=>p.type.k==='school',name:'Drop-off traffic plan',desc:'Staggered pickup and a turn lane. Eases traffic.',b:1,mod:{traffic:-2},appeal:{res:.5,dev:-.1}},
  {k:'canopy',spec:1,when:p=>p.type.k==='ev',name:'Solar canopy over the chargers',desc:'Cuts grid demand and looks good.',b:2,mod:{power:-2},appeal:{env:.5,dev:-.2}},
  {k:'curfew',spec:1,when:p=>p.type.k==='airstrip',name:'Night flight curfew',desc:'About 10 dB quieter at night. Fewer flights.',b:1,mod:{db:-10,jobs:.95},appeal:{res:.6,dev:-.3}},
+ {k:'schoolfee',spec:1,when:p=>p.units>=100,name:'School impact fee (1% of cost)',desc:'The developer pays toward new classroom seats. The council likes it.',b:1,appeal:{res:.4,dev:-.2}},
  {k:'retain',spec:1,when:isSurv,name:'Data retention limit (30 days)',desc:'Plate data is deleted after a month. Less to misuse or leak.',b:1,risk:.8,appeal:{res:.5,dev:-.1}},
  {k:'warrant',spec:1,when:isSurv,name:'Warrant required for searches',desc:'Officers need a judge before looking anyone up. Cuts wrongful stops and misuse.',b:2,risk:.6,appeal:{res:.7,dev:-.3}},
  {k:'audit',spec:1,when:isSurv,name:'Public audit log and transparency portal',desc:'Every search is logged and published. Raises trust.',b:2,risk:.7,trust:2,appeal:{res:.6,dev:-.2}},
@@ -962,7 +963,7 @@ function gridEv(p,gl){
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
  const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
- $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${S.probe?`<div class="mut" style="margin-top:6px;font-size:12px">Ethics probe open: ${S.probe.title.toLowerCase()} (finding due week ${S.probe.due})</div>`:''}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${bar(Math.min(schoolLoad(),130),'School capacity used','')}${bar(clamp(Math.round((RENT()-80)/70*100),0,130),'Rent pressure','')}${S.probe?`<div class="mut" style="margin-top:6px;font-size:12px">Ethics probe open: ${S.probe.title.toLowerCase()} (finding due week ${S.probe.due})</div>`:''}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
 }
 function renderProjects(){
  const el=$('#projs');
@@ -1624,7 +1625,7 @@ function engAssess(p){
  return{notes,rec:ok,level:notes.length>=3?2:notes.length>=1?1:0};
 }
 async function engineerInput(p,returning){
- if(!returning&&engAssess(p).level===0&&(p.sizeF<.4||Math.random()<.6))return;
+ if(!returning&&engAssess(p).level===0&&(S.maxWeeks<=20||p.sizeF<.4||Math.random()<.6))return;
  if(returning){await say('mayor','The City Engineer wants to add something.');await engineerSays(p.engLevel>=2?'My concerns still stand. Please look at the conditions I recommended before you vote.':p.engLevel===1?'Nothing has changed from my review. The conditions I suggested would address my concerns.':'My review stands. I have no engineering objection.');return}
  await say('mayor','And the City Engineer.');
  if(p.waived){await engineerSays('The engineering review was waived at the applicant\'s request. For the record, I did not sign off, and I did not see the plans.');p.engRec=[];p.engLevel=0;return}
@@ -1671,7 +1672,7 @@ function commVote(p){
 const COMM_REASON={water:'the water draw',noise:'the noise',traffic:'the truck traffic',power:'the power demand',chem:'the hazardous materials',fiscal:'the fiscal case',jobs:'the job numbers'};
 async function commissionHearing(p,returning){
  if(p.waived){if(!returning){await say('mayor','The Planning Commission did not review this project, since the review was waived.');await say('wong','Waived? So the commission never saw it?');}p.commRec='none';return}
- if(p.sizeF<.12&&!returning){p.commRec='none';return}
+ if(p.sizeF<(S.maxWeeks<=20?.3:.12)&&!returning){p.commRec='none';return}
  const old=p.commRec,r=commVote(p);p.commRec=r.rec;p.commVotes=r;
  const nm={approve:'approval',cond:'approval with conditions',deny:'denial'}[r.rec];
  if(returning&&old&&old!==r.rec&&old!=='none'){await say('mayor','The Planning Commission has reconsidered, in light of the new reports.');await chairSays(`The Commission met again and changed its recommendation. It now votes ${r.ayes} to ${r.nays} for ${nm} of the ${p.type.name}.`)}
@@ -1698,6 +1699,170 @@ async function commissionAftermath(p,final){
   S.commStand=clamp(S.commStand-4);p.commOver=true;
   await chairSays(`The Commission recommended ${rec==='cond'?'approval with conditions':'approval'}. We are disappointed the council went the other way.`);
  }else S.commStand=clamp(S.commStand+2);
+}
+/* ---------- schools, rents and homelessness ---------- */
+const schoolEnr=()=>Math.round(S.pop*.19);
+const schoolCap=()=>Math.round(2750+(S.schoolAdd||0)+(S.portables||0)*150+S.projects.filter(p=>p.stage===OPER&&p.type.k==='school').reduce((a,p)=>a+150+300*p.sizeF,0)-(S.schoolClosed||0)*350);
+const schoolLoad=()=>Math.round(schoolEnr()/schoolCap()*100);
+const RENT=()=>S.rent===undefined?(S.rent=100):S.rent;
+const HOMELESS=()=>S.homeless===undefined?(S.homeless=38):S.homeless;
+let _sup=null,_hou=null;
+function superRep(){return _sup||(_sup={...lookPro(),name:'Dr. Janelle Dreyer',role:'Superintendent, Clifton Community Schools',color:'#3a6a8a',cl:'blazer',hs:'bob',suit:'#3a6a8a',shirt:'#fff',gl:'round',hair:'#6b4a2b'})}
+function housingRep(){return _hou||(_hou={...lookPro(),name:'Rick Haverkamp',role:'Director, Clifton Housing Authority',color:'#8a5a2a',cl:'cardigan',hs:'balding',suit:'#7a5a3a',shirt:'#f4f1e8',hair:'#8a8a8a'})}
+async function supSays(t){const D=superRep();await showSpeaker(D);await say(D,t);await hideSpeaker()}
+async function houSays(t){const D=housingRep();await showSpeaker(D);await say(D,t);await hideSpeaker()}
+function weeklySchoolHousing(){
+ const L=schoolLoad();
+ if(L>110)S.trust=clamp(S.trust-.3);else if(L>100)S.trust=clamp(S.trust-.15);
+ const t=S.teach===undefined?50:S.teach;if(t>=70)S.trust=clamp(S.trust+.05);else if(t<=30)S.trust=clamp(S.trust-.1);
+ if(S.levy)S.trust=clamp(S.trust-.03);
+ S.teach=clamp(t+(50-t)*.015);
+ // rents follow the housing market
+ const ratio=housingRatio();let r=RENT();
+ let g=(1-ratio)*.012;if(S.rentCap&&g>.002)g=.002;
+ r=clamp(r*(1+g)-(ratio>1.05?.15:0),80,170);S.rent=r;
+ if(S.rentCap)S.dev=clamp(S.dev-.05);
+ if(r>=145)S.trust=clamp(S.trust-.3);else if(r>=125)S.trust=clamp(S.trust-.15);
+ let h=HOMELESS();h=clamp(h+(r-100)*.02-(S.shelterBeds||0)*.04+(Math.random()<.3?.4:0),5,200);S.homeless=h;
+ S.edFlag=S.edFlag||{};
+ if(L>=112&&!S.edFlag.over){S.edFlag.over=1;queueStory({h:'CLASSROOMS OVERFLOW AS CLIFTON GROWS',sub:'Parents report thirty-two children in some classrooms, and a reading specialist teaching in a hallway.',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported on crowded classrooms.'})}
+ else if(L<100)S.edFlag.over=0;
+ if(r>=140&&!S.edFlag.rent){S.edFlag.rent=1;queueStory({h:'RENTS SOAR AS HOMES LAG BEHIND JOBS',sub:'The tenants association says a two-bedroom now costs a third more than two years ago. The mayor says the city is looking at options.',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported on soaring rents.'})}
+ else if(r<125)S.edFlag.rent=0;
+}
+async function schoolBond(){
+ const D=superRep(),L=schoolLoad();
+ showAgendaCard('School bond measure','Clifton Community Schools',[['Amount','$4,000,000'],['Adds','About 500 seats'],['Enrollment',L+'% of capacity'],['Decided by','Voters']]);
+ await say('mayor','The school district is asking the council to support a bond measure.');
+ await supSays(`Mayor, council, our schools are at ${L} percent of capacity, and enrollment grows with every family that moves to Clifton. A four million dollar bond would add about five hundred seats.`);
+ await say('jennings','Four million dollars, financed by property taxes. I would like to see the enrollment projections.');
+ await say('wong','Children in hallways are not a spreadsheet. I support the district.');
+ const opts=[];if(S.budget>=20000)opts.push({k:'yes',label:'Back the bond and campaign for it ($20K)',sub:'Voters decide. Your trust and the crowding both help.',cls:'go'});
+ opts.push({k:'wait',label:'Ask the district to find savings first',sub:'Slows it down. Fiscal hawks approve.'},{k:'no',label:'Stay neutral',sub:'Let the district make its own case.'});
+ const k=await ask('School bond measure',opts);
+ if(k==='yes'){
+  addBudget(-20000,'bond campaign');
+  const chance=clamp(.3+S.trust/160+(L>100?.15:0)+((S.teach||50)>=60?.05:0)-(S.rate>1.2?.1:0),.15,.85),pass=Math.random()<chance,pct=pass?ri(54,68):ri(38,48);
+  await say('mayor',`The votes are in. The school bond ${pass?'passes':'fails'}, ${pct} percent to ${100-pct}.`);
+  if(pass){S.schoolAdd=(S.schoolAdd||0)+500;S.levy=1;adj('trust',3);adjRel('wong',4,'');adjRel('jennings',-3,'');S.stats.schoolBond=(S.stats.schoolBond||0)+1;minutes('Voters passed the school bond.','g')}
+  else{adj('trust',-2);minutes('Voters rejected the school bond.','b')}
+ }else if(k==='wait'){adjRel('jennings',4,'');adjRel('wong',-3,'');await say('mayor','Please come back with a savings plan, and we will take another look.');await supSays('We will do what we can, Mayor. The children will still be here.')}
+ else{adj('trust',-1);await say('mayor','The council will let the district make its own case.')}
+ showAgenda(null);
+}
+async function teacherPay(){
+ showAgendaCard('Teacher retention','Clifton Community Schools',[['Teacher morale',['Low','Fair','Good'][(S.teach||50)<35?0:(S.teach||50)>=65?2:1]],['Ask','$30,000 supplement']]);
+ await say('mayor','The superintendent has asked to speak about teacher retention.');
+ await supSays('Mayor, we lost eleven teachers to neighboring districts this year. They pay four thousand dollars more. Our best math teacher is driving a school bus on the weekends.');
+ await say('rodriguez','A teacher who drives a bus on weekends is a teacher who is not being paid enough.');
+ const opts=[];if(S.budget>=30000)opts.push({k:'fund',label:'Fund a $30K retention supplement',sub:'Teachers stay. Families notice.',cls:'go'});
+ opts.push({k:'chamber',label:'Ask the Chamber of Commerce to sponsor it',sub:'Free to the city. You owe the Chamber a favor.'},{k:'no',label:'It is not a city matter',sub:'Technically true. Parents will not love it.'});
+ const k=await ask('Teacher retention',opts);
+ if(k==='fund'){addBudget(-30000,'teacher supplement');S.teach=clamp((S.teach||50)+16);adj('trust',2);adjRel('wong',4,'');await say('mayor','The city will fund a retention supplement. Please spend it on the teachers.')}
+ else if(k==='chamber'){S.teach=clamp((S.teach||50)+8);chAdj(-3);adj('dev',2);await say('mayor','I will ask Wally to bring the Chamber to the table on this one.')}
+ else{S.teach=clamp((S.teach||50)-8);adj('trust',-1);await say('mayor','Staffing is a matter for the school board.')}
+ showAgenda(null);
+}
+async function portables(){
+ const L=schoolLoad();
+ showAgendaCard('Portable classrooms','Overcrowded schools',[['Enrollment',L+'% of capacity'],['Option','Six portable classrooms']]);
+ await say('mayor','The superintendent has an emergency request about overcrowding.');
+ await supSays(`We are at ${L} percent of capacity. We can lease six portable classrooms for sixty thousand dollars, which would add about a hundred and fifty seats this fall.`);
+ await say('chen','Portables are a band-aid. They are also better than a hallway.');
+ const opts=[];if(S.budget>=60000)opts.push({k:'buy',label:'Fund the portables ($60K)',sub:'Adds 150 seats. Not pretty.'});
+ opts.push({k:'shift',label:'Approve double shifts at the middle school',sub:'Free. Teachers and parents will be angry.'},{k:'wait',label:'Wait for the bond',sub:'Crowding continues.',cls:'stop'});
+ const k=await ask('Portable classrooms',opts);
+ if(k==='buy'){addBudget(-60000,'portable classrooms');S.portables=(S.portables||0)+1;adj('trust',1);await say('mayor','The portables are approved. Please put a little paint on them.')}
+ else if(k==='shift'){S.teach=clamp((S.teach||50)-8);adj('trust',-2);S.schoolAdd=(S.schoolAdd||0)+100;await say('mayor','Double shifts at the middle school, starting in the fall, and I know that is a hard ask.')}
+ else{adj('trust',-2);await say('mayor','We will wait for the bond measure to decide.')}
+ showAgenda(null);
+}
+async function schoolMerge(){
+ const L=schoolLoad();
+ showAgendaCard('School consolidation','Falling enrollment',[['Enrollment',L+'% of capacity'],['Option','Close Lincoln Elementary']]);
+ await say('mayor','The district has a proposal about school buildings, with enrollment well under capacity.');
+ await supSays(`Mayor, we are at ${L} percent of capacity. Closing Lincoln Elementary would save about two thousand dollars a week and move its students across town. It is a hard conversation, but a real one.`);
+ await say('jennings','The numbers support it. The faces on the playground do not.');
+ const opts=[{k:'close',label:'Support closing the school',sub:'Savings now. Families on that side of town will be furious.'},{k:'center',label:'Close it and repurpose it as a community center ($30K)',sub:'Softens the blow. Costs money.'},{k:'keep',label:'Keep it open',sub:'Popular. The budget will feel it.'}];
+ if(S.budget<30000)opts.splice(1,1);
+ const k=await ask('School consolidation',opts);
+ if(k==='close'){S.schoolClosed=(S.schoolClosed||0)+1;S.budget+=10000;adj('trust',-5);adjRel('wong',-6,'');adjRel('jennings',5,'');await say('mayor','I will support closing Lincoln Elementary. It was not an easy decision.')}
+ else if(k==='center'){addBudget(-30000,'community center');S.schoolClosed=(S.schoolClosed||0)+1;adj('trust',-1);adjRel('wong',2,'');await say('mayor','Lincoln will close as a school, and reopen as the Lincoln Community Center.')}
+ else{adj('trust',2);adjRel('wong',4,'');await say('mayor','Lincoln stays open for now, and we will keep watching the numbers.')}
+ showAgenda(null);
+}
+async function affordableProject(){
+ const H=housingRep();
+ showAgendaCard('Affordable housing proposal','Riverside Commons',[['Units','120 apartments'],['Rents','For households under 60% of median income'],['Rent index',Math.round(RENT())]]);
+ await say('mayor','The Housing Authority has an affordable housing proposal.');
+ await houSays(`Mayor, council, our waiting list is three hundred families long. A nonprofit developer wants to build one hundred twenty units on the east side, with the city waiving about thirty thousand dollars in permit fees.`);
+ await say('bradley','Subsidized housing. I would like the free market to have a turn first.');
+ await say('wong','The free market had its turn. I would like to see the plans.');
+ const crowd=[{...lookR(),stance:'opp',sign:'NOT NEXT DOOR',mood:'angry',text:'I am not against housing for working families. I am against it on my street, at that size.'},{...lookR(),stance:'sup',sign:'HOMES FOR ALL',mood:'happy',text:'I work two jobs and I am one rent increase from sleeping in my car. Please say yes.'}];
+ showCrowd(crowd);await sleep(AUTO?10:300);
+ for(const c of crowd){await showSpeaker(c);await say(c,c.text);heckle(c.stance==='opp'?'BOO!':'YEAH!',c.stance==='opp'?'no':'yes');await hideSpeaker()}
+ await hideCrowd();
+ const opts=[{k:'yes',label:'Approve it and waive the fees ($30K)',sub:'Adds 120 homes and cools rents. Some neighbors will object.'},{k:'trust',label:'Approve it with a community land trust ($50K)',sub:'Permanently affordable. Costs more and takes longer. Developers do not love it.'},{k:'no',label:'Decline',sub:'Safe with neighbors. Renters will be angry.',cls:'stop'}];
+ if(S.budget<30000)opts.splice(0,2);else if(S.budget<50000)opts.splice(1,1);
+ const k=await ask('Affordable housing proposal',opts);
+ if(k==='yes'){addBudget(-30000,'waived fees');S.housing+=120;S.rent=clamp(RENT()-3,80,170);adj('trust',2);adjRel('wong',5,'');adjRel('bradley',-4,'');await say('mayor','Riverside Commons is approved. A hundred and twenty families will have a better shot.')}
+ else if(k==='trust'){addBudget(-50000,'land trust');S.housing+=120;S.rent=clamp(RENT()-5,80,170);adj('trust',3);adj('dev',-2);adjRel('wong',6,'');adjRel('bradley',-6,'');await say('mayor','We will make these homes permanently affordable through a community land trust.')}
+ else{adj('trust',-2);adjRel('bradley',3,'');adjRel('wong',-5,'');await say('mayor','The council declines the proposal.');await houSays('I am disappointed, Mayor. I will have to go back to the waiting list and explain.')}
+ if(k!=='no')S.stats.affordable=(S.stats.affordable||0)+1;
+ showAgenda(null);
+}
+async function shelter(){
+ const h=Math.round(HOMELESS());
+ showAgendaCard('Shelter and encampments','Residents without housing',[['Estimated count',h],['Rent index',Math.round(RENT())],['Season',SEASONS[seasonIdx()]]]);
+ await say('mayor','The Housing Authority has asked to discuss homelessness in Clifton.');
+ await houSays(`Mayor, we count about ${h} people sleeping outside or in their cars. A few encampments have formed behind the old rail yard. Winter is not far off.`);
+ await say('chen','Nobody chooses a tent in January.');
+ await say('bradley','Downtown merchants are complaining, and I am not unsympathetic. We need to balance compassion with order.');
+ const opts=[];
+ if(S.budget>=60000)opts.push({k:'tiny',label:'Fund a tiny-home village ($60K)',sub:'Moves people into real shelter. Neighbors near the site will fight it.',cls:'go'});
+ if(S.budget>=20000)opts.push({k:'winter',label:'Fund a cold-weather shelter ($20K)',sub:'Beds in the church hall. Helps, but only seasonally.'});
+ opts.push({k:'ban',label:'Pass a camping ordinance',sub:'Moves people along. Some residents will cheer, others will sue.',cls:'stop'},{k:'ignore',label:'Wait and see',sub:'Costs nothing. Costs trust.'});
+ const k=await ask('Shelter and encampments',opts);
+ if(k==='tiny'){addBudget(-60000,'tiny home village');S.shelterBeds=(S.shelterBeds||0)+20;S.homeless=clamp(HOMELESS()-14,5,200);adj('trust',1);adjRel('chen',5,'');adjRel('wong',-2,'');adjRel('bradley',-3,'');await say('mayor','We will build a tiny-home village on city land, with services on site.')}
+ else if(k==='winter'){addBudget(-20000,'winter shelter');S.shelterBeds=(S.shelterBeds||0)+8;S.homeless=clamp(HOMELESS()-5,5,200);adj('trust',1);await say('mayor','The church hall will open as a cold-weather shelter this winter.')}
+ else if(k==='ban'){adj('trust',Math.random()<.5?2:-3);adjRel('bradley',4,'');adjRel('chen',-6,'');await say('mayor','The council will adopt a camping ordinance, with outreach for anyone who needs a place to go.');if(Math.random()<.4)queueStory({h:'CAMPING BAN DRAWS LEGAL CHALLENGE',sub:'Advocates say the ordinance punishes people for having nowhere to go. The city says it is a matter of public health.',who:'mayor',mood:'angry',trust:-1,min:'The Courier reported on the camping ordinance.'})}
+ else{adj('trust',-2);await say('mayor','Staff will continue to monitor the situation.')}
+ showAgenda(null);
+}
+async function rentStab(){
+ const r=Math.round(RENT());
+ showAgendaCard('Rent stabilization petition','Tenants association',[['Rent index',r],['Petition','Cap annual rent increases at 4%'],['Signatures','1,100']]);
+ await say('mayor','The tenants association has filed a petition for a rent stabilization ordinance.');
+ const T={name:'Tasha Brooks',role:'Tenants association',color:'#8a2b2b',...lookR(),sign:'RENT CAP NOW'};
+ await showSpeaker(T);await say(T,`Mayor, rents are up ${r-100} percent. Families are leaving the town where they grew up. A four percent annual cap would give them a chance.`);await hideSpeaker();
+ await say('bradley','Rent caps scare away builders. Fewer homes means higher rents, and you will have made the problem worse.');
+ await say('wong','Waiting for the market has not worked for the people on my street.');
+ const k=await ask('Rent stabilization petition',[{k:'cap',label:'Adopt the 4% cap',sub:'Slows rent growth. Slows new building too. Developers and landlords will protest.'},{k:'study',label:'Commission a housing study ($15K)',sub:'Buys time and some goodwill.'},{k:'no',label:'Reject the petition',sub:'Landlords and builders cheer. Renters do not.',cls:'stop'}]);
+ if(k==='cap'){S.rentCap=1;adj('trust',3);adj('dev',-6);adjRel('bradley',-6,'');adjRel('wong',6,'');await say('mayor','The council adopts a four percent annual cap on rent increases.')}
+ else if(k==='study'){if(S.budget>=15000)addBudget(-15000,'housing study');adj('trust',1);await say('mayor','I will ask staff for a housing study, with options, in two meetings.')}
+ else{adj('trust',-3);adj('dev',2);adjRel('bradley',3,'');adjRel('wong',-5,'');await say('mayor','The council rejects the petition.')}
+ showAgenda(null);
+}
+async function mobilePark(){
+ showAgendaCard('Mobile home park closure','Meadowlark Mobile Home Park',[['Households','60 families'],['Owner','Selling to a developer'],['Notice','90 days']]);
+ await say('mayor','Residents of the Meadowlark Mobile Home Park are here about a closure notice.');
+ const R={...lookR(),name:'Gloria Hensley',role:'Meadowlark resident',color:'#8a6a3a',sign:'SAVE MEADOWLARK',mood:'sad'};
+ await showSpeaker(R);await say(R,'I have lived in my home for nineteen years. I own the trailer. I do not own the land. They want us out in ninety days, and the trailer will not survive a move.');await hideSpeaker();
+ await houSays('The owner is within his rights. The families are not. Relocation costs run about eight thousand dollars per household.');
+ const opts=[];if(S.budget>=50000)opts.push({k:'reloc',label:'Fund relocation assistance ($50K)',sub:'Helps a lot of families. Not all.',cls:'go'});
+ opts.push({k:'delay',label:'Press the owner for a 12-month delay',sub:'Free. Developers will resent it.'},{k:'let',label:'It is a private matter',sub:'Legally clean. Politically costly.',cls:'stop'});
+ const k=await ask('Mobile home park closure',opts);
+ if(k==='reloc'){addBudget(-50000,'relocation assistance');adj('trust',3);adjRel('wong',4,'');S.homeless=clamp(HOMELESS()-2,5,200);await say('mayor','The city will help every household with relocation costs.')}
+ else if(k==='delay'){adj('trust',1);adj('dev',-3);S.homeless=clamp(HOMELESS()+3,5,200);await say('mayor','I will ask the owner for twelve months. I cannot promise what he will say.')}
+ else{adj('trust',-3);S.homeless=clamp(HOMELESS()+8,5,200);RENT();S.rent=clamp(RENT()+2,80,170);await say('mayor','This is a private property matter, and the city has limited options.')}
+ showAgenda(null);
+}
+async function schoolInput(p){
+ const L=schoolLoad();
+ if(p.type.k!=='school'&&!(p.units>=100&&L>=92))return;
+ await say('mayor','The Superintendent of Schools is here as well.');
+ if(p.type.k==='school')await supSays(`The charter school would take pressure off our buildings, and it would also draw students and funding from the district. I am cautiously supportive. Enrollment sits at ${L} percent of capacity.`);
+ else await supSays(`A hundred and more new apartments means more children, Mayor. We are already at ${L} percent of capacity. A school impact fee would help, and I would ask the council to consider one.`);
 }
 async function scandalCheck(){
  if(S.corrupt>=100)return;
@@ -1775,7 +1940,7 @@ async function projectUpdates(mode){
  for(const p of S.projects){
   if(p.curtail>0)p.curtail--;
   if(p.watch>0)p.watch--;
-  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(Math.random()<(p.cost>=5e6?.8:.25))queueStory({h:`${p.type.name.toUpperCase()} OPENS IN CLIFTON`,sub:`${p.company} cut the ribbon on a ${money(p.cost)} project. ${num(Math.round(p.jobs))} workers are on the payroll.`,who:'mayor',mood:'happy',trust:1,dev:1,kind:'opening',min:`The Courier covered the opening of the ${p.type.name}.`});if(p.units){S.housing+=p.units;minutes(`${num(p.units)} new homes opened.`,'g')}}}}
+  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(Math.random()<(p.cost>=5e6?.8:.25))queueStory({h:`${p.type.name.toUpperCase()} OPENS IN CLIFTON`,sub:`${p.company} cut the ribbon on a ${money(p.cost)} project. ${num(Math.round(p.jobs))} workers are on the payroll.`,who:'mayor',mood:'happy',trust:1,dev:1,kind:'opening',min:`The Courier covered the opening of the ${p.type.name}.`});if(p.units){S.housing+=p.units;if(p.conds&&p.conds.afford)S.rent=clamp(RENT()-p.units*.04,80,170);minutes(`${num(p.units)} new homes opened.`,'g')}}}}
   else rev+=p.tax/52*S.rate*.12;
   const c=p.conds;
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
@@ -2342,6 +2507,7 @@ async function staffReports(p,returning){
  await hideSpeaker();
  await chiefInput(p,false);
  await engineerInput(p,false);
+ await schoolInput(p);
  if(p.power>=7||p.type.k==='datacenter')await orionHearing(p);
  if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
  else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
@@ -2831,6 +2997,7 @@ const PW_SEAS={
 const PWFX={'Send an emergency repaving crew ($30K)':12,'Patch the worst ones ($10K)':5,'Wait for the budget':-4,'Full fleet and salt ($35K)':6,'Priority routes only ($12K)':2,'Contract it out cheap':-4,'Ban burning and fund leaf pickup ($15K)':4,'Fund thaw crews and a repair rebate ($25K)':3};
 async function pwCleanup(title,kind){
  S.streets=clamp(STR()-(kind==='storm'?6:4));
+ if(S.maxWeeks<=20&&kind!=='storm'){S.streets=clamp(STR()+2);return}
  const C=pwCrew();
  await pwSay(C,kind==='storm'?fresh('pw-sc',[`Mayor, the ${title.toLowerCase()} left branches, wires and debris across half the town. The crews are out in it now.`,`The ${title.toLowerCase()} did a number on the east side. Trees are down, and the storm drains are packed with debris.`,`Cleanup after the ${title.toLowerCase()} will take the crews a week, Mayor, and we are already working overtime.`]):fresh('pw-fc',[`Mayor, ${title.toLowerCase()} left about nine tons of cups, cones and confetti on Main Street.`,`The ${title.toLowerCase()} was great. It also left half the downtown covered in trash.`,`Cleanup after ${title.toLowerCase()} is going to take the crew a couple of days, Mayor.`]));
  const opts=[{k:'crew',label:'Full cleanup crew with overtime ($6K)',sub:'Streets bounce back. The crew appreciates it.'},{k:'norm',label:'Normal crews, as they get to it',sub:'Free. Streets stay messy for a while.'},{k:'vol',label:'Ask volunteers to help',sub:'Free, but it may not cover it.'}];
@@ -2923,6 +3090,7 @@ function weeklyStreets(){
 }
 function weeklyUtilities(){
  weeklyStreets();
+ weeklySchoolHousing();
  recordHist();
  chamberWeekly();
  const nc=S.projects.filter(p=>p.stage===OPER&&isSurv(p)&&!(p.curtail>0)).length;if(nc)S.trust=clamp(S.trust+Math.min(.3,.1*nc));
@@ -3060,7 +3228,8 @@ function mapSVG(){
  // city hall
  o+=`<g transform="translate(480,268)"><rect x="-22" y="-14" width="44" height="28" fill="#f3ead2" stroke="#6b4a2b" stroke-width="2"/><path d="M-26,-14 L0,-32 L26,-14Z" fill="#a85a3a"/><rect x="-4" y="0" width="8" height="14" fill="#6b4a2b"/><text y="30" font-size="11" font-weight="800" text-anchor="middle" fill="#fff" stroke="#000" stroke-width=".5">CITY HALL</text></g>`;
  // schools
- [[395,205],[610,320]].forEach(([x,y])=>{o+=`<g transform="translate(${x},${y})"><rect x="-13" y="-10" width="26" height="20" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-16,-10 L0,-20 L16,-10Z" fill="#7a4a2a"/><text y="5" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">S</text></g>`});
+ const scl=schoolLoad(),sccol=scl>=110?'#e04646':scl>=98?'#e8a317':'#3fbf6a';
+ [[395,205],[610,320]].forEach(([x,y],i)=>{o+=`<g transform="translate(${x},${y})"><rect x="-13" y="-10" width="26" height="20" fill="#c98f6b" stroke="#7a4a2a" stroke-width="1.5"/><path d="M-16,-10 L0,-20 L16,-10Z" fill="#7a4a2a"/><text y="5" font-size="12" font-weight="800" text-anchor="middle" fill="#fff">S</text><circle cx="15" cy="-18" r="5" fill="${sccol}" stroke="#fff"/>${i===0?`<text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Schools ${scl}%</text>`:''}</g>`});
  // infrastructure: sewer plant, landfill, substation, water tower
  const sl=sewerLoad(),slc=sl>=100?'#e04646':sl>=80?'#e8a317':'#3fbf6a',lp=trashPct(),lc=lp>=100?'#e04646':lp>=75?'#e8a317':'#3fbf6a',gl=gridLoad(),glc=gl>=88?'#e04646':gl>=72?'#e8a317':'#3fbf6a',wl=waterLoad(),wlc=wl>=90?'#e04646':wl>=75?'#e8a317':'#3fbf6a';
  o+=`<g transform="translate(175,470)"><circle cx="-14" cy="0" r="14" fill="#c9ced3" stroke="#6b7078"/><circle cx="16" cy="2" r="12" fill="#c9ced3" stroke="#6b7078"/><circle cx="0" cy="-22" r="5" fill="${slc}" stroke="#fff"/><text y="30" font-size="11" font-weight="700" text-anchor="middle" fill="#fff" stroke="#00000066" stroke-width=".6">Sewer plant ${sl}%</text></g>`;
@@ -3119,7 +3288,7 @@ function showMap(tab){
 function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  S.popPrev=S.pop;
- const target=12000+jobs*1.8+(S.housing-4800)*.6,room=(housingRatio()<.9?.4:1)*(sewerLoad()>=100?.5:1);
+ const target=12000+jobs*1.8+(S.housing-4800)*.6,room=(housingRatio()<.9?.4:1)*(sewerLoad()>=100?.5:1)*(schoolLoad()>110?.75:1)*(RENT()>=145?.8:1);
  const grow=(target-S.pop)*.05*room*(S.prio&&S.prio.k==='jobs'?1.5:1);
  const why=[];let leave=0;
  if(S.trust<35){leave+=(35-S.trust)*.0003;why.push('low public trust')}
@@ -3127,6 +3296,8 @@ function weeklyGrowth(){
  if(housingRatio()<.88){leave+=(.88-housingRatio())*.02;why.push('housing costs')}
  if(S.budget<0){leave+=.001;why.push('city finances')}
  if(sewerLoad()>=100){leave+=.002;why.push('sewage backups')}
+ if(schoolLoad()>115){leave+=.001;why.push('crowded schools')}
+ if(RENT()>=150){leave+=.001;why.push('rents')}
  if(trashPct()>=105){leave+=.0015;why.push('garbage piling up')}
  S.popWhy=why;
  { const mi=Math.floor(S.pop/1000);if(S.popMile===undefined)S.popMile=12;if(mi>S.popMile){S.popMile=mi;queueStory({h:`CLIFTON PASSES ${num(mi*1000)} RESIDENTS`,sub:'City planners say new jobs and homes are drawing families to town.',who:'mayor',mood:'happy',trust:1,min:`The Courier marked ${num(mi*1000)} residents.`})}else if(mi<S.popMile-1){S.popMile=mi;queueStory({h:`CLIFTON LOSES RESIDENTS: ${num(S.pop)} AND FALLING`,sub:'Residents cite jobs, housing and the city\'s direction.',who:'mayor',mood:'angry',trust:-1.5,min:'The Courier reported population losses.'})} }
@@ -3537,7 +3708,7 @@ async function seasonalEvent(){
 
 const seasonIdx=()=>clamp(Math.floor((S.week-1)*4/S.maxWeeks),0,3);
 const seasonPos=()=>{const L=S.maxWeeks/4;return (S.week-1)-seasonIdx()*L};
-const festKey=()=>{const s=seasonIdx(),L=S.maxWeeks/4;if(S.week<2)return null;if(S.maxWeeks<=20&&s%2===1)return null;return seasonPos()>=Math.floor(L*.3)?'f'+s:null};
+const festKey=()=>{const s=seasonIdx(),L=S.maxWeeks/4;if(S.week<2)return null;if(S.maxWeeks<=20&&s!==2)return null;return seasonPos()>=Math.floor(L*.3)?'f'+s:null};
 const seasonalKey=()=>{const s=seasonIdx(),L=S.maxWeeks/4,i=seasonPos();if(S.week<3||(S.maxWeeks<=20&&s%2===0))return null;const seen=S.fests||[];if(i>=Math.floor(L*.55)&&!seen.includes('s'+s+'a'))return 's'+s+'a';if(L>=10&&i>=Math.floor(L*.85)&&!seen.includes('s'+s+'b'))return 's'+s+'b';return null};
 async function festival(){
  const s=seasonIdx(),fl=festList(s);S.festN=(S.festN||0)+1;const f=fl[(S.festN+(S.week>26?1:0))%2===0&&S.maxWeeks>20?1:0];
@@ -3813,7 +3984,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'schoolbond',t:'School bond measure',f:schoolBond,w:S.week>=8&&schoolLoad()>=90},{k:'teacher',t:'Teacher retention request',f:teacherPay,w:S.week>=6},{k:'portables',t:'Portable classrooms',f:portables,w:schoolLoad()>=96},{k:'merge',t:'School consolidation',f:schoolMerge,w:S.week>=10&&schoolLoad()<=76},{k:'afford',t:'Affordable housing proposal',f:affordableProject,w:S.week>=6},{k:'shelter',t:'Shelter and encampments',f:shelter,w:S.week>=8&&HOMELESS()>=40},{k:'rentstab',t:'Rent stabilization petition',f:rentStab,w:S.week>=8&&RENT()>=112},{k:'mobile',t:'Mobile home park closure',f:mobilePark,w:S.week>=9},{k:'orion',t:'Orion Power rate request',f:orionRate,w:S.week>=8},{k:'chamber',t:'Chamber of Commerce proposal',f:chamberDeal,w:S.week>=5&&(S.deals||[]).filter(d=>!d.ended).length<5},{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
@@ -3942,7 +4113,7 @@ async function newProject(){
  const pubSign=sup-opp;
  await commissionAftermath(p,final);
  if(final){
-  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
+  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;if(p.conds&&p.conds.schoolfee)S.schoolAdd=(S.schoolAdd||0)+Math.min(300,Math.round(p.cost/4e5));p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(7-burden(p.conds,p)*1.2,1,8)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
@@ -4017,6 +4188,9 @@ const ACHS=[
  {k:'records',name:'Open Book',desc:'Survive an open records request.',test:()=>(S.stats.records||0)>=1},
  {k:'straight',name:'Straight Answers',desc:'Press Orion Power for a straight answer at least twice.',test:()=>(S.stats.orionPress||0)>=2},
  {k:'engineered',name:'Well Engineered',desc:'Approve four projects with conditions the City Engineer recommended.',test:()=>(S.stats.engFollowed||0)>=4},
+ {k:'schoolboost',name:'School Booster',desc:'Pass a school bond measure.',test:()=>(S.stats.schoolBond||0)>=1},
+ {k:'rentrelief',name:'Rent Relief',desc:'Approve affordable housing and end with the rent index at 110 or lower.',test:()=>(S.stats.affordable||0)>=1&&RENT()<=110},
+ {k:'roof',name:'A Roof for Everyone',desc:'End with an estimated homeless count of 25 or fewer.',test:()=>HOMELESS()<=25},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -4052,7 +4226,7 @@ function ending(code){
  <div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Final edition</span><span>Week ${Math.min(S.week,S.maxWeeks)}</span><span>50&cent;</span></div><div class="npHead">${hl.h}</div><div class="npSub">${hl.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...MAYOR,mood:met?'happy':ok?'neutral':'angry'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div></div>
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
- <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
+ <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('School capacity used','83%',schoolLoad()+'%')}${row('Rent index',100,Math.round(RENT()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
  <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}${S.stats.scandals?` &middot; scandals weathered ${S.stats.scandals}`:''}${(S.stats.goodDeals||S.stats.badDeals)?` &middot; Chamber deals: ${S.stats.goodDeals||0} good, ${S.stats.badDeals||0} secret`:''}.</p>
  <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
  <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
