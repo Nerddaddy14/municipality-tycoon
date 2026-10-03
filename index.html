@@ -1986,7 +1986,7 @@ async function actCampaign(){
 const CRISES=[
  {k:'heat',name:'Heat wave',w:()=>(seasonIdx()===1?3:.3)+(gridLoad()>70?2:0),make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A record heat wave has settled over Clifton. Demand on the power grid is spiking and elderly residents are at risk.',apply:()=>{S.temp.grid=18;S.temp.weeks=3},
   opts:[{k:'centers',label:'Open cooling centers ($30K)',sub:'Protects residents. Trust up.',cost:30000,trust:3},{k:'appeal',label:'Ask residents to conserve power',sub:'Free, but it might not be enough.',risk:.35,bad:{trust:-4}},{k:'none',label:'Wait it out',sub:'Cheapest, and the riskiest.',trust:-4}]})},
- {k:'drought',name:'Drought',w:()=>(seasonIdx()===1?2:.6)+(waterLoad()>60?2:0),make:()=>({who:{name:'Priya Shah',role:'Utility Director'},text:'The region is in a severe drought. Reservoirs are dropping and water demand is far above supply.',apply:()=>{S.temp.water=20;S.temp.weeks=4},
+ {k:'drought',name:'Drought',w:()=>(seasonIdx()===1?2:.6)+(waterLoad()>60?2:0),make:()=>({who:{name:'Marlene Kuehl',role:'Utility Director'},text:'The region is in a severe drought. Reservoirs are dropping and water demand is far above supply.',apply:()=>{S.temp.water=20;S.temp.weeks=4},
   opts:[{k:'restrict',label:'Impose mandatory water restrictions',sub:'Residents grumble. Demand drops a lot.',trust:-2,temp:{water:8}},{k:'truck',label:'Truck in emergency water ($60K)',sub:'Expensive, and residents notice.',cost:60000,trust:2,temp:{water:12}},{k:'ask',label:'Ask the biggest water users to cut back',sub:'Developers will not love it.',dev:-4,trust:1,temp:{water:12}}]})},
  {k:'blizzard',name:'Blizzard',w:()=>seasonIdx()===3?4:0,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A blizzard has buried Clifton under eighteen inches of snow. Roads are impassable and a thousand homes have lost power.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,8);S.temp.weeks=Math.max(S.temp.weeks,2)},
   opts:[{k:'fleet',label:'Call in every plow and a salt crew ($45K)',sub:'Roads open fast. Residents are grateful.',cost:45000,trust:4},{k:'priority',label:'Plow the priority routes only ($15K)',sub:'Cheaper. Side streets stay buried.',cost:15000,trust:0,risk:.35,bad:{trust:-4}},{k:'wait',label:'Wait for it to melt',sub:'Free. Very unpopular.',trust:-5}]})},
@@ -2023,7 +2023,7 @@ CRISES.push(
   opts:[{k:'rebuild',label:'Declare an emergency and fund repairs ($150K)',sub:'Fast recovery. Costs real money.',cost:150000,trust:4},{k:'federal',label:'Request state and federal aid',sub:'Free, but slow and uncertain.',trust:-1,risk:.4,bad:{cost:120000}},{k:'volunteer',label:'Organize volunteer cleanup crews',sub:'Builds community. Slow for the worst-hit streets.',trust:2,risk:.3,bad:{trust:-3}}]})},
  {k:'derail',name:'Train derailment',w:()=>1,make:()=>({who:{name:'Dale Pruitt',role:'Fire Marshal'},text:'A freight train carrying industrial chemicals derailed at the Cedar Hill crossing. One car is leaking, and the wind is blowing toward town.',apply:()=>{adj('env',-2,'derailment')},
   opts:[{k:'evacuate',label:'Order a precautionary evacuation ($40K)',sub:'Safest. Disruptive and costly.',cost:40000,trust:3},{k:'shelter',label:'Order shelter-in-place',sub:'Cheaper. Risky if the wind shifts.',trust:1,risk:.35,bad:{trust:-5,env:-3}},{k:'rail',label:'Demand the railroad take command and pay',sub:'Free, but the railroad moves slowly.',trust:-1,dev:-2,risk:.3,bad:{trust:-3}}]})},
- {k:'bridge',name:'Bridge closure',w:()=>1,make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'Inspectors closed the Millbrook bridge after finding cracked supports. Forty thousand crossings a week now have to go the long way around.',
+ {k:'bridge',name:'Bridge closure',w:()=>1,make:()=>({who:{name:'Marlene Kuehl',role:'Public Works Director'},text:'Inspectors closed the Millbrook bridge after finding cracked supports. Forty thousand crossings a week now have to go the long way around.',
   opts:[{k:'repair',label:'Fund an emergency repair ($180K)',sub:'Reopens in a month.',cost:180000,trust:2},{k:'close',label:'Close it for six weeks and wait for the budget',sub:'Free now. Drivers will be furious.',trust:-4,risk:.3,bad:{trust:-2}},{k:'state',label:'Ask the state for emergency funding',sub:'Might work. Might not.',trust:0,risk:.5,bad:{cost:110000}}]})},
  {k:'teachers',name:'Teachers strike',w:()=>1,make:()=>({who:{name:'Tasha Brooks',role:'Teachers union representative'},text:'Clifton teachers walked out after contract talks collapsed. Schools are closed, and parents are scrambling.',
   opts:[{k:'fund',label:'Offer to fund the raises ($70K)',sub:'Ends the strike. Hammerstein will approve.',cost:70000,trust:3,rel:{rodriguez:4}},{k:'district',label:'Back the school district',sub:'Holds the line. Labor will remember.',trust:-2,rel:{rodriguez:-6}},{k:'mediate',label:'Mediate at city hall',sub:'Might work. Might drag on.',risk:.4,bad:{trust:-3}}]})},
@@ -2031,7 +2031,7 @@ CRISES.push(
   opts:[{k:'video',label:'Post a candid video response',sub:'Honest. Can backfire if it feels staged.',trust:2,risk:.3,bad:{trust:-3}},{k:'consult',label:'Hire a social media consultant ($20K)',sub:'Professional damage control.',cost:20000,trust:1},{k:'ignore',label:'Ignore it',sub:'Free. The internet is patient.',trust:-3}]})},
  {k:'mandate',name:'Unfunded mandate',w:()=>1,make:()=>({who:{name:'Nora Whitaker',role:'Finance Director'},text:'The state passed a mandate requiring expensive new water testing in every city, and sent us the bill.',
   opts:[{k:'comply',label:'Comply and pay ($60K)',sub:'Safe and boring.',cost:60000,trust:1},{k:'lobby',label:'Lobby against it',sub:'Might win. Might lose and pay more.',risk:.5,bad:{cost:90000}},{k:'devs',label:'Pass the cost to developers',sub:'Cheap for the city. Developers will complain.',dev:-6,trust:0}]})},
- {k:'sinkhole',name:'Sinkhole',w:()=>1+(waterLoad()>60?1:0),make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'A sinkhole swallowed half of Fourth Avenue. A delivery truck is stuck in it. The driver is fine, and furious.',
+ {k:'sinkhole',name:'Sinkhole',w:()=>1+(waterLoad()>60?1:0),make:()=>({who:{name:'Marlene Kuehl',role:'Public Works Director'},text:'A sinkhole swallowed half of Fourth Avenue. A delivery truck is stuck in it. The driver is fine, and furious.',
   opts:[{k:'repair',label:'Repair it immediately ($80K)',sub:'The responsible choice.',cost:80000,trust:2},{k:'barricade',label:'Barricade it and wait for next quarter',sub:'Cheap now. Risky if it grows.',trust:-3,risk:.5,bad:{cost:120000}},{k:'utility',label:'Make the water utility pay',sub:'Fair, if it holds up.',trust:-1,risk:.35,bad:{trust:-3}}]})},
  {k:'layoffs',name:'Mass layoffs',w:()=>1,make:()=>({who:{name:'Gus Hammerstein',role:'Union Organizer'},text:'Clifton\'s largest private employer announced 300 layoffs. The plant gates have a line of families, and the council is looking at you.',
   opts:[{k:'retrain',label:'Offer a retraining fund ($50K)',sub:'Helps workers. Hammerstein approves.',cost:50000,trust:3,rel:{rodriguez:4}},{k:'relief',label:'Offer the company tax relief to stay',sub:'Developers like it. Fiscal hawks will not.',dev:3,trust:1,rel:{jennings:-4}},{k:'shrug',label:'Call it a national trend',sub:'True, and tone deaf.',trust:-3}]})}
@@ -2059,6 +2059,7 @@ async function runCrisis(c,mode){
  const C={...lookR(),stance:good?'sup':'opp',sign:good?'THANK YOU':'DO BETTER',mood:good?'happy':'angry',text:good?fill(fresh('cr-thx',TOPICS.thanks.sup),S.agenda||{type:{name:''},jobs:0,tax:0,site:'',cost:0,water:0,db:0}):fresh('cr-angry',['That response was not good enough, Mayor.','We needed leadership and we got excuses.','You should have acted faster.'])};
  showCrowd([C]);await sleep(AUTO?10:300);await showSpeaker(C);await say(C,C.text);heckle(good?'YEAH!':'BOO!',good?'yes':'no');await hideSpeaker();await hideCrowd();
  minutes(`${c.name}: ${o.label.replace(/ \(.*\)/,'')}${bad?' (backfired)':''}.`,good?'g':'b');
+ if(['storm','flood','tornado','blizzard'].includes(c.k))await pwCleanup(c.name,'storm');
 }
 async function austerityEvent(){
  banner('STATE OVERSIGHT');sfx.alarm();
@@ -2291,7 +2292,7 @@ const weeksToFull=()=>{const L=LFD(),r=trashRate();return r>0?Math.max(0,Math.ro
 const STR=()=>S.streets===undefined?(S.streets=70):S.streets;
 let _pwc=null,_pwd=null;
 function pwCrew(){return _pwc||(_pwc={...lookPro(),name:'Hank Moreau',role:'Public Works crew lead',color:'#d9822b',cl:'polo',hs:'cap',suit:'#e8791a',hair:'#3a2a1c'})}
-function pwDir(){return _pwd||(_pwd={...lookPro(),name:'Priya Shah',role:'Public Works Director',color:'#4a6a6a',suit:'#3b4a63'})}
+function pwDir(){return _pwd||(_pwd={...lookPro(),name:'Marlene Kuehl',role:'Public Works Director',color:'#4a6a6a',suit:'#3b4a63'})}
 async function pwSay(who,t){await showSpeaker(who);await say(who,t);await hideSpeaker()}
 const pwLv=()=>clamp(Math.round(S.fund.pw),-1,1)+1;
 const PWTXT={
@@ -2317,16 +2318,49 @@ const PW_SEAS={
  'Arbor Day tree planting':['Planting is the easy part. Watering them all summer is where we run short.','We can handle the planting and a watering schedule.','We will plant, mulch, and tag them with the schools.']
 };
 const PWFX={'Send an emergency repaving crew ($30K)':12,'Patch the worst ones ($10K)':5,'Wait for the budget':-4,'Full fleet and salt ($35K)':6,'Priority routes only ($12K)':2,'Contract it out cheap':-4,'Ban burning and fund leaf pickup ($15K)':4,'Fund thaw crews and a repair rebate ($25K)':3};
-async function pwCleanup(title){
- S.streets=clamp(STR()-4);
+async function pwCleanup(title,kind){
+ S.streets=clamp(STR()-(kind==='storm'?6:4));
  const C=pwCrew();
- await pwSay(C,fresh('pw-fc',[`Mayor, ${title.toLowerCase()} left about nine tons of cups, cones and confetti on Main Street.`,`The ${title.toLowerCase()} was great. It also left half the downtown covered in trash.`,`Cleanup after ${title.toLowerCase()} is going to take the crew a couple of days, Mayor.`]));
+ await pwSay(C,kind==='storm'?fresh('pw-sc',[`Mayor, the ${title.toLowerCase()} left branches, wires and debris across half the town. The crews are out in it now.`,`The ${title.toLowerCase()} did a number on the east side. Trees are down, and the storm drains are packed with debris.`,`Cleanup after the ${title.toLowerCase()} will take the crews a week, Mayor, and we are already working overtime.`]):fresh('pw-fc',[`Mayor, ${title.toLowerCase()} left about nine tons of cups, cones and confetti on Main Street.`,`The ${title.toLowerCase()} was great. It also left half the downtown covered in trash.`,`Cleanup after ${title.toLowerCase()} is going to take the crew a couple of days, Mayor.`]));
  const opts=[{k:'crew',label:'Full cleanup crew with overtime ($6K)',sub:'Streets bounce back. The crew appreciates it.'},{k:'norm',label:'Normal crews, as they get to it',sub:'Free. Streets stay messy for a while.'},{k:'vol',label:'Ask volunteers to help',sub:'Free, but it may not cover it.'}];
  if(S.budget<6000)opts.shift();
  const k=await ask('Cleanup after '+title.toLowerCase(),opts);
  if(k==='crew'){addBudget(-6000,'cleanup crew');S.streets=clamp(STR()+7);adj('trust',1);await say('mayor','Overtime is approved. Thank you, everyone.')}
  else if(k==='vol'){if(Math.random()<.55){S.streets=clamp(STR()+3);adj('trust',1,'volunteer cleanup');await say('mayor','If you can spare an hour, grab a bag. Thank you.')}else{S.streets=clamp(STR()-1);await say('mayor','If you can spare an hour, grab a bag.');await pwSay(C,'Four people showed up, Mayor. Two of them were staff.')}}
  else{S.streets=clamp(STR()-2);if(S.fund.pw<0){adj('trust',-1,'streets left messy');await pwSay(C,'We are stretched thin, Mayor. We will get to it when we can.')}else await say('mayor','Crews will handle it in the normal rotation.')}
+}
+const PW_CLEAN=[
+ {t:'Spring cleanup week',intro:'Mayor, every spring the ditches fill with winter trash, and this year the crew cannot cover it alone. We would like to run a cleanup week with dumpsters and volunteers.',crew:['We are two people short for this. Without help it will take a month.','We can do the main streets, and volunteers can do the side streets.','We will get the dumpsters out and run it like a parade. Crews love this one.'],opts:[
+  {label:'Fund dumpsters and a volunteer day ($7K)',cost:7000,streets:7,env:1,trust:2,say:'Spring cleanup week is on, and I will be there with a trash bag.'},
+  {label:'Crews only, no extra money',streets:2,say:'The crews will do what they can in the regular rotation.'},
+  {label:'Skip it this year',streets:-2,trust:-1,say:'We will skip the cleanup week this year.'}]},
+ {t:'Illegal dumping hot spots',intro:'Mayor, people are dumping mattresses, tires and shingles behind the old rail yard and along Quarry Lane. The crew has hauled out four loads this month.',crew:['Every load we haul, two more appear. We are losing this one.','We can keep up, but the dumpers have figured out the schedule.','We hauled it out Tuesday. By Friday there was a couch.'],opts:[
+  {label:'Install cameras and post fines ($12K)',cost:12000,streets:5,env:1,trust:1,say:'Cameras go up this month, and the fines will be posted.'},
+  {label:'Weekly sweeps ($4K)',cost:4000,streets:3,say:'Public Works will sweep the hot spots weekly.'},
+  {label:'Ignore it',streets:-3,env:-1,trust:-1,say:'There are bigger problems this month.'}]},
+ {t:'Storm drain cleanout',intro:'Mayor, the storm drains are full of leaves and gravel, and a heavy rain would flood the south side. A full cleanout is a week of work.',crew:['We have not cleaned those drains in two years. They are going to back up.','We can clear the worst ones before the next storm.','We will run the vac truck on every drain, and I will log them.'],opts:[
+  {label:'Fund a full cleanout ($15K)',cost:15000,streets:4,trust:1,set:'flood',say:'Do the full cleanout. I would rather pay now than bail out basements later.'},
+  {label:'Spot-clear the worst drains ($5K)',cost:5000,streets:2,say:'Clear the worst ones and we will see.'},
+  {label:'Wait and see',streets:-1,trust:-1,say:'We will wait for the weather.'}]},
+ {t:'Litter and graffiti blitz',intro:'Mayor, there are a lot of fast-food bags and graffiti tags downtown, and merchants are starting to complain. We could do a blitz with the crew and a few youth workers.',crew:['We scrub one wall and there is a new tag by noon. It is whack-a-mole.','A blitz would get downtown looking good. Keeping it that way is the hard part.','A blitz would be great for downtown. I will run it myself.'],opts:[
+  {label:'Run a downtown blitz ($5K)',cost:5000,streets:4,trust:2,say:'Run the blitz, and let us hire a few of the local kids for it.'},
+  {label:'Ask merchants to cover it',streets:1,trust:-1,say:'Merchants can cover their own storefronts, and the city will do the sidewalks.'},
+  {label:'Ignore it',streets:-2,trust:-1,say:'There is no money in the budget for scrubbing walls.'}]}
+];
+async function pwCleanupRequest(){
+ const f=pick(PW_CLEAN),D=pwDir(),C=pwCrew();
+ showAgendaCard(f.t,'Public Works cleanup request',[['Street condition',Math.round(STR())+' / 100'],['Budget',['Cut','Standard','Boosted'][pwLv()]]]);
+ await say('mayor',fresh('pwc-i',['Public Works has a cleanup request.','Next, Public Works asks for help with a cleanup.','The Director wants to talk about cleanup.']));
+ await pwSay(D,f.intro);
+ await pwSay(C,f.crew[pwLv()]);
+ const k=await ask(f.t,f.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.cost?`Costs ${money(o.cost)}.`:''})));
+ const o=f.opts[+k];
+ if(o.cost)addBudget(-o.cost,f.t.toLowerCase());
+ if(o.streets)S.streets=clamp(STR()+o.streets);if(o.trust)adj('trust',o.trust);if(o.env)adj('env',o.env);
+ if(o.set){S.prep=S.prep||{};S.prep[o.set]=1}
+ await say('mayor',o.say);
+ minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);
+ showAgenda(null);
 }
 async function pwBrief(){
  const D=pwDir(),st=STR();
@@ -2335,22 +2369,31 @@ async function pwBrief(){
  await pwSay(D,st<45?`Mayor, street condition has fallen to ${Math.round(st)} out of 100. Potholes, uncleared storm drains, and trash after events are piling up. This is what a ${['cut','standard','boosted'][pwLv()]} Public Works budget gets us.`:st>=85?`Mayor, streets are in the best shape in years: ${Math.round(st)} out of 100. The crews are proud of it.`:`Mayor, street condition is ${Math.round(st)} out of 100. We are holding steady at a ${['cut','standard','boosted'][pwLv()]} budget.`);
  if(st<45)await pwSay(pwCrew(),'Honestly, Mayor, the guys are working Saturdays just to keep up.');
 }
+const PW_EQUIP=[
+ {k:'plow',what:'main plow truck',intro:'Mayor, our main plow truck is thirty-one years old. It has already broken down twice this winter.',crew:'It sounds like a bucket of bolts, because it is. Please say yes.',buy:60000,lease:15000,item:'new plow truck',gain:3,upkeep:1},
+ {k:'sweeper',what:'street sweeper',intro:'Mayor, the street sweeper has a cracked frame and half its brushes are gone. After a festival it just smears the mess around.',crew:'We have been pushing a broom behind it, Mayor. By hand.',buy:85000,lease:20000,item:'new street sweeper',gain:4,upkeep:1},
+ {k:'spreader',what:'salt spreader',intro:'Mayor, the salt spreader rusted through last winter. We have been loading salt by shovel off the back of a pickup.',crew:'One of the guys has a bad shoulder from it. A new spreader would fix more than the roads.',buy:25000,lease:6000,item:'new salt spreader',gain:2,upkeep:.6},
+ {k:'patcher',what:'pothole patcher',intro:'Mayor, a hot-mix pothole patcher would let one crew do the work of three. We are still using shovels and cold patch.',crew:'Cold patch is a band-aid. Hot mix actually stays. It is not close.',buy:40000,lease:9000,item:'pothole patcher',gain:5,upkeep:.8}
+];
 async function pwRequest(){
  const D=pwDir(),C=pwCrew();
- showAgendaCard('Public Works equipment request','Aging plow and dump trucks',[['Street condition',Math.round(STR())+' / 100'],['Fleet','Aging'],['Budget',['Cut','Standard','Boosted'][pwLv()]]]);
+ S.pwSeen=S.pwSeen||[];
+ let pool=PW_EQUIP.filter(e=>!S.pwSeen.includes(e.k));if(!pool.length)pool=PW_EQUIP;
+ const e=pick(pool);S.pwSeen.push(e.k);
+ showAgendaCard('Public Works equipment request',e.what.charAt(0).toUpperCase()+e.what.slice(1),[['Street condition',Math.round(STR())+' / 100'],['Request',money(e.buy)+' or lease '+money(e.lease)],['Budget',['Cut','Standard','Boosted'][pwLv()]]]);
  await say('mayor',fresh('pwr-i',['Next, a request from Public Works.','The Public Works Director has an equipment request.','Public Works is asking for new equipment.']));
- await pwSay(D,'Mayor, our main plow truck is thirty-one years old. It has already broken down twice this winter. Replacement is sixty thousand dollars, or we can lease for fifteen.');
- await pwSay(C,'It sounds like a bucket of bolts, because it is. Please say yes.');
- await say('jennings','Sixty thousand dollars is sixty thousand dollars. I would like to see the maintenance logs.');
- await say('rodriguez','These people clear the road so everyone else can get to work. Buy the truck.');
- const opts=[];if(S.budget>=60000)opts.push({k:'buy',label:'Buy a new truck ($60K)',sub:'Streets hold up better for years. Crew morale up.'});
- if(S.budget>=15000)opts.push({k:'lease',label:'Lease one ($15K)',sub:'Cheaper now. Smaller benefit.'});
+ await pwSay(D,`${e.intro} A replacement is ${money(e.buy)}, or we can lease one for ${money(e.lease)}.`);
+ await pwSay(C,e.crew);
+ await say('jennings',`${money(e.buy)} is ${money(e.buy)}. I would like to see the maintenance logs.`);
+ await say('rodriguez','These people keep the roads open so everyone else can get to work. Give them the equipment.');
+ const opts=[];if(S.budget>=e.buy)opts.push({k:'buy',label:`Buy it (${money(e.buy)})`,sub:'Streets hold up better for years. Crew morale up.'});
+ if(S.budget>=e.lease)opts.push({k:'lease',label:`Lease one (${money(e.lease)})`,sub:'Cheaper now. Smaller benefit.'});
  opts.push({k:'defer',label:'Defer it',sub:'Saves money. Expect breakdowns.',cls:'stop'});
  const k=await ask('Public Works equipment request',opts);
- if(k==='buy'){addBudget(-60000,'new plow truck');S.pwEquip=(S.pwEquip||0)+1;S.streets=clamp(STR()+3);adj('trust',1);adjRel('rodriguez',4,'new truck');adjRel('jennings',-3,'');await say('mayor','Approved. Please send the old one to a museum.')}
- else if(k==='lease'){addBudget(-15000,'truck lease');S.pwEquip=(S.pwEquip||0)+.6;S.streets=clamp(STR()+1);adjRel('jennings',2,'');await say('mayor','We will lease one for now, and review it next year.')}
+ if(k==='buy'){addBudget(-e.buy,e.item);S.pwEquip=(S.pwEquip||0)+e.upkeep;S.streets=clamp(STR()+e.gain);adj('trust',1);adjRel('rodriguez',4,'new equipment');adjRel('jennings',-3,'');await say('mayor','Approved. Please send the old one to a museum.')}
+ else if(k==='lease'){addBudget(-e.lease,e.item+' lease');S.pwEquip=(S.pwEquip||0)+e.upkeep*.5;S.streets=clamp(STR()+e.gain/3);adjRel('jennings',2,'');await say('mayor','We will lease one for now, and review it next year.')}
  else{S.streets=clamp(STR()-3);adjRel('rodriguez',-4,'denied equipment');adjRel('jennings',3,'');await say('mayor','We will defer this one. Please keep it running.');await pwSay(C,'We will try, Mayor. I would not count on it.')}
- minutes(`Public Works equipment request: ${k==='buy'?'new truck':k==='lease'?'leased truck':'deferred'}.`);
+ minutes(`Public Works equipment request (${e.what}): ${k==='buy'?'bought':k==='lease'?'leased':'deferred'}.`);
  showAgenda(null);
 }
 function weeklyStreets(){
@@ -3165,7 +3208,7 @@ function buildExtras(){
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
  const sk=seasonalKey();if(sk){S.fests.push(sk);out.push({k:'new',f:seasonalEvent,t:'Seasonal matter: '+SEASONS[seasonIdx()]})}
  const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:festList(seasonIdx())[0].t})}
- const NEWITEMS=[{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
+ const NEWITEMS=[{k:'pwreq',t:'Public Works equipment request',f:pwRequest,w:S.week>=6},{k:'pwclean',t:'Public Works cleanup request',f:pwCleanupRequest,w:S.week>=4},{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  if(trashPct()>=70&&!LFD().cd)out.push({k:'new',f:landfillItem,t:'Landfill expansion proposal'});
  for(let i=0;i<n;i++){
   const r=Math.random();
@@ -3514,7 +3557,7 @@ async function actPress(){
  closeOverlay('office');
 }
 async function actSession(ap){
- const U={name:'Priya Shah',role:'Utility and Planning Director',color:'#4a6a6a',...lookPro(),suit:'#3b4a63'};
+ const U={name:'Marlene Kuehl',role:'Utility and Planning Director',color:'#4a6a6a',...lookPro(),suit:'#3b4a63'};
  openRoom('WORK SESSION',U);
  await say('office','You sit down with the utility board and planning commission.');
  const opts=[];
