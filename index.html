@@ -349,7 +349,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,items:[],week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -502,12 +502,12 @@ function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.wat
 const dots=n=>'&#9679;'.repeat(Math.round(n/2))+'<span class="mut">'+'&#9675;'.repeat(5-Math.round(n/2))+'</span>';
 function showAgenda(p){
  const a=$('#agenda');
- if(!p){a.innerHTML='<h3>Agenda</h3><div class="mut">No project under consideration.</div>';return}
+ if(!p){a.innerHTML='<h3>Agenda</h3><div class="mut">No project under consideration.</div>'+agendaList();return}
  const e=eff(p,p.conds||{});
  a.innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${p.type.icon} ${p.type.name}</div><div class="mut">${p.company} at ${p.site}</div>
  <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>
  <tr><td>Water use</td><td class="${e.water>=2e5?'bad':''}">${num(e.water)} gal/day</td></tr><tr><td>Noise</td><td class="${e.db>=70?'bad':''}">${Math.round(e.db)} dB</td></tr>
- <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>`;
+ <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
 const gridLoad=()=>Math.round(50-S.gridBoost+S.projects.reduce((a,p)=>a+loadOf(p),0));
@@ -1084,6 +1084,134 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- multi-item agenda ---------- */
+const PETITIONS=[
+ {t:'Speed bumps on Elm Street',cost:25000,gain:3,ask:'Cars fly down Elm Street past the school. We collected 400 signatures asking for speed bumps.',sign:'SLOW DOWN'},
+ {t:'A public skate park',cost:80000,gain:5,ask:'Our kids have nowhere to skate except the bank parking lot. Please build them a skate park.',sign:'SKATE PARK'},
+ {t:'More recycling bins downtown',cost:10000,gain:1,ask:'There is one recycling bin on all of Main Street. Please add a few more.',sign:'RECYCLE'},
+ {t:'Streetlights on Cedar Lane',cost:30000,gain:3,ask:'Cedar Lane is pitch black at night. Somebody is going to get hurt.',sign:'LIGHT IT UP'},
+ {t:'A dog park at Veterans Park',cost:40000,gain:4,ask:'Dogs are people too, and they need somewhere to run. We have a petition with 600 names.',sign:'DOG PARK'},
+ {t:'A senior center van',cost:60000,gain:4,ask:'Our seniors cannot get to the clinic. A van would change their lives.',sign:'SENIORS COUNT'},
+ {t:'Benches at the bus stops',cost:12000,gain:2,ask:'People wait in the rain with nowhere to sit. A few benches would help a lot.',sign:'BENCH US'}
+];
+const VARIANCES=[
+ {t:'A 7-foot privacy fence',req:'I would like a seven-foot fence. My neighbor keeps a very loud rooster.',obj:'A seven-foot fence blocks my entire view. It will look like a prison.'},
+ {t:'A backyard workshop near the property line',req:'I build furniture as a hobby. The workshop needs to sit a few feet closer to the line.',obj:'Saws at seven in the morning. A few feet closer makes it worse.'},
+ {t:'A food truck permit on Main Street',req:'I make the best tacos in Clifton, and I would like to park on Main Street.',obj:'The smell and the line will block my storefront every lunch hour.'},
+ {t:'A short-term rental in a residential zone',req:'I am renting out my guest house a few weekends a month. I need a variance for it.',obj:'Strangers with rolling suitcases at midnight. That is not why we live here.'},
+ {t:'An oversized sign for a family bakery',req:'Our bakery sign is too small to read from the road. Please let us make it bigger.',obj:'A glowing sign the size of a billboard on our quiet street? No thank you.'}
+];
+function agendaList(){
+ if(!S.items||!S.items.length)return '';
+ const cur=S.items.findIndex(x=>!x.done);
+ return `<div style="margin-top:8px;border-top:1px dashed #2a3750;padding-top:6px;font-size:12px"><div class="mut">Tonight's agenda</div>${S.items.map((it,i)=>`<div style="color:${it.done?'var(--good)':'var(--ink)'}">${it.done?'&#10003;':i===cur?'&#9654;':'&#9675;'} ${it.t}</div>`).join('')}</div>`;
+}
+function showAgendaCard(title,sub,rows){
+ $('#agenda').innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${title}</div><div class="mut">${sub}</div><table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('')}</table>${agendaList()}`;
+}
+async function quickVote(p,ctx){
+ let yes=0,no=0;
+ for(const m of COUNCIL){const y=score(m,p,p.conds,ctx)>0;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');sfx[y?'good':'bad']();y?yes++:no++;await sleep(AUTO?10:380)}
+ await gavel(1);
+ return{yes,no,passed:yes>=3};
+}
+async function minorProject(p){
+ showAgenda(p);
+ await say('mayor',fresh('mi-intro',[`Next item: ${p.company} requests approval for a ${p.type.name} at ${p.site}, valued at ${money(p.cost)}.`,`This item is a ${money(p.cost)} ${p.type.name} proposed by ${p.company} for ${p.site}.`,`A smaller request now. ${p.company} would like to build a ${p.type.name} at ${p.site}.`]));
+ await showSpeaker(p.rep);
+ await say(p.rep,fresh('mi-dev',[`Thank you, Mayor. It is a straightforward project: ${num(p.jobs)} jobs and ${money(p.tax)} a year in taxes.`,`We think this is a good fit for the neighborhood. ${num(p.jobs)} local jobs and ${money(p.tax)} a year to the city.`,`Quick summary: a ${money(p.cost)} investment, ${num(p.jobs)} jobs, and we will work with staff on any concerns.`]));
+ await hideSpeaker();
+ const useFire=p.fl>p.zl||(p.fl===p.zl&&Math.random()<.5);
+ const staff=useFire?{name:'Dale Pruitt',role:'Fire Marshal',color:'#a8412b',...look(),suit:'#a8412b',hair:'#222'}:{name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
+ const lv=useFire?p.fl:p.zl;
+ await showSpeaker(staff);
+ await say(staff,lv===0?fresh('mi-s0',['Staff has no objection to this request.','This one checks all the boxes. No objection from staff.','Nothing to flag from my side on this one.']):lv===1?(useFire?'Fire has some concerns about access and hydrants. A safety plan would address them.':'Zoning recommends a buffer and a noise limit, but sees no major issue.'):(useFire?'Fire has a significant concern here. I would want a full safety plan.':'This conflicts with the neighboring zone. It needs a buffer and a noise cap at minimum.'));
+ await hideSpeaker();
+ const m=pick(COUNCIL),sc=score(m,p,{},{pub:0});
+ await say(m.id,sc>.1?fill(fresh('rm-'+m.id+'f',REMARK[m.id].for),p):sc<-.1?fill(fresh('rm-'+m.id+'a',REMARK[m.id].against),p):fresh('neutral',NEUTRAL));
+ const list=genCitizens(p,{},ri(1,2));showCrowd(list);await sleep(AUTO?10:400);
+ let opp=0,sup=0;
+ for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);heckle(c.stance==='opp'?'BOO!':'YEAH!',c.stance==='opp'?'no':'yes');await hideSpeaker()}
+ await hideCrowd();
+ const pub=(sup-opp)/list.length;
+ await silly(.15);
+ const k=await ask(`Your motion on the ${p.type.name}`,[{k:'approve',label:'Move to approve',sub:'As submitted.',cls:'go'},{k:'cond',label:'Approve with standard conditions',sub:'Noise cap, buffer and fire plan. The developer grumbles a little.'},{k:'deny',label:'Move to deny',cls:'stop'}],`${p.type.name} · ${money(p.cost)}`);
+ p.conds=k==='cond'?{noise:true,buffer:true,fireplan:true}:{};
+ if(k==='cond')adj('dev',-1);
+ const ctx={pub,mayor:k==='deny'?-.2:.12,bribe:0};
+ await say('mayor',k==='deny'?fresh('mi-deny',['I cannot support this one. I move to deny.','I move to deny the request.']):k==='cond'?`I move to approve the ${p.type.name} with standard conditions.`:fresh('mi-app',[`I move to approve the ${p.type.name}.`,'I move to approve this request as submitted.']));
+ const r=await quickVote(p,ctx);
+ await say('mayor',r.passed?fresh('mi-y',[`That carries, ${r.yes} to ${r.no}.`,`Approved, ${r.yes} to ${r.no}.`]):fresh('mi-n',[`That fails, ${r.yes} to ${r.no}.`,`Denied, ${r.yes} to ${r.no}.`]));
+ clearTags();
+ if(r.passed){
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;
+  adj('trust',pub>0?2:pub<0?-3:0);adj('dev',k==='cond'?4:7);minutes(`Approved the ${p.type.name} (${r.yes}-${r.no}).`,'g');renderProjects();
+ }else{
+  S.stats.denied++;adj('trust',pub<0?3:-2);adj('dev',-5);minutes(`Denied the ${p.type.name} (${r.yes}-${r.no}).`,'b');
+  if(p.sizeF>.35&&Math.random()<.2){const l=ri(40,200)*1000;await say('clerk',`Mayor, ${p.company} has filed a lawsuit over the denial.`);addBudget(-l,'legal costs')}
+ }
+ showAgenda(null);
+}
+async function petition(pt){
+ showAgendaCard('Petition: '+pt.t,'From residents of Clifton',[['Estimated cost',money(pt.cost)],['Signatures',num(ri(200,900))]]);
+ await say('mayor',fresh('pe-intro',[`We have a petition from residents: ${pt.t.toLowerCase()}.`,`Next, a resident petition asking for ${pt.t.toLowerCase()}.`,`A petition has been filed: ${pt.t.toLowerCase()}.`]));
+ const R={...lookR(),sign:pt.sign,mood:'happy'};
+ showCrowd([{...R,stance:'sup'}]);await sleep(AUTO?10:300);
+ await showSpeaker(R);await say(R,pt.ask);await hideSpeaker();await hideCrowd();
+ await say('jennings',`That is ${money(pt.cost)} out of the treasury. Where does it come from?`);
+ await say(pick(['wong','rodriguez','chen']),fresh('pe-sup',['I think residents are asking for something reasonable.','We spend money on bigger things with less to show for it.','This is exactly the sort of thing a city should do.']));
+ await silly(.15);
+ const opts=[];
+ if(S.budget>=pt.cost)opts.push({k:'fund',label:`Fund it (${money(pt.cost)})`,sub:'Residents will notice. Trust goes up.',cls:'go'});
+ opts.push({k:'refer',label:'Refer it to committee',sub:'Costs nothing. Residents are a little annoyed.'},{k:'no',label:'Decline',sub:'Saves the money. Costs some goodwill.',cls:'stop'});
+ const k=await ask(`Petition: ${pt.t}`,opts,`Treasury ${money(S.budget)}`);
+ if(k==='fund'){addBudget(-pt.cost,pt.t);adj('trust',pt.gain);await say('mayor','We will fund it. Staff will have a timeline for the next meeting.');minutes(`Funded petition: ${pt.t}.`,'g')}
+ else if(k==='refer'){adj('trust',-1);await say('mayor','I am referring this to committee. We will hear back soon.');minutes(`Referred petition: ${pt.t}.`)}
+ else{adj('trust',-2,'petition declined');await say('mayor','I understand the request, but we cannot take this on right now.');minutes(`Declined petition: ${pt.t}.`,'b')}
+ showAgenda(null);
+}
+async function variance(v){
+ showAgendaCard('Variance: '+v.t,'Residential and small-business request',[['Decided by','Mayor and council']]);
+ await say('mayor',fresh('va-intro',[`A variance request now: ${v.t.toLowerCase()}.`,`Next, a zoning variance: ${v.t.toLowerCase()}.`]));
+ const A={...lookR(),sign:'GRANT IT',mood:'happy'},hasObj=Math.random()<.55;
+ await showSpeaker(A);await say(A,v.req);await hideSpeaker();
+ let O=null;
+ if(hasObj){O={...lookR(),sign:'NOT NEXT DOOR',mood:'angry'};showCrowd([{...O,stance:'opp'}]);await sleep(AUTO?10:300);await showSpeaker(O);await say(O,v.obj);heckle('BOO!','no');await hideSpeaker();await hideCrowd()}
+ const Z={name:'Ruth Calloway',role:'Zoning Administrator',color:'#5a6f8a',...look(),suit:'#3b4a63'};
+ await showSpeaker(Z);await say(Z,fresh('va-z',['By the code, this needs a variance. It is not unreasonable given the lot.','Staff finds this a close call. It would normally be denied, but the lot is unusual.','There is precedent on both sides. It is up to the council.']));await hideSpeaker();
+ await silly(.25);
+ const k=await ask(`Variance: ${v.t}`,[{k:'grant',label:'Grant the variance',sub:hasObj?'The neighbor will not be happy.':'No one objected.',cls:'go'},{k:'cond',label:'Grant with conditions',sub:'A compromise. Small trust gain either way.'},{k:'deny',label:'Deny the variance',sub:hasObj?'The neighbor will be relieved.':'The applicant will be disappointed.',cls:'stop'}]);
+ if(k==='grant'){adj('trust',hasObj?-1:2);await say('mayor','The variance is granted.')}
+ else if(k==='cond'){adj('trust',1);await say('mayor','The variance is granted with conditions that protect the neighbors.')}
+ else{adj('trust',hasObj?2:-1);await say('mayor','The variance is denied.')}
+ minutes(`Variance (${v.t}): ${k==='deny'?'denied':k==='cond'?'granted with conditions':'granted'}.`);
+ showAgenda(null);
+}
+function buildExtras(){
+ const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],usedP=new Set(),usedV=new Set();
+ for(let i=0;i<n;i++){
+  const r=Math.random();
+  if(r<.5){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
+  else if(r<.8){const pt=pick(PETITIONS.filter(x=>!usedP.has(x.t)));usedP.add(pt.t);out.push({k:'pet',pt,t:`Petition: ${pt.t}`})}
+  else{const v=pick(VARIANCES.filter(x=>!usedV.has(x.t)));usedV.add(v.t);out.push({k:'var',v,t:`Variance: ${v.t}`})}
+ }
+ return out;
+}
+async function runAgenda(){
+ const extras=buildExtras(),p=S.agenda;
+ S.items=[...extras.map(e=>({t:e.t,done:false})),{t:`${p.type.name} (${money(p.cost)}), main item`,done:false}];
+ showAgenda(p);
+ await say('mayor',fresh('ag-intro',[`We have ${S.items.length} items on the agenda tonight. We will take the smaller matters first and finish with the ${p.type.name}.`,`${S.items.length} agenda items tonight. Let us move through them in order.`,`A busy agenda tonight: ${S.items.length} items. We will start with the smaller ones.`]));
+ for(let i=0;i<extras.length;i++){
+  const e=extras[i];
+  if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else await variance(e.v);
+  S.items[i].done=true;
+ }
+ await say('mayor',fresh('ag-main',['Now to the main item of the evening.','That brings us to the main item tonight.','Finally, the item many of you came here for.']));
+ showAgenda(p);
+ await newProject();
+ S.items[S.items.length-1].done=true;
+}
 async function newProject(){
  const p=S.agenda,returning=p.tabled;
  showAgenda(p);
@@ -1346,9 +1474,9 @@ async function runGame(){
     await cityBusiness();
     await projectUpdates('meeting');
     e=checkEnd();if(e)return ending(e);
-    await newProject();
+    await runAgenda();
     await adjourn(true);
-    S.agenda=null;
+    S.agenda=null;S.items=[];
    }else{
     await offWeek();
     e=checkEnd();if(e)return ending(e);
