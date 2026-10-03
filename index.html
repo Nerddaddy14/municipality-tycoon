@@ -171,6 +171,11 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe
 .ach b{display:block;color:#f2d28a}.ach.new{border-color:#c9a24a;box-shadow:0 0 0 1px #c9a24a inset}.ach.off{opacity:.45}
 .ach small{display:block;color:var(--mut);margin-top:2px}
 .sharebox{background:#0b1019;border:1px solid #34425c;border-radius:10px;padding:10px 12px;font-size:13px;white-space:pre-wrap;margin:6px 0}
+body.ts1 #dlg,body.ts1 #choices,body.ts1 #side,body.ts1 #modal .box{zoom:1.15}
+body.ts2 #dlg,body.ts2 #choices,body.ts2 #side,body.ts2 #modal .box{zoom:1.3}
+body.cb{--good:#4aa8ff;--bad:#ff9f1a}
+body.cb .tag.yes{background:#4aa8ff;color:#021a33}body.cb .tag.no{background:#ff9f1a}
+body.rm *,body.rm *:before,body.rm *:after{animation-duration:.001s!important;animation-iteration-count:1!important;transition:none!important}
 @property --pg{syntax:'<number>';inherits:true;initial-value:0}
 .site-svg{position:absolute;inset:0;width:100%;height:100%;transition:--pg 5s ease-in-out .5s}
 .site-svg .band{transition:none}
@@ -349,7 +354,8 @@ body.mob #scene.shake{animation:none}
 body.mob #banner{font-size:calc(30px/var(--ms));letter-spacing:calc(2px/var(--ms))}
 body.mob #toasts{top:calc(6px/var(--ms));right:calc(8px/var(--ms));gap:calc(4px/var(--ms))}
 body.mob .toast{font-size:calc(13px/var(--ms));padding:calc(5px/var(--ms)) calc(10px/var(--ms));border-left-width:calc(4px/var(--ms));border-radius:calc(6px/var(--ms))}
-body.mob .tag{font-size:calc(13px*.8/var(--ms)*.5);padding:calc(2px/var(--ms)*.5) calc(9px/var(--ms)*.5)}
+body.mob .tag{font-size:19px;padding:3px 9px}
+body.mob .plate{font-size:19px;padding:2px 7px}
 body.mob #dlg,body.mob #choices{margin-top:8px;min-height:110px;padding:10px 12px}
 body.mob #dlgText{font-size:17px;min-height:64px;padding-bottom:14px}
 body.mob #dlgNext{font-size:12px}
@@ -473,7 +479,11 @@ const sfx={
  good:()=>{tone(660,.12);tone(880,.2,'sine',.07,0,.11)},
  bad:()=>{tone(300,.28,'sawtooth',.06,-140);tone(200,.3,'sawtooth',.05,-80,.15)},
  alarm:()=>{tone(740,.15,'square',.05);tone(560,.2,'square',.05,0,.17)},
- chime:()=>{tone(523,.4,'sine',.07);tone(659,.4,'sine',.07,0,.12);tone(784,.6,'sine',.07,0,.24)}
+ chime:()=>{tone(523,.4,'sine',.07);tone(659,.4,'sine',.07,0,.12);tone(784,.6,'sine',.07,0,.24)},
+ paper:()=>{noise(.55,1500,.7,.12,'highpass');tone(260,.55,'sawtooth',.03,900);setTimeout(()=>{tone(90,.2,'square',.12,-40);noise(.12,400,1,.2,'lowpass')},700)},
+ win:()=>{[523,659,784,1047].forEach((f,i)=>tone(f,.5,'triangle',.07,0,i*.15))},
+ lose:()=>{[392,330,262,196].forEach((f,i)=>tone(f,.55,'sawtooth',.05,-20,i*.22))},
+ coin:()=>{tone(988,.08,'square',.04);tone(1318,.2,'square',.04,0,.08)}
 };
 
 /* ---------- cast ---------- */
@@ -605,8 +615,9 @@ function buildScene(){
  COUNCIL.forEach((m,i)=>place(m,xs[i],152));
  place(CAST.clerk,92,156,'clerk');
  const plate=(txt,left,top)=>{const p=document.createElement('div');p.className='plate';p.textContent=txt;p.style.left=left+'%';p.style.top=top+'px';plates.appendChild(p)};
- plate('MAYOR GAVELSWORTH',50,252);
- COUNCIL.forEach((m,i)=>plate(m.short,xs[i],246));
+ const mobS=document.body.classList.contains('mob'),ln=t=>t.replace(/^(Dr\.|Chad|Doris)\s+/,'');
+ plate(mobS?'MAYOR':'MAYOR GAVELSWORTH',50,252);
+ COUNCIL.forEach((m,i)=>plate(mobS?ln(m.short):m.short,xs[i],246));
  plate('CLERK',92,246);
  const aud=$('#aud');
  [[386,[-350,-280,-210,-140,140,210,280,350]],[444,[-385,-315,-245,-175,-105,-35,35,105,175,245,315,385]]].forEach(([top,row])=>row.forEach(x=>{const d=document.createElement('div');d.className='aud';d.style.left=`calc(50% + ${x+Math.round(rnd(-5,5))}px)`;d.style.top=top+'px';d.innerHTML=figHTML(look());aud.appendChild(d)}));
@@ -649,7 +660,7 @@ function adj(k,v,why){
  if(!v)return;S[k]=clamp(S[k]+v);const good=k==='corrupt'?v<0:v>0;
  hud();flash(k,good);toast(`${METERS.find(m=>m[0]===k)[1]} ${v>0?'+':''}${Math.round(v)}${why?' ('+why+')':''}`,good);
 }
-function addBudget(v,why){S.budget+=v;hud();flash('budget',v>0);toast(`Treasury ${v>0?'+':''}${money(v)}${why?' ('+why+')':''}`,v>0)}
+function addBudget(v,why){if(v>=50000)sfx.coin();S.budget+=v;hud();flash('budget',v>0);toast(`Treasury ${v>0?'+':''}${money(v)}${why?' ('+why+')':''}`,v>0)}
 function minutes(t,c){const li=document.createElement('li');li.textContent=`Wk ${S.week}: ${t}`;if(c)li.className=c;const u=$('#minutes');u.prepend(li);while(u.children.length>40)u.lastChild.remove()}
 function banner(t){const b=$('#banner');b.textContent=t;b.classList.remove('show');void b.offsetWidth;b.classList.add('show')}
 
@@ -2166,7 +2177,7 @@ async function showPaper(g,tone,counts,N){
  const pr={laugh:'find the remark laughable',outrage:'find the remark offensive',cheer:'approve of the decision'}[tone];
  const el=document.createElement('div');el.id='paper';
  el.innerHTML=`<div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Clifton edition</span><span>Week ${S.week} · Special Edition</span><span>50&cent;</span></div><div class="npHead">${t.h}</div><div class="npSub">${t.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...m,mood:tone==='outrage'?'angry':'happy'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div><div class="npPoll"><b>Courier snap poll:</b> ${counts[tone]} of ${N} residents ${pr}.</div></div>`;
- el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.chime&&sfx.chime();
+ el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.paper();
  return el;
 }
 async function newsStep(){
@@ -3034,6 +3045,15 @@ function checkEnd(){
  if(S.week>S.maxWeeks)return'TERM|You finished your full term as mayor of Clifton.';
  return null;
 }
+const A11Y_KEY='municipality-tycoon-a11y';
+function loadA11y(){try{return JSON.parse(localStorage.getItem(A11Y_KEY)||'{}')}catch(e){return {}}}
+function applyA11y(o){
+ o=o||loadA11y();const b=document.body;
+ b.classList.remove('ts1','ts2');if(o.ts==='1')b.classList.add('ts1');if(o.ts==='2')b.classList.add('ts2');
+ b.classList.toggle('cb',!!o.cb);b.classList.toggle('rm',!!o.rm);
+}
+function setA11y(k,v){const o=loadA11y();o[k]=v;try{localStorage.setItem(A11Y_KEY,JSON.stringify(o))}catch(e){}applyA11y(o)}
+applyA11y();
 const ACH_KEY='municipality-tycoon-achievements';
 const jobsNow=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
 const ACHS=[
@@ -3096,7 +3116,7 @@ function ending(code){
  $('#overlay').classList.remove('hidden');
  $('#shareAgain').onclick=()=>location.reload();
  $('#shareCopy').onclick=async()=>{try{await navigator.clipboard.writeText(shareTxt);$('#shareMsg').textContent='Copied. Paste it anywhere.'}catch(e){const ta=document.createElement('textarea');ta.value=shareTxt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');$('#shareMsg').textContent='Copied. Paste it anywhere.'}catch(e2){$('#shareMsg').textContent='Could not copy. Select the text above.'}ta.remove()}};
- if(fresh_.length)sfx.chime&&sfx.chime();
+ if(fresh_.length)setTimeout(()=>sfx.chime(),900);if(ok&&met)sfx.win();else sfx.lose();
 }
 /* ---------- off-week activities ---------- */
 const lookR=()=>({name:pick(FIRST)+' '+pick(LAST),role:'Clifton resident',color:'#2f7a55',...look()});
@@ -3342,6 +3362,10 @@ function showMenu(){
    b.onclick=()=>{src.click();if(live)b.textContent=src.textContent};
    tools.appendChild(b);
   });
+  const a=loadA11y(),acc=document.createElement('div');acc.id='mAcc';acc.style.marginTop='14px';
+  acc.innerHTML=`<label style="display:flex;gap:10px;align-items:center">Text size <select id="aTs" style="flex:1"><option value="0">Normal</option><option value="1">Large</option><option value="2">Extra large</option></select></label><label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="aCb"> Color-blind friendly colors (blue and orange)</label><label style="display:flex;gap:8px;align-items:center;margin-top:8px"><input type="checkbox" id="aRm"> Reduce motion</label>`;
+  tools.appendChild(acc);
+  setTimeout(()=>{const t=$('#aTs'),c=$('#aCb'),r=$('#aRm');if(!t)return;t.value=a.ts||'0';c.checked=!!a.cb;r.checked=!!a.rm;t.onchange=()=>setA11y('ts',t.value);c.onchange=()=>setA11y('cb',c.checked);r.onchange=()=>setA11y('rm',r.checked)},0);
   const first=document.querySelector('#modal .btnrow');if(first)first.after(tools);
   const fl=$('#mFit');if(fl&&document.body.classList.contains('mob'))fl.closest('label').remove();
   if(!document.body.classList.contains('mob')&&$('#vol')){
