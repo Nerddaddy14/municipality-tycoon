@@ -249,6 +249,7 @@ td.bad{color:var(--bad)}
   <aside id="side">
    <div class="card" id="agenda"></div>
    <div class="card" id="council"></div>
+   <div class="card" id="growth"></div>
    <div class="card" id="fin"></div>
    <div class="card" id="sys"></div>
    <div class="card"><h3>Active Projects</h3><div id="projs"></div></div>
@@ -353,7 +354,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -374,6 +375,7 @@ function hud(){
  if(typeof renderSys==='function'&&$('#sys'))renderSys();
  if(typeof renderFin==='function'&&$('#fin'))renderFin();
  if(typeof renderCouncil==='function'&&$('#council'))renderCouncil();
+ if(typeof renderGrowth==='function'&&$('#growth'))renderGrowth();
 }
 function toast(t,good){const d=document.createElement('div');d.className='toast'+(good?'':' b');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
 function flash(k,good){const e=$(`.stat[data-k=${k}]`);if(!e)return;e.classList.add(good?'flashg':'flashb');setTimeout(()=>e.classList.remove('flashg','flashb'),700)}
@@ -469,7 +471,7 @@ function genProject(){
  const heavy=['quarry','chem','fab','crypto','datacenter','warehouse','bottling'].includes(t.k);
  p.zl=clamp((heavy&&sizeF>.35?1:0)+(p.db>=68?1:0)+(Math.random()<.25?1:0)-(sizeF<.15?1:0),0,2);
  p.fl=clamp((t.tags.includes('chem')?1:0)+(t.power>=9?1:0)+(t.k==='battery'?1:0)+(Math.random()<.2?1:0)-(sizeF<.2&&!t.tags.includes('chem')?1:0),0,2);
- p.free={};p.waived=false;p.bribed=false;
+ p.free={};p.waived=false;p.bribed=false;p.units=t.k==='apts'?Math.round(cost/220000):0;
  p.rep={name:pick(REPS),role:p.company+' representative',color:'#2f6f9f',...look(),suit:'#262833',hair:pick(HAIRS),glasses:false};
  return p;
 }
@@ -499,6 +501,7 @@ function score(m,p,c,ctx){
  if(c.fund)s+=.15+.2*m.w.res;if(c.road)s+=.1+.1*m.w.res;if(c.park)s+=.1+.12*(m.w.res+m.w.env)/2;
  if(c.hire)s+=.25*m.w.jobs;if(c.monitor)s+=.12*m.w.env;if(c.bond)s+=.1*m.w.tax+.05;
  if(c.fireplan)s+=.05;if(c.buffer)s+=.05*(m.w.res+.5);
+ if(p.type.k==='apts'&&housingRatio()<.92)s+=.15;
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
  s+=p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
@@ -511,7 +514,7 @@ function showAgenda(p){
  if(!p){a.innerHTML='<h3>Agenda</h3><div class="mut">No project under consideration.</div>'+agendaList();return}
  const e=eff(p,p.conds||{});
  a.innerHTML=`<h3>Agenda Item</h3><div class="aTitle">${p.type.icon} ${p.type.name}</div><div class="mut">${p.company} at ${p.site}</div>
- <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>
+ <table><tr><td>Investment</td><td>${money(p.cost)}</td></tr><tr><td>Local jobs</td><td>${num(p.jobs)}</td></tr><tr><td>Annual tax</td><td>${money(p.tax)}</td></tr>${p.units?`<tr><td>New homes</td><td>${num(p.units)}</td></tr>`:''}
  <tr><td>Water use</td><td class="${e.water>=2e5?'bad':''}">${num(e.water)} gal/day</td></tr><tr><td>Noise</td><td class="${e.db>=70?'bad':''}">${Math.round(e.db)} dB</td></tr>
  <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
@@ -587,6 +590,7 @@ const TOPICS={
  safety:{sign:['SAFE JOBS','PROTECT WORKERS'],opp:['A worker got hurt and they hid it for two days. Safety first, or no project.','This outfit cuts corners. Today it is a worker. Tomorrow it is a neighbor.']},
  jobs:{sign:['JOBS NOW','HIRE LOCAL'],sup:['I have been out of work eight months. {jobs} jobs would change my family\'s life.','Local jobs, Mr. Mayor. That is all I am asking.']},
  tax:{sign:['FUND OUR SCHOOLS','LOWER TAXES'],sup:['{tax} a year in taxes means fewer bills for the rest of us. Approve it.','Our schools and roads need this revenue. Do not let it walk away.']},
+ housing:{sign:['MORE HOMES','RENT IS TOO HIGH','BUILD HOUSING'],sup:['My rent went up three hundred dollars this year. We need more homes.','My kids cannot afford to live in the town they grew up in. Please approve housing.','There is a waiting list for every apartment in Clifton. Build something.']},
  local:{sign:['SUPPORT LOCAL','GROW CLIFTON'],sup:['We keep losing businesses to the next town over. Welcome some investment for once.','My shop is struggling. More customers means more hope.']},
  bribe:{sign:['RESIGN','MAYOR FOR SALE','BRIBES BOUGHT THIS MAYOR'],opp:['You took money from the developer and then lied about it. Resign!','We trusted you with this city. And you sold it for an envelope.']},
  thanks:{sign:['THANK YOU','GOOD CALL'],sup:['Thank you for standing up to them. That took guts.','Finally, a mayor who enforces the rules. Thank you.']}
@@ -613,6 +617,8 @@ function genCitizens(p,c,n){
  if(p.biasTopic&&TOPICS[p.biasTopic]&&TOPICS[p.biasTopic].opp)oppT.push(p.biasTopic,p.biasTopic);
  if(!oppT.length)oppT=['nimby'];
  const supT=['jobs','tax','local'];
+ if(p.type.k==='apts'&&housingRatio()<.92)supT.push('housing','housing','housing');
+ if(trafficIdx()>75)oppT.push('traffic','traffic');
  const out=[];
  for(let i=0;i<n;i++){
   const rep=reps.length&&Math.random()<.5?pick(reps):null;
@@ -744,7 +750,7 @@ async function projectUpdates(mode){
  for(const p of S.projects){
   if(p.curtail>0)p.curtail--;
   if(p.watch>0)p.watch--;
-  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g')}}}
+  if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(p.units){S.housing+=p.units;minutes(`${num(p.units)} new homes opened.`,'g')}}}}
   else rev+=p.tax/52*S.rate;
   const c=p.conds;
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
@@ -1090,6 +1096,34 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- city growth ---------- */
+const housingRatio=()=>S.housing/(S.pop/2.5);
+function trafficIdx(){
+ let c=30+(S.pop-12000)/250-S.fund.pw*6;
+ S.projects.forEach(p=>{
+  if(p.stage===OPER)c+=p.traffic*(.5+p.sizeF*1.2);else if(p.stage===2)c+=p.traffic*.4;
+  if(p.delivered&&p.delivered.road)c-=4;
+ });
+ return clamp(Math.round(c),0,150);
+}
+function weeklyGrowth(){
+ const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
+ S.popPrev=S.pop;
+ const target=12000+jobs*1.8+(S.housing-4800)*.6,room=housingRatio()<.9?.4:1;
+ S.pop=Math.round(S.pop+(target-S.pop)*.05*room);
+ const short=Math.max(0,.95-housingRatio());
+ if(short>0)S.trust=clamp(S.trust-short*3);
+ const cong=trafficIdx();
+ if(cong>75)S.trust=clamp(S.trust-(cong-75)*.02);
+ hud();
+}
+function renderGrowth(){
+ const el=$('#growth');if(!el)return;
+ const r=housingRatio(),c=trafficIdx(),up=S.pop>S.popPrev,dn=S.pop<S.popPrev;
+ const hc=r<.9?'var(--bad)':r<.97?'var(--acc)':'var(--good)',cc=c>=95?'var(--bad)':c>=75?'var(--acc)':'var(--good)';
+ el.innerHTML=`<h3>City Growth</h3><table><tr><td>Population</td><td>${num(S.pop)} ${up?'<span style="color:var(--good)">&#9650;</span>':dn?'<span style="color:var(--bad)">&#9660;</span>':''}</td></tr><tr><td>Housing supply</td><td style="color:${hc}">${Math.round(r*100)}% of demand</td></tr><tr><td>Traffic</td><td style="color:${cc}">${c>=95?'Gridlock':c>=75?'Congested':c>=55?'Busy':'Flowing'}</td></tr></table><div class="mut" style="margin-top:6px;font-size:12px">${r<.9?'Housing shortage: rents are rising and residents are angry.':c>=75?'Traffic is hurting trust. Fund Public Works or require roads.':'More jobs bring more residents. Homes keep up with them.'}</div>`;
+}
+
 /* ---------- council relationships ---------- */
 const ALLY={chen:'wong',wong:'chen',bradley:'jennings',jennings:'bradley',rodriguez:'wong'};
 function adjRel(id,v,why,silent){
@@ -1162,7 +1196,7 @@ const DEPTS=[
 ];
 const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
 function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
- const rev=Math.round(2e8*rate/100/52+33000*(.9+S.trust/500));
+ const k=S.pop/12000,rev=Math.round(2e8*k*rate/100/52+33000*k*(.9+S.trust/500));
  const exp=DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)+ADMIN+Math.round(debt*.004);
  return{rev,exp,net:rev-exp};
 }
@@ -1502,6 +1536,7 @@ async function adjourn(meeting=true){
   await gavel(2);
  }
  weeklyFinance();
+ weeklyGrowth();
  const d={trust:S.trust-snap.trust,env:S.env-snap.env,dev:S.dev-snap.dev,budget:S.budget-snap.budget};
  // weekly drift
  S.projects.filter(p=>p.stage===OPER).forEach(p=>{S.env=clamp(S.env-impacts(p,p.conds).env*.25*(p.conds.monitor?.6:1))});
