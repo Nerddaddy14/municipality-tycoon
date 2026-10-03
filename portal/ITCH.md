@@ -19,6 +19,15 @@ This writes `dist/municipality-tycoon-itch.zip` with `index.html` at the root, w
 5. Turn on **Donations** if you want players to be able to tip without buying anything.
 6. Paste the text from `portal/SUBMISSION.md` for the description, tags and content notes. Use the screenshots in `portal/screens/` for the page gallery.
 
+## Pushing updates with butler
+
+Butler (itch.io's command-line uploader) is installed at `C:\Users\Stephen\butler\butler.exe` and logged in to your account. After you create the project page once (you can upload the zip by hand the first time, or skip that and push straight away):
+
+1. Create a file named `.itch-target` in the repo root containing one line: `yourname/municipality-tycoon:html5` (your itch username, the page's URL slug, and the channel name `html5`). It is ignored by git.
+2. Push: `python tools/push_itch.py`. Add `--dry-run` first if you want to see what would be uploaded.
+
+Each push builds the game, uploads only what changed, and tags the build with the current git commit. Pushed updates show up on the itch page after itch processes them, usually within a minute or two. If the page is still a draft, players cannot see it until you make it public.
+
 ## In-game tip button
 
 The game has a "Buy the Mayor a Coffee" button in the top bar next to Menu. It stays hidden until you give it a link:
