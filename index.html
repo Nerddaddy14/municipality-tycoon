@@ -337,7 +337,7 @@ body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;over
  <p>Approved projects move through Permitting, Site Prep, Construction, Commissioning and Operation. Expect wells drilled without permits, contaminated water, wasted water, noise, but also new roads, parks and donations. How you respond decides your term.</p>
  <p class="mut">Your goal: keep the job and grow Clifton to the population target by the end of your term. You lose if Public Trust collapses, the environment fails, or a corruption scandal lands you in court. Click or press Space/Enter to advance dialogue.</p>
  <div class="modes"><label><input type="radio" name="mode" value="12" checked> Quick term: 12 weeks (about an hour)</label><label><input type="radio" name="mode" value="52"> Full term: 52 weeks (several hours)</label></div>
- <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button> <button id="slotsBtn" class="alt hidden">Saved slots</button> <button id="licBtn" class="alt hidden">Enter license key</button>
+ <button id="startBtn">Call the meeting to order</button> <button id="contBtn" class="alt hidden">Continue saved game</button> <button id="slotsBtn" class="alt hidden">Saved slots</button> <button id="licBtn" class="alt hidden">Get the full game</button>
  <p id="saveInfo" class="mut" style="margin-top:12px"></p>
  <p><a class="guide" id="guideLink" href="how-to-play.html" target="_blank" rel="noopener">How to play (full guide)</a></p>
 </div></div>
@@ -361,7 +361,9 @@ const AUTO=/[?&]auto=1/.test(location.search);
 const SPEED=AUTO?1:16;
 
 /* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
-const GATING=false,LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
+/* EDITION is stamped by tools/build_itch.py: 'free' (12-week) or 'full' (everything). 'dev' leaves everything unlocked. */
+const EDITION='dev',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full';
+const GATING=EDITION==='free',LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
 const FREE_FEATURES=['quick'];
 const fnv=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36).toUpperCase()};
 function validKey(k){const m=/^MT-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{1,8})$/.exec((k||'').trim().toUpperCase());return !!m&&fnv(m[1]+'-'+m[2]+LICENSE_SALT)===m[3]}
@@ -2731,6 +2733,7 @@ function ending(code){
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}</p>
  <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
  <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
+ ${GATING?`<p><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener"><b>Play the full 52-week term</b></a> with recall elections, themes and more.</p>`:''}
  ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Mayor a Coffee</a></p>`:''}
  <button onclick="location.reload()">Run for mayor again</button></div>`;
  $('#overlay').classList.remove('hidden');
@@ -2942,6 +2945,7 @@ function showMenu(){
  $$('[data-load]').forEach(b=>b.onclick=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(readSlot(b.dataset.load)));sessionStorage.setItem('municipality-tycoon-autocontinue','1')}catch(e){}location.reload()});
 }
 function showLicense(){
+ if(EDITION==='free'){modal(`<h2>Get the full game</h2><p class="mut">The full game adds the 52-week term, recall elections, chamber themes, project packs, dialogue packs, and 3 save slots.</p><div class="btnrow"><button class="go" id="fgGo">Get the full game</button><button id="fgNo">Not now</button></div>`);$('#fgNo').onclick=closeModal;$('#fgGo').onclick=()=>window.open(FULL_URL,'_blank','noopener');return}
  modal(`<h2>Unlock the full game</h2><p class="mut">The full game adds the 52-week term, recall elections, chamber themes, project packs, dialogue packs, and 3 save slots. Enter your license key.</p><label>License key<input id="lkIn" placeholder="MT-XXXX-XXXX-XXXXX" style="width:100%;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:8px;margin-top:4px"></label><div class="btnrow"><button class="go" id="lkOk">Unlock</button><button id="lkCancel">Cancel</button></div><div id="lkMsg" class="mut" style="margin-top:8px"></div>`);
  $('#lkCancel').onclick=closeModal;
  $('#lkOk').onclick=()=>{const k=$('#lkIn').value.trim().toUpperCase();if(validKey(k)){try{localStorage.setItem(LICENSE_KEY,k)}catch(e){}$('#lkMsg').textContent='Unlocked! Reloading...';setTimeout(()=>location.reload(),600)}else $('#lkMsg').textContent='That key is not valid.'};
