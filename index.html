@@ -203,6 +203,8 @@ td.bad{color:var(--bad)}
 #overlay p{line-height:1.5;color:#c6d0e0}
 .modes label{display:block;margin:6px 0;color:#c6d0e0;cursor:pointer}
 #overlay button.alt{background:#2a3a55;color:#e9eef7}
+.conds select{width:100%;margin-top:4px;background:#0b1019;color:var(--ink);border:1px solid #34425c;border-radius:6px;padding:4px}
+.conds input[type=range]{margin-top:6px}
 #modal{position:fixed;inset:0;background:rgba(5,8,14,.88);z-index:110;display:flex;align-items:center;justify-content:center;padding:20px}
 #modal .box{max-width:580px;width:100%;background:var(--panel);border:2px solid #34425c;border-radius:16px;padding:22px 26px;max-height:92vh;overflow:auto}
 #modal h2{margin:0 0 8px}
@@ -246,6 +248,7 @@ td.bad{color:var(--bad)}
   </div>
   <aside id="side">
    <div class="card" id="agenda"></div>
+   <div class="card" id="fin"></div>
    <div class="card" id="sys"></div>
    <div class="card"><h3>Active Projects</h3><div id="projs"></div></div>
    <div class="card"><h3>Minutes</h3><ul id="minutes"></ul></div>
@@ -349,7 +352,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,items:[],week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -368,6 +371,7 @@ function hud(){
  $('#hBudget').textContent=money(S.budget);
  METERS.forEach(([k])=>{const e=$(`.stat[data-k=${k}]`);e.querySelector('i').style.width=S[k]+'%';e.querySelector('b').textContent=Math.round(S[k])});
  if(typeof renderSys==='function'&&$('#sys'))renderSys();
+ if(typeof renderFin==='function'&&$('#fin'))renderFin();
 }
 function toast(t,good){const d=document.createElement('div');d.className='toast'+(good?'':' b');d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),3200)}
 function flash(k,good){const e=$(`.stat[data-k=${k}]`);if(!e)return;e.classList.add(good?'flashg':'flashb');setTimeout(()=>e.classList.remove('flashg','flashb'),700)}
@@ -511,7 +515,7 @@ function showAgenda(p){
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
 const gridLoad=()=>Math.round(50-S.gridBoost+S.projects.reduce((a,p)=>a+loadOf(p),0));
-const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
+const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost-S.fund.pw*6+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
  return{title:black?'Blackout':'Brownouts',
@@ -739,12 +743,12 @@ async function projectUpdates(mode){
   if(p.curtail>0)p.curtail--;
   if(p.watch>0)p.watch--;
   if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g')}}}
-  else rev+=p.tax/52;
+  else rev+=p.tax/52*S.rate;
   const c=p.conds;
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
   else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
   else{
-   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(p.stage===0?.5:p.stage===OPER?.6:1);
+   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.stage===0?.5:p.stage===OPER?.6:1);
    if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
    if(Math.random()<.2+(S.dev>60?.1:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
   }
@@ -797,7 +801,7 @@ async function runEvent(p,evDef,promised,mode){
  if(ev.extra)opts.splice(2,0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
  const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
  const r=k==='extra'?ev.extra:RESP.find(x=>x.k===k);
- adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)),ev.title);adj('dev',r.dev);adj('trust',r.trust);
+ adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)),ev.title);adj('dev',r.dev);adj('trust',r.trust);
  if(k==='fine'){addBudget(fine,'fine')}
  if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
  if(k==='extra')ev.extra.apply(p);
@@ -1084,6 +1088,115 @@ async function attorneyAdvice(p,returning){
  minutes(`City Attorney advice (${t}): ${follow?'followed':'disregarded'}.`);
 }
 
+/* ---------- budget and taxes ---------- */
+const DEPTS=[
+ {k:'pw',name:'Public Works',base:22000,note:'Roads and water mains. Boost lowers water-system strain and lifts trust.'},
+ {k:'safety',name:'Public Safety',base:26000,note:'Fire and police. Boost softens the damage from incidents.'},
+ {k:'parks',name:'Parks and Library',base:9000,note:'Boost lifts trust and slowly heals the environment.'},
+ {k:'insp',name:'Inspections and Planning',base:7000,note:'Boost cuts the odds of incidents at project sites.'}
+];
+const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
+function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
+ const rev=Math.round(2e8*rate/100/52+33000*(.9+S.trust/500));
+ const exp=DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)+ADMIN+Math.round(debt*.004);
+ return{rev,exp,net:rev-exp};
+}
+const signMoney=v=>(v>=0?'+':'-')+money(Math.abs(v));
+function renderFin(){
+ const el=$('#fin');if(!el)return;
+ const f=finCalc(),lv=['Cut','Std','Boost'];
+ const pt=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.tax/52*S.rate,0);
+ el.innerHTML=`<h3>City Finances</h3><table><tr><td>Property tax rate</td><td>${S.rate.toFixed(1)}%</td></tr><tr><td>Weekly revenue</td><td>${money(f.rev)}</td></tr>${pt>0?`<tr><td>Project taxes</td><td>+${money(pt)}</td></tr>`:''}<tr><td>Weekly expenses</td><td>${money(f.exp)}</td></tr><tr><td>Net per week</td><td style="color:${f.net+pt>=0?'var(--good)':'var(--bad)'}">${signMoney(f.net+pt)}</td></tr>${S.debt?`<tr><td>Bond debt</td><td>${money(S.debt)}</td></tr>`:''}</table><div class="mut" style="margin-top:6px;font-size:12px">${DEPTS.map(d=>`${d.name}: ${lv[S.fund[d.k]+1]}`).join(' &middot; ')}</div>`;
+}
+function weeklyFinance(){
+ const f=finCalc(),L=S.fund;
+ S.budget+=f.net;S.q.rev+=f.rev;S.q.exp+=f.exp;
+ S.trust=clamp(S.trust+.25*L.parks+.15*L.pw+.1*L.safety-(S.rate-1)*1.2);
+ S.dev=clamp(S.dev-(S.rate-1)*.8);
+ S.env=clamp(S.env+.08*L.parks);
+ if(S.budget<0){S.budget-=Math.round(-S.budget*.01);S.defWeeks=(S.defWeeks||0)+1;if(S.defWeeks%2===0)adj('trust',-1,'unpaid bills')}else S.defWeeks=0;
+ hud();
+}
+function budgetPanel(){
+ return new Promise(res=>{
+  $('#dlg').classList.add('hidden');const b=$('#choices');b.classList.remove('hidden');
+  const cur={rate:S.rate,fund:{...S.fund},bond:false},LV=['Cut','Standard','Boost'];
+  b.innerHTML=`<div class="cTitle">Quarterly budget</div><div class="mut">Set the property tax rate and department funding. Higher taxes bring revenue but cost trust and developer goodwill. Cuts save money but weaken services. A budget that runs a deficit will struggle to win votes.</div>
+  <div class="conds"><label style="display:block">Property tax rate: <b id="bRate"></b><input type="range" id="bRateIn" min="6" max="16" value="${Math.round(S.rate*10)}" style="width:100%"></label>
+  ${DEPTS.map(d=>`<label style="display:block">${d.name}<small>${d.note}</small><select data-d="${d.k}">${LV.map((l,i)=>`<option value="${i-1}" ${S.fund[d.k]===i-1?'selected':''}>${l} (${money(Math.round(d.base*MULT[i]))} per week)</option>`).join('')}</select></label>`).join('')}
+  <label><input type="checkbox" id="bBond"><span>Issue a ${money(BOND)} bond<small>Cash now. Adds 0.4% of your debt in interest every week.</small></span></label></div>
+  <div id="bProj" style="margin-top:8px;font-size:13px"></div>
+  <div class="btnrow"><button class="go" data-a="propose">Propose this budget</button><button data-a="keep">Keep the current budget</button></div>`;
+  const upd=()=>{const f=finCalc(cur.rate,cur.fund,S.debt+(cur.bond?BOND:0));$('#bRate').textContent=cur.rate.toFixed(1)+'%';$('#bProj').innerHTML=`Projected per week: revenue ${money(f.rev)}, expenses ${money(f.exp)}, <b style="color:${f.net>=0?'var(--good)':'var(--bad)'}">net ${signMoney(f.net)}</b>. Over the next six weeks: ${signMoney(f.net*6)}.`};
+  upd();
+  b.oninput=e=>{if(e.target.id==='bRateIn'){cur.rate=e.target.value/10;upd()}};
+  b.onchange=e=>{if(e.target.dataset.d){cur.fund[e.target.dataset.d]=+e.target.value;upd()}else if(e.target.id==='bBond'){cur.bond=e.target.checked;upd()}};
+  b.onclick=e=>{const t=e.target.closest('button');if(!t)return;b.classList.add('hidden');$('#dlg').classList.remove('hidden');b.onclick=b.oninput=b.onchange=null;res(t.dataset.a==='propose'?cur:null)};
+ });
+}
+function budgetScore(m,cur,pub){
+ const F=cur.fund,f=finCalc(cur.rate,F,S.debt+(cur.bond?BOND:0)),spend=F.pw+F.safety+F.parks+F.insp,dr=cur.rate-1,def=Math.max(0,-f.net);
+ let s=.2+(S.trust-50)/250+pub*.1+rnd(-.08,.08);
+ if(m.id==='jennings')s+=.3-def/50000-.05*spend-(cur.bond?.2:0)+(f.net>=0?.1:0);
+ else if(m.id==='bradley')s+=.25-1.6*dr-(cur.bond?.05:0)-def/90000;
+ else if(m.id==='rodriguez')s+=.1+.14*(F.pw+F.safety)-.5*dr-def/120000+(cur.bond?.1:0);
+ else if(m.id==='wong')s+=.1+.13*(F.parks+F.pw)-.7*dr-def/120000;
+ else s+=.1+.14*(F.insp+F.parks)-.6*dr-def/120000;
+ return s;
+}
+const BREM={
+ jennings:{bad:['We spend more than we take in. That cannot go on.','The treasury is bleeding. I want a balanced budget.','Deficits are just taxes we have not billed yet.'],ok:['Black ink. I will take it, and I want it to stay that way.','A surplus is not a blank check. Spend it wisely.','The books balance. I am cautiously pleased.']},
+ bradley:{bad:['If we run deficits, business owners wonder who gets the bill.','I would rather cut spending than raise taxes. Every business owner would.'],ok:['Our tax rate is a selling point or a warning sign to every business. Mind it.','Keep taxes low and the businesses will come.']},
+ rodriguez:{bad:['Our crews are stretched thin. Public works needs real money.','Public safety is not optional. Do not cut it to save a few dollars.'],ok:['Fund the roads, fund the crews, and the town runs.','I want to see public works and safety properly funded.']},
+ wong:{bad:['The library and parks are what make this a community. Do not starve them.','Residents notice when the park is not mowed.'],ok:['Parks, library, trails. That is what residents see for their tax dollar.','I want to protect the services people actually use.']},
+ chen:{bad:['Inspections are the cheapest insurance this city can buy. Fund them.','If we cut inspections to save a dollar, we will pay ten later.'],ok:['I would like to see inspections and parks funded before anything else.','A well-funded inspection office pays for itself.']}
+};
+const BCIT={
+ tax:['My property tax bill went up again. I am on a fixed income.','Every year the rate climbs and the potholes stay.','Small businesses are leaving because of taxes.','I pay more every year for the same services. Where does it go?'],
+ svc:['The library cut hours and the park is full of weeds. Where is our tax money going?','Response times are slow. Fund public safety.','The roads are falling apart. Fix them.','There is a pothole on my street the size of a bathtub.'],
+ ok:['I do not mind paying if the services are good, and they are.','The city is living within its means. Thank you.','Keep the rate steady. Do not mess with a good thing.']
+};
+async function budgetHearing(){
+ const FD={name:'Nora Whitaker',role:'Finance Director',color:'#4a6a6a',...look(),suit:'#3b4a63'},f=finCalc();
+ showAgendaCard('Quarterly budget hearing','Property tax and department funding',[['Treasury',money(S.budget)],['Tax rate',S.rate.toFixed(1)+'%'],['Net per week',signMoney(f.net)],['Debt',money(S.debt)]]);
+ await say('mayor',fresh('bh-intro',['The first item is the quarterly budget hearing.','We begin with the budget. Our Finance Director will brief us.','Before anything else tonight, the quarterly budget.']));
+ await showSpeaker(FD);
+ if(S.week===1)await say(FD,`Welcome, Mayor. The treasury holds ${money(S.budget)}. At a ${S.rate.toFixed(1)}% property tax rate we collect about ${money(f.rev)} a week and spend about ${money(f.exp)}. This is your first budget.`);
+ else await say(FD,`Last quarter we collected ${money(S.q.rev)} and spent ${money(S.q.exp)}. The treasury holds ${money(S.budget)}${S.debt?`, with ${money(S.debt)} in bond debt`:''}. At current settings we project ${f.net>=0?'a surplus':'a deficit'} of ${money(Math.abs(f.net*6))} over the next six weeks.`);
+ if(S.budget<0)await say(FD,'The treasury is overdrawn. We are paying interest and delaying vendors. This needs to be fixed tonight.');
+ await hideSpeaker();
+ S.q={rev:0,exp:0};
+ for(const m of shuffle(COUNCIL).slice(0,3))await say(m.id,fresh('brem-'+m.id+(f.net<0?'b':'o'),BREM[m.id][f.net<0?'bad':'ok']));
+ await silly(.2);
+ await say('mayor',fresh('bh-pc',['We will take public comment on the budget.','The floor is open for budget comments.']));
+ const types=[];if(S.rate>=1.15)types.push('tax','tax');if(Object.values(S.fund).some(v=>v<0)||S.trust<45)types.push('svc','svc');types.push('ok');
+ const list=[0,1].map(()=>{const t=pick(types),opp=t!=='ok';return{...lookR(),stance:opp?'opp':'sup',sign:t==='tax'?'LOWER TAXES':t==='svc'?'FIX OUR SERVICES':'GOOD BUDGET',mood:opp?'angry':'happy',text:fresh('bcit-'+t,BCIT[t])}});
+ showCrowd(list);await sleep(AUTO?10:400);
+ let opp=0,sup=0;
+ for(const c of list){c.stance==='opp'?opp++:sup++;await showSpeaker(c);await say(c,c.text);heckle(c.stance==='opp'?'BOO!':'YEAH!',c.stance==='opp'?'no':'yes');await hideSpeaker()}
+ await hideCrowd();
+ const pub=(sup-opp)/list.length;
+ const cur=await budgetPanel();
+ if(!cur){await say('mayor','I will keep the current budget as it stands.');minutes('Budget hearing: kept the current budget.');showAgenda(null);return}
+ const old={rate:S.rate,fund:{...S.fund}},lv=['cut','standard','boosted'];
+ const chg=DEPTS.filter(d=>cur.fund[d.k]!==0).map(d=>`${d.name} ${lv[cur.fund[d.k]+1]}`);
+ await say('mayor',`I propose a ${cur.rate.toFixed(1)}% property tax rate${cur.rate>old.rate?', an increase,':cur.rate<old.rate?', a reduction,':''}${chg.length?` with ${chg.join(', ')}`:' with all departments at standard funding'}${cur.bond?`, and a ${money(BOND)} bond`:''}.`);
+ let yes=0,no=0;
+ for(const m of COUNCIL){const y=budgetScore(m,cur,pub)>0;showTag(m.id,y?'AYE':'NAY',y?'yes':'no');sfx[y?'good':'bad']();y?yes++:no++;await sleep(AUTO?10:380)}
+ await gavel(1);
+ const passed=yes>=3;
+ await say('mayor',passed?`The budget carries, ${yes} to ${no}.`:`The budget fails, ${yes} to ${no}. The current budget stays in place.`);
+ clearTags();
+ if(passed){
+  S.rate=cur.rate;S.fund=cur.fund;
+  adj('trust',-Math.round((cur.rate-old.rate)*12),cur.rate>old.rate?'higher taxes':cur.rate<old.rate?'lower taxes':'');
+  adj('dev',-Math.round((cur.rate-old.rate)*6));
+  if(cur.bond){S.debt+=BOND;addBudget(BOND,'bond proceeds')}
+  minutes(`Budget passed (${yes}-${no}): ${cur.rate.toFixed(1)}% tax rate${cur.bond?', bond issued':''}.`,'g');
+ }else{adj('trust',-2,'budget gridlock');minutes(`Budget failed (${yes}-${no}).`,'b')}
+ hud();showAgenda(null);
+}
+
 /* ---------- multi-item agenda ---------- */
 const PETITIONS=[
  {t:'Speed bumps on Elm Street',cost:25000,gain:3,ask:'Cars fly down Elm Street past the school. We collected 400 signatures asking for speed bumps.',sign:'SLOW DOWN'},
@@ -1198,14 +1311,17 @@ function buildExtras(){
  return out;
 }
 async function runAgenda(){
- const extras=buildExtras(),p=S.agenda;
- S.items=[...extras.map(e=>({t:e.t,done:false})),{t:`${p.type.name} (${money(p.cost)}), main item`,done:false}];
+ const extras=buildExtras(),p=S.agenda,hearing=S.week%6===1;
+ S.items=[...(hearing?[{t:'Quarterly budget hearing',done:false}]:[]),...extras.map(e=>({t:e.t,done:false})),{t:`${p.type.name} (${money(p.cost)}), main item`,done:false}];
  showAgenda(p);
+ if(S.budget<0)await say('clerk',fresh('ag-def',['Mayor, the treasury is overdrawn. Vendors are waiting on payment.','Mayor, we are in the red. The bank is calling.']));
  await say('mayor',fresh('ag-intro',[`We have ${S.items.length} items on the agenda tonight. We will take the smaller matters first and finish with the ${p.type.name}.`,`${S.items.length} agenda items tonight. Let us move through them in order.`,`A busy agenda tonight: ${S.items.length} items. We will start with the smaller ones.`]));
+ const off=hearing?1:0;
+ if(hearing){await budgetHearing();S.items[0].done=true}
  for(let i=0;i<extras.length;i++){
   const e=extras[i];
   if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else await variance(e.v);
-  S.items[i].done=true;
+  S.items[i+off].done=true;
  }
  await say('mayor',fresh('ag-main',['Now to the main item of the evening.','That brings us to the main item tonight.','Finally, the item many of you came here for.']));
  showAgenda(p);
@@ -1318,6 +1434,7 @@ async function adjourn(meeting=true){
   await say('mayor',fresh('adj',['Is there any further business? Hearing none, this meeting is adjourned.','If there is nothing further, we are adjourned. Thank you all for coming.','Seeing no further business, this meeting is adjourned until the next session.']));
   await gavel(2);
  }
+ weeklyFinance();
  const d={trust:S.trust-snap.trust,env:S.env-snap.env,dev:S.dev-snap.dev,budget:S.budget-snap.budget};
  // weekly drift
  S.projects.filter(p=>p.stage===OPER).forEach(p=>{S.env=clamp(S.env-impacts(p,p.conds).env*.25*(p.conds.monitor?.6:1))});
@@ -1520,7 +1637,7 @@ function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</
 function closeModal(){const m=$('#modal');m.classList.add('hidden');m.innerHTML=''}
 const HELP=[
  {t:'Your job',h:'<p>You are the mayor of Clifton. The council meets <b>every other week</b>. Each meeting you hear one development proposal, listen to staff, the city attorney and the public, then put it to a vote. The council has five members and you need <b>three votes</b> to approve.</p><p>The weeks in between are <b>off weeks</b>: no vote, but you inspect sites, meet residents, talk to the press, and take private meetings.</p>'},
- {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. At 10 you are recalled.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: fines and tax revenue in, costs out.</li></ul>'},
+ {t:'The meters',h:'<ul><li><b>Public Trust</b>: protests start below 45. At 10 you are recalled.</li><li><b>Environment</b>: incidents and heavy industry wear it down. At 8 the state steps in.</li><li><b>Developer Relations</b>: keeps proposals coming and decides how many conditions a developer will accept.</li><li><b>Scandal Risk</b>: climbs when you take bribes. Leaks and reporters follow.</li><li><b>Treasury</b>: tax revenue and fines in, department costs out. Every six weeks the quarterly <b>budget hearing</b> lets you set the property tax rate and fund Public Works, Public Safety, Parks and Library, and Inspections. Run a deficit and interest and unpaid bills hurt trust.</li></ul>'},
  {t:'At the meeting',h:'<p>Use the <b>conditions</b> list to win over members: water recycling, noise caps, a park, local hire, a cleanup bond and more. Every condition costs the developer. Push too far and they walk away.</p><p>You can <b>table</b> an item once. Members ask for studies, and next week the reports come back and can change the numbers and the debate. The city attorney gives advice that is sometimes good and sometimes bad. You can pay for a second opinion.</p>'},
  {t:'After approval',h:'<p>Projects move through Permitting, Site Prep, Construction, Commissioning and Operating. Expect incidents: unpermitted wells, contaminated or wasted water, noise, blackouts, main breaks. You can <b>fine</b>, issue a <b>stop-work order</b>, or <b>forgive</b>, and some incidents offer a fix the developer pays for.</p><p>Watch the <b>City Systems</b> panel. Too much power or water demand causes blackouts and main breaks.</p>'},
  {t:'Controls',h:'<ul><li><b>Space / Enter / click</b> advances dialogue.</li><li><b>F</b> cycles speed (1x, 2x, 4x, max). <b>A</b> toggles auto-advance.</li><li>Your game <b>autosaves every other week</b>. Close the tab and use Continue later.</li><li>The <b>Feedback</b> button sends your thoughts any time.</li></ul>'}
