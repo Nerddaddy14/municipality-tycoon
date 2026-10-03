@@ -374,7 +374,7 @@ function audMood(m,ms=1400){const a=$('#aud');a.className=m;clearTimeout(audT);i
 
 /* ---------- state / HUD ---------- */
 const STAGES=['Permitting','Site Prep','Construction','Commissioning','Operating'],OPER=4;
-const S={maxWeeks:52,devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
+const S={maxWeeks:52,prio:null,fests:[],annexT:0,crisisSeen:[],devHist:{},recall:null,recallCd:0,endCode:null,temp:{grid:0,water:0,weeks:0},austerity:0,crisisCd:0,ords:[],pop:12000,popPrev:12000,housing:4800,rel:{chen:50,bradley:50,rodriguez:50,wong:50,jennings:50},commit:{},items:[],rate:1.0,fund:{pw:0,safety:0,parks:0,insp:0},debt:0,q:{rev:0,exp:0},defWeeks:0,week:1,budget:1500000,trust:60,env:65,dev:50,corrupt:0,projects:[],pending:null,pid:0,leaks:[],leaked:false,queue:[],agenda:null,gridBoost:0,waterBoost:0,
  stats:{approved:0,denied:0,incidents:0,gallons:0,perks:0,tax:0,vetoes:0}};
 const METERS=[['trust','Public Trust'],['env','Environment'],['dev','Developer Relations'],['corrupt','Scandal Risk']];
 function buildHud(){
@@ -645,8 +645,8 @@ function showAgenda(p){
  <tr><td>Truck traffic</td><td>${dots(p.traffic)}</td></tr><tr><td>Power demand</td><td>${dots(p.power)}</td></tr></table>${agendaList()}`;
 }
 const loadOf=p=>p.stage===OPER&&!(p.curtail>0)?p.power*(.4+p.sizeF*2.5)*(p.sub?.6:1):0;
-const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
-const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.temp.water-S.fund.pw*6+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
+const gridLoad=()=>Math.max(10,Math.round(50-S.gridBoost-(S.prio&&S.prio.k==='infra'?6:0)+S.temp.grid+S.projects.reduce((a,p)=>a+loadOf(p),0)));
+const waterLoad=()=>Math.max(5,Math.round(20-S.waterBoost+S.temp.water-S.fund.pw*6-(S.prio&&S.prio.k==='infra'?6:0)+S.projects.reduce((a,p)=>a+(p.stage>=2?eff(p,p.conds).water:0),0)/3e4));
 function gridEv(p,gl){
  const hh=ri(3,12)*1000,black=gl>=88;
  return{title:black?'Blackout':'Brownouts',
@@ -938,7 +938,7 @@ async function projectUpdates(mode){
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
   else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
   else{
-   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.riskMult||1)*(p.stage===0?.5:p.stage===OPER?.6:1);
+   const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.riskMult||1)*(S.prio&&S.prio.k==='open'?1.1:1)*(p.stage===0?.5:p.stage===OPER?.6:1);
    if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&!(e.id&&p.seen[e.id])&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
    if(Math.random()<.13+(S.dev>60?.07:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
   }
@@ -1420,10 +1420,30 @@ function applyOpt(o,mit){
  if(o.risk&&o.bad&&Math.random()<o.risk){
   if(o.bad.trust)adj('trust',o.bad.trust,'it backfired');
   if(o.bad.cost)addBudget(-o.bad.cost,'extra costs');
+  if(o.bad.env)adj('env',o.bad.env,'it backfired');
   return true;
  }
  return false;
 }
+
+CRISES.push(
+ {k:'tornado',name:'Tornado',w:()=>1,make:()=>({who:{name:'Dana Ruiz',role:'Emergency Management Director'},text:'A tornado touched down on the west side overnight. Roofs are gone, trees are across the roads, and nobody has power.',apply:()=>{S.temp.grid=Math.max(S.temp.grid,12);S.temp.weeks=Math.max(S.temp.weeks,2)},
+  opts:[{k:'rebuild',label:'Declare an emergency and fund repairs ($150K)',sub:'Fast recovery. Costs real money.',cost:150000,trust:4},{k:'federal',label:'Request state and federal aid',sub:'Free, but slow and uncertain.',trust:-1,risk:.4,bad:{cost:120000}},{k:'volunteer',label:'Organize volunteer cleanup crews',sub:'Builds community. Slow for the worst-hit streets.',trust:2,risk:.3,bad:{trust:-3}}]})},
+ {k:'derail',name:'Train derailment',w:()=>1,make:()=>({who:{name:'Dale Pruitt',role:'Fire Marshal'},text:'A freight train carrying industrial chemicals derailed at the Cedar Hill crossing. One car is leaking, and the wind is blowing toward town.',apply:()=>{adj('env',-2,'derailment')},
+  opts:[{k:'evacuate',label:'Order a precautionary evacuation ($40K)',sub:'Safest. Disruptive and costly.',cost:40000,trust:3},{k:'shelter',label:'Order shelter-in-place',sub:'Cheaper. Risky if the wind shifts.',trust:1,risk:.35,bad:{trust:-5,env:-3}},{k:'rail',label:'Demand the railroad take command and pay',sub:'Free, but the railroad moves slowly.',trust:-1,dev:-2,risk:.3,bad:{trust:-3}}]})},
+ {k:'bridge',name:'Bridge closure',w:()=>1,make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'Inspectors closed the Millbrook bridge after finding cracked supports. Forty thousand crossings a week now have to go the long way around.',
+  opts:[{k:'repair',label:'Fund an emergency repair ($180K)',sub:'Reopens in a month.',cost:180000,trust:2},{k:'close',label:'Close it for six weeks and wait for the budget',sub:'Free now. Drivers will be furious.',trust:-4,risk:.3,bad:{trust:-2}},{k:'state',label:'Ask the state for emergency funding',sub:'Might work. Might not.',trust:0,risk:.5,bad:{cost:110000}}]})},
+ {k:'teachers',name:'Teachers strike',w:()=>1,make:()=>({who:{name:'Tasha Brooks',role:'Teachers union representative'},text:'Clifton teachers walked out after contract talks collapsed. Schools are closed, and parents are scrambling.',
+  opts:[{k:'fund',label:'Offer to fund the raises ($70K)',sub:'Ends the strike. Rodriguez will approve.',cost:70000,trust:3,rel:{rodriguez:4}},{k:'district',label:'Back the school district',sub:'Holds the line. Labor will remember.',trust:-2,rel:{rodriguez:-6}},{k:'mediate',label:'Mediate at city hall',sub:'Might work. Might drag on.',risk:.4,bad:{trust:-3}}]})},
+ {k:'viral',name:'Viral clip',w:()=>1,make:()=>({who:{name:'Dana Whitfield',role:'Clifton Courier reporter'},text:'A clip of you at last week\'s meeting went viral. Taken out of context, it looks like you laughed at a resident. The comments are not kind.',
+  opts:[{k:'video',label:'Post a candid video response',sub:'Honest. Can backfire if it feels staged.',trust:2,risk:.3,bad:{trust:-3}},{k:'consult',label:'Hire a social media consultant ($20K)',sub:'Professional damage control.',cost:20000,trust:1},{k:'ignore',label:'Ignore it',sub:'Free. The internet is patient.',trust:-3}]})},
+ {k:'mandate',name:'Unfunded mandate',w:()=>1,make:()=>({who:{name:'Nora Whitaker',role:'Finance Director'},text:'The state passed a mandate requiring expensive new water testing in every city, and sent us the bill.',
+  opts:[{k:'comply',label:'Comply and pay ($60K)',sub:'Safe and boring.',cost:60000,trust:1},{k:'lobby',label:'Lobby against it',sub:'Might win. Might lose and pay more.',risk:.5,bad:{cost:90000}},{k:'devs',label:'Pass the cost to developers',sub:'Cheap for the city. Developers will complain.',dev:-6,trust:0}]})},
+ {k:'sinkhole',name:'Sinkhole',w:()=>1+(waterLoad()>60?1:0),make:()=>({who:{name:'Priya Shah',role:'Public Works Director'},text:'A sinkhole swallowed half of Fourth Avenue. A delivery truck is stuck in it. The driver is fine, and furious.',
+  opts:[{k:'repair',label:'Repair it immediately ($80K)',sub:'The responsible choice.',cost:80000,trust:2},{k:'barricade',label:'Barricade it and wait for next quarter',sub:'Cheap now. Risky if it grows.',trust:-3,risk:.5,bad:{cost:120000}},{k:'utility',label:'Make the water utility pay',sub:'Fair, if it holds up.',trust:-1,risk:.35,bad:{trust:-3}}]})},
+ {k:'layoffs',name:'Mass layoffs',w:()=>1,make:()=>({who:{name:'Miguel Rodriguez',role:'Union Organizer'},text:'Clifton\'s largest private employer announced 300 layoffs. The plant gates have a line of families, and the council is looking at you.',
+  opts:[{k:'retrain',label:'Offer a retraining fund ($50K)',sub:'Helps workers. Rodriguez approves.',cost:50000,trust:3,rel:{rodriguez:4}},{k:'relief',label:'Offer the company tax relief to stay',sub:'Developers like it. Fiscal hawks will not.',dev:3,trust:1,rel:{jennings:-4}},{k:'shrug',label:'Call it a national trend',sub:'True, and tone deaf.',trust:-3}]})}
+);
 async function runCrisis(c,mode){
  const d=c.make();
  if(mode==='off'){banner('EMERGENCY SESSION');await say('clerk',fresh('emerg',['Mayor, this cannot wait for the next meeting. I have called a special session.','Mayor, we have an emergency. The council is gathering for a special session.','Mayor, you are needed in chambers right away. There has been an incident.']))}
@@ -1458,9 +1478,12 @@ async function crisisCheck(mode){
  if(S.crisisCd>0){S.crisisCd--;return}
  if(S.defWeeks>=4&&!S.austerity){await austerityEvent();S.crisisCd=2;return}
  if(Math.random()>.13)return;
- const pool=[];CRISES.forEach(c=>{const w=c.w();for(let i=0;i<w;i++)pool.push(c)});
+ S.crisisSeen=S.crisisSeen||[];
+ let avail=CRISES.filter(c=>!S.crisisSeen.includes(c.k));if(avail.length<2){S.crisisSeen=[];avail=CRISES}
+ const pool=[];avail.forEach(c=>{const w=c.w();for(let i=0;i<w;i++)pool.push(c)});
  if(!pool.length)return;
- await runCrisis(pick(pool),mode);
+ const chosen=pick(pool);S.crisisSeen.push(chosen.k);
+ await runCrisis(chosen,mode);
  S.crisisCd=2;
 }
 
@@ -1524,7 +1547,7 @@ async function ordinanceItem(){
 /* ---------- city growth ---------- */
 const housingRatio=()=>S.housing/(S.pop/2.5);
 function trafficIdx(){
- let c=30+(S.pop-12000)/250-S.fund.pw*6;
+ let c=30+(S.pop-12000)/250-S.fund.pw*6+(S.annexT||0);
  S.projects.forEach(p=>{
   if(p.stage===OPER)c+=p.traffic*(.5+p.sizeF*1.2);else if(p.stage===2)c+=p.traffic*.4;
   if(p.delivered&&p.delivered.road)c-=4;
@@ -1535,7 +1558,7 @@ function weeklyGrowth(){
  const jobs=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
  S.popPrev=S.pop;
  const target=12000+jobs*1.8+(S.housing-4800)*.6,room=housingRatio()<.9?.4:1;
- S.pop=Math.round(S.pop+(target-S.pop)*.05*room);
+ S.pop=Math.round(S.pop+(target-S.pop)*.05*room*(S.prio&&S.prio.k==='jobs'?1.5:1));
  const short=Math.max(0,.95-housingRatio());
  if(short>0)S.trust=clamp(S.trust-short*3);
  const cong=trafficIdx();
@@ -1623,14 +1646,15 @@ const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
 function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
  const k=S.pop/12000,rev=Math.round(2e8*k*rate/100/52+33000*k*(.9+S.trust/500));
  const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200;
- return{rev,exp,net:rev-exp};
+ const pk=S.prio&&S.prio.k;const exp2=Math.round(exp*(pk==='fiscal'?.93:1)+(pk==='infra'?12000:0));
+ return{rev,exp:exp2,net:rev-exp2};
 }
 const signMoney=v=>(v>=0?'+':'-')+money(Math.abs(v));
 function renderFin(){
  const el=$('#fin');if(!el)return;
  const f=finCalc(),lv=['Cut','Std','Boost'];
  const pt=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.tax/52*S.rate*.12,0);
- el.innerHTML=`<h3>City Finances</h3><table><tr><td>Property tax rate</td><td>${S.rate.toFixed(1)}%</td></tr><tr><td>Weekly revenue</td><td>${money(f.rev)}</td></tr>${pt>0?`<tr><td>Project taxes</td><td>+${money(pt)}</td></tr>`:''}<tr><td>Weekly expenses</td><td>${money(f.exp)}</td></tr><tr><td>Net per week</td><td style="color:${f.net+pt>=0?'var(--good)':'var(--bad)'}">${signMoney(f.net+pt)}</td></tr>${S.debt?`<tr><td>Bond debt</td><td>${money(S.debt)}</td></tr>`:''}</table><div class="mut" style="margin-top:6px;font-size:12px">${DEPTS.map(d=>`${d.name}: ${lv[S.fund[d.k]+1]}`).join(' &middot; ')}</div>`;
+ el.innerHTML=`<h3>City Finances</h3><table><tr><td>Property tax rate</td><td>${S.rate.toFixed(1)}%</td></tr><tr><td>Weekly revenue</td><td>${money(f.rev)}</td></tr>${pt>0?`<tr><td>Project taxes</td><td>+${money(pt)}</td></tr>`:''}<tr><td>Weekly expenses</td><td>${money(f.exp)}</td></tr><tr><td>Net per week</td><td style="color:${f.net+pt>=0?'var(--good)':'var(--bad)'}">${signMoney(f.net+pt)}</td></tr>${S.debt?`<tr><td>Bond debt</td><td>${money(S.debt)}</td></tr>`:''}</table><div class="mut" style="margin-top:6px;font-size:12px">${DEPTS.map(d=>`${d.name}: ${lv[S.fund[d.k]+1]}`).join(' &middot; ')}</div>${S.prio?`<div style="margin-top:6px;font-size:12px;color:var(--acc)">Priority: ${PRIOS.find(o=>o.k===S.prio.k).name} (${S.prio.weeks} weeks left)</div>`:''}`;
 }
 function weeklyFinance(){
  const f=finCalc(),L=S.fund;
@@ -1640,6 +1664,7 @@ function weeklyFinance(){
  if(S.trust>55)S.trust=clamp(S.trust-(S.trust-55)*.06);
  S.env=clamp(S.env+.08*L.parks);
  if(S.budget<0){S.budget-=Math.round(-S.budget*.01);S.defWeeks=(S.defWeeks||0)+1;if(S.defWeeks%2===0)adj('trust',-1,'unpaid bills')}else S.defWeeks=0;
+ if(S.prio){const k=S.prio.k;if(k==='green'){S.env=clamp(S.env+.3);S.dev=clamp(S.dev-.2)}else if(k==='jobs')S.env=clamp(S.env-.1);else if(k==='fiscal')S.trust=clamp(S.trust-.1);else if(k==='neigh'){S.trust=clamp(S.trust+.25);S.dev=clamp(S.dev-.2)}else if(k==='open')S.dev=clamp(S.dev+.3);S.prio.weeks--;if(S.prio.weeks<=0){minutes('Quarterly priority ended.');S.prio=null}}
  if(S.temp.weeks>0){S.temp.weeks--;if(S.temp.weeks<=0){S.temp.grid=0;S.temp.water=0}}
  if(S.austerity>0){S.austerity--;S.trust=clamp(S.trust-.2);if(S.austerity===0)minutes('State budget oversight has ended.','g')}
  hud();
@@ -1723,6 +1748,144 @@ async function budgetHearing(){
   minutes(`Budget passed (${yes}-${no}): ${cur.rate.toFixed(1)}% tax rate${cur.bond?', bond issued':''}.`,'g');
  }else{adj('trust',-2,'budget gridlock');minutes(`Budget failed (${yes}-${no}).`,'b')}
  hud();showAgenda(null);
+}
+
+/* ---------- new agenda items, festivals, quarterly priorities ---------- */
+const PRIOS=[
+ {k:'green',name:'A green quarter',desc:'Environment +0.3 a week. Developers grumble.'},
+ {k:'jobs',name:'A jobs push',desc:'Faster population growth. Slightly more strain on the environment.'},
+ {k:'fiscal',name:'Fiscal discipline',desc:'City expenses 7% lower. Trust drifts down a touch.'},
+ {k:'neigh',name:'Neighborhoods first',desc:'Trust +0.25 a week. Developers cool toward you.'},
+ {k:'infra',name:'Infrastructure blitz',desc:'Less grid and water strain. Costs $12K a week.'},
+ {k:'open',name:'Open for business',desc:'Developer goodwill rises each week. Incidents are a bit more likely.'}
+];
+async function stateOfCity(){
+ showAgendaCard('State of the City','Quarterly address and priority',[['Population',num(S.pop)],['Treasury',money(S.budget)],['Public trust',String(Math.round(S.trust))],['Environment',String(Math.round(S.env))]]);
+ await say('mayor',fresh('sc-i',['It is time for the quarterly State of the City address.','Before we begin, I would like to give the State of the City.','Every quarter we pause to take stock. Here is where Clifton stands.']));
+ const q=Math.floor((S.week-1)/12);
+ const r=housingRatio();
+ await say('clerk',`Population is ${num(S.pop)}. Housing supply is at ${Math.round(r*100)} percent of demand. The treasury holds ${money(S.budget)}, and ${S.projects.filter(p=>p.stage===OPER).length} approved projects are open for business.`);
+ await say('mayor',fresh('sc-m'+Math.min(q,3),[
+  'This quarter has tested us, and I believe we are stronger for it.',
+  'We have built, we have argued, and we have kept the lights on. Now let us decide what matters most next.',
+  'A good town does not drift. It chooses. I would like us to choose a priority for the next twelve weeks.']));
+ await silly(.4);
+ const opts=shuffle(PRIOS).slice(0,3).map(o=>({k:o.k,label:o.name,sub:o.desc}));
+ const k=await ask('Choose a priority for the next twelve weeks',opts);
+ const o=PRIOS.find(x=>x.k===k);
+ S.prio={k,weeks:12};
+ await say('mayor',`For the next quarter, our priority is clear: ${o.name.toLowerCase()}.`);
+ minutes(`Quarterly priority: ${o.name}.`,'g');hud();showAgenda(null);
+}
+async function annexation(){
+ const acres=ri(250,600),people=acres*4;
+ showAgendaCard('Annexation request',`${acres} acres east of Clifton`,[['New residents',`about ${num(people)}`],['Concerns','Roads, water, sprawl'],['Upside','More tax base']]);
+ await say('mayor',fresh('an-i',[`A landowner group is asking Clifton to annex ${acres} acres east of town.`,`Next, an annexation request: ${acres} acres on the east side.`]));
+ const A={...lookR(),sign:'ANNEX US',mood:'happy'},B={...lookR(),sign:'SAVE THE FARMS',mood:'angry'};
+ showCrowd([{...A,stance:'sup'},{...B,stance:'opp'}]);await sleep(AUTO?10:300);
+ await showSpeaker(A);await say(A,fresh('an-a',['My family has farmed that land for four generations, and the county will not give us water or roads. Please let Clifton take us in.','We pay county taxes and get nothing. Annex us, and we will be good neighbors.']));heckle('YEAH!','yes');await hideSpeaker();
+ await showSpeaker(B);await say(B,fresh('an-b',['Every acre you annex becomes a subdivision. Then a traffic jam. Then a tax hike.','Once those farms are gone, they are gone. Do not pave the east side.']));heckle('BOO!','no');await hideSpeaker();
+ await hideCrowd();
+ await say('jennings','Roads, pipes, police, and fire service for four hundred acres is not free. Somebody has to pay for all of it.');
+ const k=await ask('Annexation request',[{k:'yes',label:'Approve the annexation',sub:`Adds about ${num(people)} residents and tax base. More traffic.`,cls:'go'},{k:'fee',label:'Approve with an infrastructure fee',sub:'The landowners pay the city up front. Smaller upside.'},{k:'no',label:'Decline',sub:'Protects the farms. Developers will be annoyed.',cls:'stop'}]);
+ if(k==='no'){adj('trust',1);adj('dev',-2);adjRel('wong',3,'protected farmland');adjRel('bradley',-3,'');await say('mayor','The request is denied. Clifton will stay the size it is for now.')}
+ else{
+  S.pop+=people;S.housing+=Math.round(people/2.5);S.annexT=(S.annexT||0)+(k==='fee'?2:4);
+  if(k==='fee')addBudget(acres*500,'annexation fee');
+  adj('dev',k==='fee'?1:3);adj('trust',k==='fee'?1:-1);adj('env',-1);adjRel('bradley',3,'');adjRel('chen',-3,'');
+  await say('mayor','The annexation is approved. Welcome to Clifton.');
+  minutes(`Annexed ${acres} acres.`,'g');
+ }
+ hud();showAgenda(null);
+}
+async function unionContract(){
+ showAgendaCard('Public works union contract','Three-year agreement',[['Union ask','6 percent raise'],['City offer','3 percent'],['Cost of 6 percent','$90K']]);
+ await say('mayor',fresh('uc-i',['Next is the public works union contract.','The Public Works union contract is up for renewal.']));
+ await say('rodriguez',fresh('uc-r',['These crews keep the roads open and the water running. They deserve a raise that keeps up with rent.','My members are asking for six percent. That is not greedy. That is catching up.']));
+ await say('jennings','Six percent compounds. I would counter at three and sleep better at night.');
+ const k=await ask('Union contract',[{k:'yes',label:'Accept the 6 percent raise ($90K)',sub:'Rodriguez will be thrilled.',cls:'go'},{k:'counter',label:'Counter at 3 percent',sub:'A gamble. It could go quietly or end in a slowdown.'},{k:'no',label:'Reject the proposal',sub:'Hard line. A slowdown is likely.',cls:'stop'}]);
+ if(k==='yes'){addBudget(-90000,'union raise');adjRel('rodriguez',8,'');adjRel('jennings',-3,'');await say('mayor','We have a deal.')}
+ else if(k==='counter'){
+  if(Math.random()<.55){adj('trust',1);adjRel('rodriguez',1,'');await say('mayor','The union accepted the counteroffer, with a little grumbling.')}
+  else{adj('trust',-3,'work slowdown');adjRel('rodriguez',-5,'');S.temp.water=Math.max(S.temp.water,8);S.temp.weeks=Math.max(S.temp.weeks,3);await say('mayor','The union rejected it. Crews are working to rule, and repairs are slow.')}
+ }else{
+  adjRel('rodriguez',-8,'');adj('trust',-2);
+  if(Math.random()<.5){adj('trust',-3,'work slowdown');S.temp.water=Math.max(S.temp.water,10);S.temp.weeks=Math.max(S.temp.weeks,4);await say('mayor','The union is staging a slowdown, and the potholes are piling up.')}
+  else await say('mayor','The proposal is rejected. The union says it will be back.');
+ }
+ hud();showAgenda(null);
+}
+async function landmark(){
+ showAgendaCard('Landmark designation','The old Dunmore Mill',[['Built','1887'],['Status','Vacant for 30 years'],['Effect','Protects it from demolition']]);
+ await say('mayor',fresh('lm-i',['The Historical Society wants the old Dunmore Mill designated a landmark.','Next, a landmark designation for the old Dunmore Mill.']));
+ const H={...lookR(),sign:'SAVE THE MILL',mood:'happy'};
+ showCrowd([{...H,stance:'sup'}]);await sleep(AUTO?10:300);
+ await showSpeaker(H);await say(H,fresh('lm-h',['That mill built this town. Tear it down, and you tear out its heart.','There is a developer circling that site. Please protect it before it is too late.']));heckle('YEAH!','yes');await hideSpeaker();await hideCrowd();
+ await say('bradley','It is a rotting pile of bricks. A developer would turn it into jobs and tax base tomorrow.');
+ const k=await ask('Landmark designation',[{k:'yes',label:'Designate it a landmark',sub:'Trust up, developers cool. Chen and Wong approve.',cls:'go'},{k:'facade',label:'Preserve the facade only ($40K)',sub:'A compromise. Costs the city a little.'},{k:'no',label:'Deny the designation',sub:'Developers cheer. Preservationists will not.',cls:'stop'}]);
+ if(k==='yes'){adj('trust',3);adj('dev',-4);adj('env',1);adjRel('chen',3,'');adjRel('wong',3,'');adjRel('bradley',-4,'');await say('mayor','The mill is now a designated landmark.')}
+ else if(k==='facade'){addBudget(-40000,'facade preservation');adj('trust',2);adj('dev',-1);await say('mayor','We will preserve the facade and let the rest be redeveloped.')}
+ else{adj('dev',2);adj('trust',-3);adjRel('wong',-4,'');adjRel('bradley',3,'');await say('mayor','The designation is denied.')}
+ showAgenda(null);
+}
+async function naming(){
+ const co=pick(DEVS);
+ showAgendaCard('Naming rights','New library wing',[['Offer','$150,000'],['Sponsor',co],['Name','The '+co+' Wing']]);
+ await say('mayor',fresh('nm-i',['We have an offer to name the new library wing.',`${co} has offered $150,000 for the naming rights to the new library wing.`]));
+ await say('wong','It is a library. Not a billboard.');
+ await say('jennings','One hundred fifty thousand dollars. I would put a name on a restroom for that.');
+ const k=await ask('Naming rights',[{k:'yes',label:'Accept the sponsorship ($150K)',sub:'Developer is delighted. Some will call it a conflict.',cls:'go'},{k:'teacher',label:'Name it after a beloved local teacher',sub:'Free. The town will love it.'},{k:'no',label:'Decline',sub:'Keeps the library free of logos.'}]);
+ if(k==='yes'){addBudget(150000,'naming rights');adj('dev',4);adj('trust',-2);adj('corrupt',2,'sponsor conflict');adjRel('wong',-4,'');adjRel('jennings',3,'');await say('mayor',`The ${co} Wing it is.`)}
+ else if(k==='teacher'){adj('trust',3);adjRel('wong',3,'');await say('mayor','The new wing will be named for Mrs. Eleanor Haskell, who taught three generations of Clifton children to read.')}
+ else{adj('trust',1);await say('mayor','We will leave the library unbranded.')}
+ showAgenda(null);
+}
+async function bondMeasure(){
+ showAgendaCard('Bond measure','Library and parks',[['Amount','$2,000,000'],['Campaign cost','$15K'],['Decided by','Voters']]);
+ await say('mayor',fresh('bm-i',['The council may place a $2 million library and parks bond on the ballot.','Next, whether to put a library and parks bond before the voters.']));
+ await say('wong','Our parks have not seen real investment since I was in high school.');
+ await say('jennings','Two million dollars of new debt. I will want an exit plan for every dollar of it.');
+ const opts=[];if(S.budget>=15000)opts.push({k:'yes',label:'Put it on the ballot ($15K campaign)',sub:'Voters decide. Your trust and parks funding help.',cls:'go'});
+ opts.push({k:'no',label:'Skip the measure',sub:'No risk, no reward.'});
+ const k=await ask('Bond measure',opts);
+ if(k==='no'){await say('mayor','We will not put it on this ballot.');showAgenda(null);return}
+ addBudget(-15000,'bond campaign');
+ const chance=clamp(.3+S.trust/160+S.fund.parks*.05,.15,.85),pass=Math.random()<chance,pct=pass?ri(52,66):ri(36,48);
+ await say('mayor',`The votes are in. The bond measure ${pass?'passes':'fails'}, ${pct} percent to ${100-pct}.`);
+ if(pass){addBudget(2000000,'bond proceeds');S.debt+=2000000;adj('trust',4);adj('env',2,'new parks');adjRel('wong',5,'');adjRel('jennings',-4,'');minutes('Voters passed the $2M library and parks bond.','g')}
+ else{adj('trust',-3);adjRel('wong',-2,'');minutes('Voters rejected the library and parks bond.','b')}
+ hud();showAgenda(null);
+}
+const FESTIVALS=[
+ {t:'Founders Day parade',intro:'Founders Day is coming up, and the parade committee wants to know how big to go.',opts:[
+  {label:'Fund the full parade ($25K)',cost:25000,trust:3,lines:['The marching band was only slightly out of tune.','A fire truck honked all the way down Main Street, and the children lost their minds.']},
+  {label:'Hold a modest parade ($8K)',cost:8000,trust:1,lines:['A small but dignified parade. A dog stole the show.','The parade was short and sweet, and the dog in the tiny top hat got the biggest cheer.']},
+  {label:'Cancel it and save the money',trust:-3,lines:['Residents mutter that the town is losing its spirit.','The parade committee has been writing letters to the Courier all week.']}]},
+ {t:'Summer concert series',intro:'The parks department is asking about a summer concert series on the green.',opts:[
+  {label:'Fund the full series ($20K)',cost:20000,trust:3,lines:['Hundreds of people came out with picnic blankets, and Rodriguez danced.','The concerts are a hit. Only one resident complained about the tuba.']},
+  {label:'Let a local developer sponsor it',dev:3,trust:1,lines:['The concerts are free, and the banners say PROUDLY BROUGHT TO YOU BY A DEVELOPER.','The sponsor\'s logo is slightly bigger than the band.']},
+  {label:'Skip it this year',trust:-2,lines:['It is a quiet summer on the green.','A few lawn chairs sit empty.']}]},
+ {t:'Harvest festival and farmers market',intro:'The farmers market is asking for help expanding the autumn harvest festival.',opts:[
+  {label:'Expand it downtown ($15K)',cost:15000,trust:3,env:1,lines:['The festival drew three thousand people, and the pumpkin pie contest ended in a tie that nearly became a lawsuit.','Downtown smelled like cider and cinnamon for a week.']},
+  {label:'Keep it at the park, free of charge',trust:1,lines:['The market was cozy and well attended.','The goat was back, and so was the line to pet it.']},
+  {label:'Charge vendors a new permit fee',gain:12000,trust:-2,lines:['Vendors grumbled, but the fees paid for a new sidewalk.','Two cheese vendors left in protest, then came back the next week.']}]},
+ {t:'Holiday tree lighting',intro:'It is time to plan the annual holiday tree lighting on the town square.',opts:[
+  {label:'Do it big, with a full light show ($12K)',cost:12000,trust:3,lines:['The lights were beautiful, until the circuit breaker tripped and the whole square went dark. The crowd sang through it.','The tree lit up, the crowd cheered, and a very small child told the mayor the tree was "okay."']},
+  {label:'Keep it simple ($4K)',cost:4000,trust:1,lines:['A tidy little tree and a warm cup of cocoa for everybody.','Nobody expected much, and everybody went home happy.']},
+  {label:'Skip it to save money',trust:-3,lines:['The square stays dark, and the Courier runs a sad photo of an empty bench.','Someone strung lights on the town square statue overnight. Nobody will admit to it.']}]}
+];
+const festKey=()=>{const s=Math.floor((S.week-1)/13),i=((S.week-1)%13);return i>=4?`${Math.floor(s/4)}-${s%4}`:null};
+async function festival(){
+ const s=Math.floor((S.week-1)/13)%4,f=FESTIVALS[s];
+ showAgendaCard(f.t,'Seasonal event',[['Season',['Spring','Summer','Autumn','Winter'][s]]]);
+ await say('mayor',f.intro);
+ const k=await ask(f.t,f.opts.map((o,i)=>({k:String(i),label:o.label,sub:o.cost?`Costs ${money(o.cost)}.`:o.gain?`Brings in ${money(o.gain)}.`:''})));
+ const o=f.opts[+k];
+ if(o.cost)addBudget(-o.cost,f.t.toLowerCase());if(o.gain)addBudget(o.gain,'fees');
+ adj('trust',o.trust||0);if(o.dev)adj('dev',o.dev);if(o.env)adj('env',o.env);
+ await say('clerk',pick(o.lines));
+ minutes(`${f.t}: ${o.label.replace(/ \(.*\)/,'')}.`);
+ showAgenda(null);
 }
 
 /* ---------- multi-item agenda ---------- */
@@ -1830,28 +1993,37 @@ async function variance(v){
  showAgenda(null);
 }
 function buildExtras(){
- const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],usedP=new Set(),usedV=new Set(),canOrd=ORDS.some(o=>!S.ords.includes(o.k));
+ const n=S.week<=3?1:(Math.random()<.5?2:1),out=[],canOrd=ORDS.some(o=>!S.ords.includes(o.k));
  if(canOrd&&S.week%12===5)out.push({k:'ord',t:'Ordinance workshop'});
+ const fk=festKey();if(fk&&!S.fests.includes(fk)){S.fests.push(fk);out.push({k:'fest',t:FESTIVALS[Math.floor((S.week-1)/13)%4].t})}
+ const NEWITEMS=[{k:'annex',t:'Annexation request',f:annexation,w:S.week>=7},{k:'union',t:'Public works union contract',f:unionContract,w:S.week>=5},{k:'landmark',t:'Landmark designation',f:landmark,w:true},{k:'naming',t:'Naming rights offer',f:naming,w:true},{k:'bond',t:'Library and parks bond measure',f:bondMeasure,w:S.week>=9}];
  for(let i=0;i<n;i++){
   const r=Math.random();
-  if(r<.42){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
-  else if(r<.7){const pt=pick(PETITIONS.filter(x=>!usedP.has(x.t)));usedP.add(pt.t);out.push({k:'pet',pt,t:`Petition: ${pt.t}`})}
-  else if(r<.88||!canOrd||out.some(e=>e.k==='ord')){const v=pick(VARIANCES.filter(x=>!usedV.has(x.t)));usedV.add(v.t);out.push({k:'var',v,t:`Variance: ${v.t}`})}
-  else out.push({k:'ord',t:'Ordinance workshop'});
+  if(r<.34){let p=genProject();for(let k=0;k<40&&p.cost>2.5e7;k++)p=genProject();out.push({k:'minor',p,t:`${p.type.name} (${money(p.cost)})`})}
+  else if(r<.54){const pt=fresh('pet',PETITIONS);out.push({k:'pet',pt,t:`Petition: ${pt.t}`})}
+  else if(r<.7){const v=fresh('var',VARIANCES);out.push({k:'var',v,t:`Variance: ${v.t}`})}
+  else if(r<.8&&canOrd&&!out.some(e=>e.k==='ord'))out.push({k:'ord',t:'Ordinance workshop'});
+  else{
+   S.itemsSeen=S.itemsSeen||[];
+   let avail=NEWITEMS.filter(x=>x.w&&!S.itemsSeen.includes(x.k));if(!avail.length){S.itemsSeen=[];avail=NEWITEMS.filter(x=>x.w)}
+   const it=pick(avail);S.itemsSeen.push(it.k);out.push({k:'new',f:it.f,t:it.t});
+  }
  }
  return out;
 }
 async function runAgenda(){
- const extras=buildExtras(),p=S.agenda,hearing=S.week%6===1;
- S.items=[...(hearing?[{t:'Quarterly budget hearing',done:false}]:[]),...extras.map(e=>({t:e.t,done:false})),{t:`${p.type.name} (${money(p.cost)}), main item`,done:false}];
+ const extras=buildExtras(),p=S.agenda,hearing=S.week%6===1,state=S.maxWeeks>20&&S.week>1&&S.week%12===1;
+ S.items=[...(state?[{t:'State of the City address',done:false}]:[]),...(hearing?[{t:'Quarterly budget hearing',done:false}]:[]),...extras.map(e=>({t:e.t,done:false})),{t:`${p.type.name} (${money(p.cost)}), main item`,done:false}];
  showAgenda(p);
  if(S.budget<0)await say('clerk',fresh('ag-def',['Mayor, the treasury is overdrawn. Vendors are waiting on payment.','Mayor, we are in the red. The bank is calling.']));
  await say('mayor',fresh('ag-intro',[`We have ${S.items.length} items on the agenda tonight. We will take the smaller matters first and finish with the ${p.type.name}.`,`${S.items.length} agenda items tonight. Let us move through them in order.`,`A busy agenda tonight: ${S.items.length} items. We will start with the smaller ones.`]));
- const off=hearing?1:0;
- if(hearing){await budgetHearing();S.items[0].done=true}
+ const off=(hearing?1:0)+(state?1:0);
+ let si=0;
+ if(state){await stateOfCity();S.items[si++].done=true}
+ if(hearing){await budgetHearing();S.items[si++].done=true}
  for(let i=0;i<extras.length;i++){
   const e=extras[i];
-  if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else if(e.k==='ord')await ordinanceItem();else await variance(e.v);
+  if(e.k==='minor')await minorProject(e.p);else if(e.k==='pet')await petition(e.pt);else if(e.k==='ord')await ordinanceItem();else if(e.k==='fest')await festival();else if(e.k==='new')await e.f();else await variance(e.v);
   S.items[i+off].done=true;
  }
  await say('mayor',fresh('ag-main',['Now to the main item of the evening.','That brings us to the main item tonight.','Finally, the item many of you came here for.']));
