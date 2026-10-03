@@ -3,12 +3,12 @@ Writes dist/itch-free/ and dist/itch-full/ (folders for butler) plus a zip of ea
 The EDITION constant in index.html is stamped as 'free' (12-week term, locked extras) or 'full' (everything).
 itch.io HTML5 games need index.html at the root.
 Usage: python tools/build_itch.py [free|full|both]   (default: both)"""
-import os, shutil, sys, zipfile
+import os, re, shutil, sys, zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "dist")
 FILES = ["index.html", "how-to-play.html"]
-MARK = "const EDITION='dev'"
+MARK = re.compile(r"const EDITION='[a-z]+'")
 
 def build(edition):
     folder = os.path.join(OUT, "itch-" + edition)
@@ -20,9 +20,9 @@ def build(edition):
         dst = os.path.join(folder, name)
         if name == "index.html":
             text = open(src, encoding="utf-8", newline="").read()
-            if MARK not in text:
+            if not MARK.search(text):
                 sys.exit("EDITION marker not found in index.html")
-            open(dst, "w", encoding="utf-8", newline="").write(text.replace(MARK, "const EDITION='%s'" % edition, 1))
+            open(dst, "w", encoding="utf-8", newline="").write(MARK.sub("const EDITION='%s'" % edition, text, count=1))
         else:
             shutil.copy(src, dst)
     target = os.path.join(OUT, "municipality-tycoon-%s.zip" % edition)

@@ -361,8 +361,8 @@ const AUTO=/[?&]auto=1/.test(location.search);
 const SPEED=AUTO?1:16;
 
 /* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
-/* EDITION is stamped by tools/build_itch.py: 'free' (12-week) or 'full' (everything). 'dev' leaves everything unlocked. */
-const EDITION='dev',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full';
+/* EDITION is stamped by tools/build_itch.py: 'free' (12-week) or 'full' (everything). 'dev' leaves everything unlocked. The source ships as 'free' so GitHub Pages serves the free edition. */
+const EDITION='free',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full';
 const GATING=EDITION==='free',LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
 const FREE_FEATURES=['quick'];
 const fnv=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36).toUpperCase()};
