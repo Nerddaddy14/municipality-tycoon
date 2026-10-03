@@ -941,7 +941,7 @@ function gridEv(p,gl){
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
  const bar=(v,l,t)=>`<div style="margin:6px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${l}</span><b style="color:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}">${v}%</b></div><div class="stat" style="padding:0;min-width:0"><div class="bar"><i style="width:${Math.min(v,100)}%;background:${v>=90?'var(--bad)':v>=75?'var(--acc)':'var(--good)'}"></i></div></div><div class="mut" style="font-size:11px">${t}</div></div>`;
- $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
+ $('#sys').innerHTML=`<h3>City Systems</h3>${bar(g,'Power grid load',g>=72?'Strained: blackout risk':'Healthy')}${bar(w,'Water system draw',w>=75?'High: main-break risk':'Healthy')}${bar(Math.round(100-STR()),'Street wear','')}${S.probe?`<div class="mut" style="margin-top:6px;font-size:12px">Ethics probe open: ${S.probe.title.toLowerCase()} (finding due week ${S.probe.due})</div>`:''}${bar(Math.min(sewerLoad(),130),'Sewer plant load','')}${bar(Math.min(trashPct(),130),'Landfill filled','')}`;
 }
 function renderProjects(){
  const el=$('#projs');
@@ -1200,6 +1200,161 @@ async function leakScene(l){
   for(const c of cs){await showSpeaker(c);await say(c,c.text);heckle('BOO!');await hideSpeaker()}
   await hideCrowd();
  }
+}
+/* ---------- expanded scandals: a dozen kinds, responses, and ethics probes ---------- */
+let _ethics=null,_rep=null;
+const ethicsChair=()=>_ethics||(_ethics={...lookPro(),name:'Harold Vandenberg',role:'Chair, County Ethics Board',color:'#5a4a7a',suit:'#3d3d46',hair:'#cfcfcf',hs:'balding'});
+const scandalRep=()=>_rep||(_rep={name:'Dana Whitfield',role:'Clifton Courier reporter',color:'#8a2b2b',...look(),sign:'PRESS'});
+const SCANDALS=[
+ {k:'junket',kind:'mayor',title:'The paid conference trip',w:()=>S.dev>=65?3:(S.stats.perks||0)>=1?2:0,guilt:()=>clamp(.5+(S.stats.perks||0)*.05,0,.85),
+  report:()=>`Mayor, the Courier has records showing ${pick(DEVS)} paid for your hotel and airfare at the state municipal league conference. Did you report it?`,react:[['chen','If a developer paid for it, the council should have been told.'],['bradley','Conferences are expensive. Everybody knows that.']],head:'MAYOR\'S CONFERENCE TRIP PAID FOR BY DEVELOPER',sub:'Records show a developer covered the hotel and airfare. The mayor says nothing improper took place.'},
+ {k:'donors',kind:'mayor',title:'The campaign donors',w:()=>S.dev>=60?3:1,guilt:()=>clamp(.35+((S.stats.bribes||0)>0?.3:0),0,.85),
+  report:()=>'Mayor, campaign finance reports show four of your five biggest donors are developers with projects before this council. Is that a coincidence?',react:[['wong','I have been saying this for months.'],['jennings','Legal donations are legal. I would still like to see the receipts.']],head:'MAYOR\'S TOP DONORS ARE DEVELOPERS',sub:'Four of five major contributors have projects before the council. The mayor calls it a coincidence.'},
+ {k:'ethics',kind:'mayor',title:'The recusal complaint',w:()=>S.stats.approved>=3?2:0,guilt:()=>.35,
+  report:()=>`Mayor, a resident filed an ethics complaint saying you voted on a project after a private meeting with the applicant. Why did you not recuse yourself?`,react:[['wong','A private meeting and then a vote? That does not sit right.'],['rodriguez','We all take meetings. That is the job.']],head:'ETHICS COMPLAINT FILED AGAINST MAYOR',sub:'A resident says the mayor should have recused from a vote after a private meeting. The mayor disagrees.'},
+ {k:'recording',kind:'mayor',title:'The leaked recording',w:()=>(S.stats.bribes||0)>=1?4:0,guilt:()=>.85,
+  report:()=>'Mayor, somebody sent the Courier an audio recording from a closed-door meeting. On it, a voice that sounds like yours says, "Let us keep this between us." Is that you?',react:[['chen','That is a voice I have heard at every meeting for six months.'],['jennings','Without a transcript, I would not draw conclusions. With a transcript, I might.']],head:'RECORDING FROM CLOSED-DOOR MEETING SURFACES',sub:'A voice resembling the mayor can be heard asking for secrecy. The mayor has not confirmed it is theirs.'},
+ {k:'cousin',kind:'mayor',title:'The no-bid contract',w:()=>S.week>=6?2:0,guilt:()=>.6,
+  report:()=>'Mayor, records show a sixty-four-thousand-dollar no-bid repaving contract went to Kowalski and Sons Paving. That is your cousin\'s company. Did you know?',react:[['jennings','No-bid. For sixty-four thousand dollars. I would like a word with Procurement.'],['bradley','Family businesses are the backbone of this town.']],head:'NO-BID PAVING CONTRACT WENT TO MAYOR\'S COUSIN',sub:'A $64,000 repaving job went to Kowalski and Sons Paving, owned by a relative of the mayor.'},
+ {k:'vehicle',kind:'mayor',title:'The city vehicle',w:()=>1,guilt:()=>.45,
+  report:()=>'Mayor, the city vehicle assigned to your office logged three thousand miles last month, including weekend trips to the lake. Was that official business?',react:[['rodriguez','The lake is a very official place, depending on who you ask.'],['wong','If the city pays for the gas, the city should know where it goes.']],head:'MAYOR\'S CITY CAR LOGGED WEEKEND LAKE TRIPS',sub:'Mileage records show 3,100 miles in a month. The mayor says some of it was official.'},
+ {k:'sunshine',kind:'body',title:'The group text',w:()=>S.week>=8?2:0,guilt:()=>.6,
+  report:()=>'Mayor, phone records suggest several council members texted each other about a vote before the meeting. That may violate the Open Meetings Act. Is this council deciding things in secret?',react:[['chen','I texted a heart emoji. I do not see how that is a vote.'],['bradley','It was a scheduling question, mostly.']],head:'COUNCIL TEXTS ABOUT VOTE RAISE OPEN MEETINGS QUESTIONS',sub:'Phone records suggest members discussed a vote before the meeting. The council says it was scheduling.'},
+ {k:'expenses',kind:'member',who:'bradley',title:'The expense reports',w:()=>1,guilt:()=>.55,
+  report:()=>'Mayor, Councilmember Cashmore billed the city for a four-hundred-twelve-dollar steak dinner and a tuxedo rental. Does this council need new expense rules?',react:[['bradley','The tuxedo was for the Chamber gala. I was representing the city.'],['jennings','A tuxedo. I have never bought a tuxedo in my life.']],head:'CASHMORE CHARGED CITY FOR STEAK DINNER AND TUXEDO',sub:'Expense reports show a $412 dinner and a formalwear rental. Cashmore says he was representing the city.'},
+ {k:'nephew',kind:'member',who:'rodriguez',title:'The nephew',w:()=>1,guilt:()=>.5,
+  report:()=>'Mayor, Councilmember Hammerstein\'s nephew was hired by the contractor that just won a city road resurfacing deal. Is that a coincidence?',react:[['rodriguez','He is a good kid and a good worker. That is all.'],['jennings','Let me look at who the contractor bid against.']],head:'HAMMERSTEIN\'S NEPHEW HIRED BY CITY CONTRACTOR',sub:'The contractor won a road resurfacing deal weeks before the hire. Hammerstein says he had no involvement.'},
+ {k:'code',kind:'member',who:'wong',title:'The code complaints',w:()=>1,guilt:()=>.45,
+  report:()=>'Mayor, Councilmember Porchlight filed three code complaints against a neighbor she is feuding with, and the city fast-tracked all of them. Is that an abuse of office?',react:[['wong','Her fence was four inches over the line. I measured it myself.'],['chen','Four inches is a legal matter, not a feud. I hope.']],head:'PORCHLIGHT\'S COMPLAINTS AGAINST NEIGHBOR FAST-TRACKED',sub:'Three code complaints were processed within days. Porchlight says the fence was over the line.'},
+ {k:'ledger',kind:'member',who:'jennings',title:'The double payment',w:()=>1,guilt:()=>.5,
+  report:()=>'Mayor, Councilmember Ledgerwood, the council\'s accountant, approved a one-hundred-twenty-thousand-dollar payment twice. Nobody caught it for four months.',react:[['jennings','The error was in a vendor file. I have since added a second signature.'],['bradley','It happens. Not to him, usually, but it happens.']],head:'LEDGERWOOD APPROVED $120,000 PAYMENT TWICE',sub:'The duplicate payment went unnoticed for four months. Ledgerwood says he has tightened controls.'},
+ {k:'grant',kind:'member',who:'chen',title:'The research grant',w:()=>1,guilt:()=>.4,
+  report:()=>'Mayor, Councilmember Pondwater\'s lab received a research grant from a developer with a project before the council. Should she have recused?',react:[['chen','The grant paid for a creek study. It has nothing to do with the vote.'],['bradley','Funny. I thought only business owners had conflicts.']],head:'PONDWATER LAB TOOK DEVELOPER GRANT',sub:'The research grant came from a developer with an item pending. Pondwater says the study was independent.'},
+ {k:'whistle',kind:'staff',title:'The demoted worker',w:()=>(S.fund.pw<0||S.austerity>0)?3:1,guilt:()=>.5,
+  report:()=>'Mayor, a Public Works employee says he was demoted after reporting unsafe equipment. His union says it was retaliation. What do you say to him?',react:[['rodriguez','If he was demoted for reporting a safety problem, that is a problem for every worker in this town.'],['jennings','Let me see the personnel file before anyone judges.']],head:'PUBLIC WORKS WORKER SAYS HE WAS DEMOTED FOR SPEAKING UP',sub:'The employee reported unsafe equipment before a demotion. His union calls it retaliation.'},
+ {k:'kickback',kind:'staff',title:'The vendor dinner',w:()=>(S.pwEquip||0)>0?3:0,guilt:()=>.4,
+  report:()=>'Mayor, the vendor that sold the city its new equipment also paid for a dinner with the Public Works Director. Was the purchase tainted?',react:[['jennings','I want every invoice, every quote and every dinner receipt on my desk.'],['rodriguez','Marlene runs a clean shop. I would bet my pension on that.']],head:'EQUIPMENT VENDOR PAID FOR DINNER WITH PUBLIC WORKS DIRECTOR',sub:'The vendor won a city equipment purchase weeks before the dinner. The Director says it was a working lunch.'}
+];
+const SC_OPTS={
+ mayor:[
+  {k:'clean',label:'Come clean and apologize',sub:'Painful now. Limits the damage.'},
+  {k:'deny',label:'Deny it',sub:'Works only if it is not true enough.',cls:'stop'},
+  {k:'probe',label:'Ask the county ethics board to review ($20K)',sub:'A neutral finding in a few weeks. Costs money and a little trust now.'},
+  {k:'blame',label:'Blame staff or a paperwork mistake',sub:'Risky. It can look like passing the buck.'},
+  {k:'attack',label:'Attack the story as political',sub:'A gamble. Voters sometimes rally. Sometimes not.'}],
+ member:[
+  {k:'censure',label:'Censure the councilmember',sub:'A strong signal. They will not forgive you.'},
+  {k:'defend',label:'Defend the councilmember',sub:'Loyalty has a price if the story is true.'},
+  {k:'probe',label:'Send it to the ethics board ($15K)',sub:'A neutral finding in a few weeks.'},
+  {k:'quiet',label:'Stay out of it',sub:'Keeps your hands clean. Looks weak.'}],
+ body:[
+  {k:'policy',label:'Adopt a texting and meeting policy ($5K)',sub:'Training and new rules. Credible and cheap.'},
+  {k:'clean',label:'Admit it and promise to do better',sub:'Honest. A little embarrassing.'},
+  {k:'deny',label:'Deny it',sub:'Works only if it is not true enough.',cls:'stop'},
+  {k:'probe',label:'Ask the ethics board to review ($15K)',sub:'A neutral finding in a few weeks.'}],
+ staff:[
+  {k:'fix',label:'Order an outside audit and reform ($15K)',sub:'Slow and thorough. Builds trust.'},
+  {k:'settle',label:'Quietly settle ($40K)',sub:'Makes it go away. It can look like a cover-up.'},
+  {k:'fight',label:'Back the department and fight it',sub:'Loyal. Risky if it is true.',cls:'stop'}]
+};
+function scandalSubject(sc){return sc.kind==='mayor'?'the mayor':sc.kind==='body'?'the council':sc.kind==='member'?CAST[sc.who].short:'Public Works'}
+async function scandalResolve(sc,k){
+ const g=sc.guilt(),mem=sc.who,subj=scandalSubject(sc),story=(h,sub,trust,mood)=>queueStory({h,sub,who:mem||'mayor',mood:mood||'angry',trust:trust||0,kind:'scandal',min:'The Courier followed up on the '+sc.title.toLowerCase()+'.'});
+ S.stats.scandals=(S.stats.scandals||0)+1;
+ if(sc.kind==='mayor'){
+  if(k==='clean'){await say('mayor','It is true, and I am sorry. I will cooperate with any review.');adj('trust',-Math.round(2+5*g),'came clean');adj('corrupt',-6,'came clean');adj('dev',-Math.round(2*g))}
+  else if(k==='deny'){
+   if(Math.random()<(1-g)*.8+.1){await say('mayor','That story is wrong, and I will not dignify it with more words.');adj('trust',-1);adj('corrupt',-2);minutes('The '+sc.title.toLowerCase()+' story fizzled.','g')}
+   else{await say('mayor','That story is wrong.');await say('clerk','Mayor, the reporter has posted the documents.');adj('trust',-Math.round(7+9*g),'caught denying');adj('corrupt',Math.round(6+6*g));story('MAYOR DENIED IT. THE RECORDS SAY OTHERWISE.','Documents obtained by the Courier appear to contradict the mayor\'s denial of the '+sc.title.toLowerCase()+'.',-2)}
+  }
+  else if(k==='probe'){addBudget(-20000,'ethics review');S.probe={k:sc.k,title:sc.title,due:S.week+4,guilt:g,who:'mayor'};adj('trust',-1);await say('mayor','I have asked the county ethics board to review this. I will abide by their finding.')}
+  else if(k==='blame'){
+   if(Math.random()<.45){await say('mayor','This was a paperwork mistake in a department I oversee, and I take responsibility for fixing it.');adj('trust',-2)}
+   else{await say('mayor','This was a staff error.');await say('clerk','Mayor, staff say they were following your instructions.');adj('trust',-Math.round(7+4*g),'blamed staff');adj('corrupt',4);story('MAYOR BLAMES STAFF; STAFF DISAGREE','City employees told the Courier they acted on the mayor\'s direction in the '+sc.title.toLowerCase()+'.',-1)}
+  }
+  else{
+   if(Math.random()<.35+(S.trust-50)/200-g*.15){await say('mayor','This is a political hit job, and I will not be intimidated by it.');adj('trust',3,'rallied');adj('corrupt',2)}
+   else{await say('mayor','This is a political hit job.');adj('trust',-Math.round(5+5*g));story('MAYOR LASHES OUT AT COURIER','The mayor called the '+sc.title.toLowerCase()+' story a hit job. Critics say that is not an answer.',-1)}
+  }
+ }else if(sc.kind==='member'){
+  const bad=g>.45;
+  if(k==='censure'){adjRel(mem,-10,'censured');adj('trust',bad?3:-1);adj('corrupt',-2);await say('mayor',`I am asking the council to censure ${CAST[mem].short}. No one is above the rules.`)}
+  else if(k==='defend'){adjRel(mem,8,'defended');adj('trust',bad?-3:1);adj('corrupt',Math.round(4*g));await say('mayor',`I stand by ${CAST[mem].short}. I have known this councilmember for years.`)}
+  else if(k==='probe'){addBudget(-15000,'ethics review');S.probe={k:sc.k,title:sc.title,due:S.week+4,guilt:g,who:mem};adjRel(mem,-2);adj('trust',1);await say('mayor','I am referring this to the county ethics board. We will wait for their finding.')}
+  else{adjRel(mem,-2);adj('trust',bad?-2:-1);await say('mayor','This is a matter for the councilmember. I will not comment.')}
+  if(k!=='probe'&&k!=='quiet'&&Math.random()<.5)story(`${lastName(mem)} ${k==='censure'?'CENSURED OVER':'DEFENDED BY MAYOR IN'} ${sc.title.toUpperCase()}`,`The ${sc.title.toLowerCase()} question remains unresolved. Residents are watching.`,0,'neutral');
+ }else if(sc.kind==='body'){
+  if(k==='policy'){addBudget(-5000,'meeting policy');adj('trust',2);adj('corrupt',-3);S.stats.cleared=(S.stats.cleared||0)+0;await say('mayor','We are adopting a written policy on texting and meetings, with training for every member.')}
+  else if(k==='clean'){adj('trust',-2);adj('corrupt',-2);await say('mayor','Members texted each other about a vote. That should not happen again, and I apologize for it.')}
+  else if(k==='deny'){
+   if(Math.random()<(1-g)*.7+.1){await say('mayor','There was no vote outside of a public meeting, and the council is moving on.');adj('trust',-1)}
+   else{await say('mayor','There was no vote outside of a public meeting.');adj('trust',-7);adj('corrupt',4);story('COUNCIL TEXTS TELL A DIFFERENT STORY','Messages obtained by the Courier show members discussing how they would vote.',-2)}
+  }
+  else{addBudget(-15000,'ethics review');S.probe={k:sc.k,title:sc.title,due:S.week+4,guilt:g,who:'body'};adj('trust',1);await say('mayor','I am asking the ethics board to look at this. The council will cooperate.')}
+ }else{
+  if(k==='fix'){addBudget(-15000,'outside audit');adj('trust',3,'reform');adj('dev',-1);adj('corrupt',-3);await say('mayor','I am ordering an outside audit and a review of how Public Works handles complaints.');if(sc.k==='whistle')S.stats.protected=(S.stats.protected||0)+1}
+  else if(k==='settle'){addBudget(-40000,'settlement');adj('trust',-1);adj('corrupt',-2);await say('mayor','The city has reached a quiet agreement with the employee.');if(Math.random()<.4)story('CITY SETTLES WITH WORKER; DETAILS SEALED','Sources say the city paid $40,000 and the employee signed a non-disclosure agreement.',-1)}
+  else{
+   if(Math.random()<1-g){await say('mayor','The department followed the rules, and we will say so in court if we have to.');adj('trust',1)}
+   else{await say('mayor','The department followed the rules.');adj('trust',-6);adj('corrupt',4);story('DEPARTMENT\'S DEFENSE UNRAVELS','Records the city turned over appear to support the complaint.',-1)}
+  }
+ }
+ minutes(`Scandal: ${sc.title}.`,'b');
+ S.scanSeen=(S.scanSeen||[]);
+}
+async function runScandal(sc){
+ const R=scandalRep();
+ banner('SCANDAL');sfx.alarm();
+ await say('mayor',sc.kind==='mayor'?'Before we begin, the press gallery has asked to be heard.':sc.kind==='member'?'Before we begin, a reporter has a question about a member of this council.':'Before we begin, the press gallery has a question for the council.');
+ await showSpeaker(R);await say(R,sc.report());await hideSpeaker();
+ for(const [id,t] of sc.react)await say(id,t);
+ const k=await ask(sc.title,SC_OPTS[sc.kind]);
+ await scandalResolve(sc,k);
+ S.scanCd=3;
+}
+async function probeResolve(){
+ const P=S.probe;S.probe=null;if(!P)return;
+ const E=ethicsChair(),mem=P.who&&CAST[P.who]?P.who:null,g=P.guilt;
+ await say('mayor','Before we begin, the chair of the county ethics board has asked to read a finding.');
+ sfx.alarm();banner('ETHICS FINDING');
+ await showSpeaker(E);
+ await say(E,`The board has completed its review of the ${P.title.toLowerCase()}.`);
+ const roll=Math.random();
+ if(roll>g){
+  await say(E,'We find no violation of the city\'s ethics code. The complaint is dismissed.');await hideSpeaker();
+  adj('trust',3,'cleared by the ethics board');adj('corrupt',-4);S.stats.cleared=(S.stats.cleared||0)+1;
+  if(mem&&P.who!=='mayor'&&P.who!=='body')adjRel(mem,5,'cleared');
+  queueStory({h:`ETHICS BOARD CLEARS ${P.who==='mayor'?'MAYOR':mem&&mem!=='body'?lastName(mem):'COUNCIL'}`,sub:`The county board found no violation in the ${P.title.toLowerCase()}. ${P.who==='mayor'?'The mayor said the finding speaks for itself.':'Officials said they were relieved.'}`,who:P.who==='mayor'||!mem?'mayor':mem,mood:'happy',trust:1,kind:'scandal',min:'The Courier reported the ethics board cleared the review.'});
+  minutes(`Ethics board cleared the ${P.title.toLowerCase()}.`,'g');
+ }else if(g>=.7||roll>g+(1-g)*.55){
+  await say(E,'We find a serious violation. We are referring the matter to the county attorney and recommending a fine.');await hideSpeaker();
+  adj('trust',-8,'ethics finding');adj('corrupt',Math.round(8+4*g));addBudget(-25000,'ethics fine');
+  if(mem&&P.who!=='mayor'&&P.who!=='body')adjRel(mem,-6,'ethics finding');
+  queueStory({h:`ETHICS BOARD FINDS VIOLATION IN ${P.title.toUpperCase()}`,sub:'The board referred the matter to the county attorney and recommended a fine. Calls for resignation are growing.',who:P.who==='mayor'||!mem||mem==='body'?'mayor':mem,mood:'angry',trust:-1.5,kind:'scandal',min:'The Courier reported a serious ethics finding.'});
+  minutes(`Ethics board found a violation in the ${P.title.toLowerCase()}.`,'b');
+ }else{
+  await say(E,'We find a minor violation and issue a written reprimand. No further action is recommended.');await hideSpeaker();
+  adj('trust',-3,'ethics reprimand');adj('corrupt',2);
+  if(mem&&P.who!=='mayor'&&P.who!=='body')adjRel(mem,-2,'reprimanded');
+  minutes(`Ethics board reprimanded in the ${P.title.toLowerCase()}.`,'b');
+ }
+ S.scanCd=3;
+}
+async function scandalSystem(){
+ if(S.corrupt>=100)return;
+ if(S.probe&&S.week>=S.probe.due){await probeResolve();return}
+ if(S.probe)return;
+ if(S.scanCd>0){S.scanCd--;return}
+ if(S.week<3)return;
+ const p=Math.min(.3,(.06+S.corrupt/400+(S.dev>70?.03:0))*(S.maxWeeks<=20?.8:1));
+ if(Math.random()>p)return;
+ S.scanSeen=S.scanSeen||[];
+ let pool=SCANDALS.filter(x=>x.w()>0&&!S.scanSeen.includes(x.k));if(!pool.length){S.scanSeen=[];pool=SCANDALS.filter(x=>x.w()>0)}
+ if(!pool.length)return;
+ const bag=[];pool.forEach(x=>{for(let i=0;i<x.w();i++)bag.push(x)});
+ const sc=pick(bag);S.scanSeen.push(sc.k);
+ await runScandal(sc);
+ queueStory({h:sc.head,sub:sc.sub,who:sc.who||'mayor',mood:'angry',trust:-1,kind:'scandal',min:'The Courier covered the '+sc.title.toLowerCase()+'.'});
 }
 async function scandalCheck(){
  if(S.corrupt>=100)return;
@@ -3402,6 +3557,9 @@ const ACHS=[
  {k:'festive',name:'Crowd Pleaser',desc:'Host four festivals or seasonal events.',test:()=>(S.stats.fests||0)>=4},
  {k:'regular',name:'Courier Regular',desc:'Appear on the Courier front page four times.',test:()=>(S.stats.paper||0)>=4},
  {k:'smooth',name:'Smooth Operator',desc:'End with a street condition score of 85 or more.',test:()=>STR()>=85},
+ {k:'teflon',name:'Teflon Mayor',desc:'Weather three scandals and still finish with 50 trust or more.',test:()=>(S.stats.scandals||0)>=3&&S.trust>=50},
+ {k:'cleared',name:'Cleared of Wrongdoing',desc:'Be cleared by the county ethics board.',test:()=>(S.stats.cleared||0)>=1},
+ {k:'protector',name:'Whistleblower Protector',desc:'Order an outside audit after a worker raises a complaint.',test:()=>(S.stats.protected||0)>=1},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -3437,7 +3595,7 @@ function ending(code){
  <p><b>Grade: ${grade}</b> &middot; Score ${sc2}${ok?` &middot; Population goal ${num(goal)}: ${met?'<span style="color:var(--good)">reached</span>':'<span style="color:var(--bad)">missed</span>'}`:''}</p>
  <h2>Clifton, then and now</h2>
  <table>${row('Population',num(12000),num(S.pop))}${row('Treasury',money(1500000),money(S.budget))}${row('Public trust',60,Math.round(S.trust))}${row('Environment',65,Math.round(S.env))}${row('Developer goodwill',50,Math.round(S.dev))}${row('Street condition',70,Math.round(STR()))}${row('Landfill',trashPct()>0?'38%':'',trashPct()+'%')}${row('Sewer plant load','34%',sewerLoad()+'%')}</table>
- <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}.</p>
+ <p class="mut">Projects: ${plist}. Jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)} &middot; incidents ${S.stats.incidents} &middot; Courier front pages ${S.stats.paper||0}${S.stats.scandals?` &middot; scandals weathered ${S.stats.scandals}`:''}.</p>
  <p class="mut">Developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal</p>
  <h2>Achievements${ok?` (${Object.keys(have).length} of ${ACHS.length} unlocked)`:''}</h2>
  ${ok?`<div class="achs">${ACHS.map(a=>{const e=earned.includes(a),nw=fresh_.includes(a),old=!e&&have[a.k];return `<div class="ach ${nw?'new':e||old?'':'off'}"><b>${e||old?a.name:'???'}${nw?' &middot; NEW':''}</b><small>${e||old?a.desc:'Locked'}</small></div>`}).join('')}</div>`:'<p class="mut">Finish a full term to earn achievements.</p>'}
@@ -3631,6 +3789,8 @@ async function runGame(){
     await recallStep();
     e=checkEnd();if(e)return ending(e);
     await scandalCheck();
+    e=checkEnd();if(e)return ending(e);
+    await scandalSystem();
     e=checkEnd();if(e)return ending(e);
     await cityBusiness();
     await memberMoment();
