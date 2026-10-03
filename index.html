@@ -564,7 +564,7 @@ function gridEv(p,gl){
   text:black?`Grid strain from the ${p.type.name} and other large loads tipped the system over. A ${ri(2,8)}-hour blackout hit ${num(hh)} households and a hospital switched to generators.`:`Rolling brownouts hit ${num(hh)} households as the grid ran at ${gl}% of capacity. The ${p.type.name} is the largest single load on the system.`,
   dev:black?'We followed our interconnect agreement. Honestly, the utility should have seen this coming.':'We coordinated with the utility, but demand came in higher than forecast.',
   env:black?4:2,fine:black?200000:80000,topic:'power',grid:1,
-  extra:{label:'Require a substation upgrade at their expense',sub:'Cuts their grid load by 40%.',dev:-8,trust:5,mult:.4,apply:p=>{p.sub=true}}};
+  extra:{label:'Require a substation upgrade at their expense',sub:'Cuts their grid load by 40%.',dev:-8,trust:2,mult:.4,apply:p=>{p.sub=true}}};
 }
 function renderSys(){
  const g=gridLoad(),w=Math.min(waterLoad(),130);
@@ -686,22 +686,22 @@ const EV=[
  {bad:1,st:[0,1],make:p=>({title:'Grading without a permit',text:`Bulldozers were spotted grading the ${p.type.name} site before the grading permit was issued.`,dev:'We assumed approval was a formality. We apologize for the misunderstanding.',env:2,fine:40000,topic:'nimby'})},
  {bad:1,st:[2],make:p=>({title:'Worker injured',text:`A worker was hospitalized at the ${p.type.name} site. Inspectors cited three safety violations and a missing guardrail.`,dev:'Safety is our number one priority. We are reviewing every procedure.',env:0,fine:50000,topic:'safety'})},
  {bad:1,st:[2,3,4],when:p=>p.water>=10000&&!p.fixedMain,make:p=>{const g=ri(3,15)*100000;return{title:'Water main break',text:`Pressure swings from the ${p.type.name}'s heavy draw burst a 24-inch main on ${pick(['Elm Street','Mill Road','Fourth Avenue','Quarry Lane'])}. ${num(ri(4,40)*100)} homes lost water and ${num(g)} gallons were lost.`,dev:'Our draw is within permitted limits, Mayor. Those are city pipes from the 1950s.',env:4,fine:90000,topic:'water',gal:g,
-  extra:{label:'Order developer to fund a new main (pressure fix)',sub:'They pay for replacement. Prevents repeat breaks.',dev:-8,trust:5,mult:.5,apply:p=>{p.fixedMain=true}}}}},
+  extra:{label:'Order developer to fund a new main (pressure fix)',sub:'They pay for replacement. Prevents repeat breaks.',dev:-8,trust:2,mult:.5,apply:p=>{p.fixedMain=true}}}}},
  {bad:1,st:[1,2,3,4],when:p=>p.water>=3000&&!p.metered,make:p=>{const g=ri(2,8)*100000;return{title:'Illegal water connection',text:`Inspectors found an unmetered, illegal tap on a city main feeding the ${p.type.name} site. An estimated ${num(g)} gallons were taken over several months.`,dev:'A contractor hooked up a temporary line. We did not know it was unmetered. Probably.',env:2,fine:120000,topic:'water',gal:g,
-  extra:{label:'Require metered, inspected connections (audit)',sub:'Closes the loophole for good.',dev:-6,trust:4,mult:.5,apply:p=>{p.metered=true}}}}},
+  extra:{label:'Require metered, inspected connections (audit)',sub:'Closes the loophole for good.',dev:-6,trust:1,mult:.5,apply:p=>{p.metered=true}}}}},
  {bad:1,st:[1,2],when:p=>p.traffic>=6,make:p=>({title:'Truck traffic',text:`Dump trucks tore up Elm Street and ran through the school zone twice yesterday.`,dev:'Our drivers took a detour. We will assign a flagger.',env:1,fine:30000,topic:'traffic'})},
  {bad:1,st:[1],when:p=>p.type.tags.includes('dust')||p.traffic>=8,make:p=>({title:'Dust cloud',text:`A dust cloud from the ${p.type.name} site drifted over two subdivisions. Dozens of asthma complaints so far.`,dev:'We are adding water trucks. It was a very dry week.',env:3,fine:30000,topic:'chem'})},
- {good:1,st:[1,2],when:p=>p.cost>=2e6,id:'road',make:p=>({title:'New access road',text:`The developer finished a brand-new ${ri(1,4)}.${ri(0,9)}-mile access road and opened it to the public.`,dev:'We believe in being good neighbors. The road is ours to give.',trust:3})},
- {good:1,st:[2,3,4],when:p=>p.cost>=5e6,id:'park',make:p=>({title:'New park',text:`The developer unveiled a new ${ri(4,25)}-acre park with trails, a playground and a pavilion.`,dev:'Come enjoy it! Families are what make a community.',trust:5,env:3})},
- {good:1,st:[2,3,4],when:p=>p.cost>=1e6,id:'school',make:p=>({title:'School donation',text:`The developer donated ${money(ri(2,10)*10000)} to the school district for a new computer lab.`,dev:'Education is the best investment we can make.',trust:3})},
+ {good:1,st:[1,2],when:p=>p.cost>=2e6,id:'road',make:p=>({title:'New access road',text:`The developer finished a brand-new ${ri(1,4)}.${ri(0,9)}-mile access road and opened it to the public.`,dev:'We believe in being good neighbors. The road is ours to give.',trust:2})},
+ {good:1,st:[2,3,4],when:p=>p.cost>=5e6,id:'park',make:p=>({title:'New park',text:`The developer unveiled a new ${ri(4,25)}-acre park with trails, a playground and a pavilion.`,dev:'Come enjoy it! Families are what make a community.',trust:4,env:3})},
+ {good:1,st:[2,3,4],when:p=>p.cost>=1e6,id:'school',make:p=>({title:'School donation',text:`The developer donated ${money(ri(2,10)*10000)} to the school district for a new computer lab.`,dev:'Education is the best investment we can make.',trust:2})},
  {good:1,st:[3,4],when:p=>p.cost>=2e7,id:'fire',make:p=>({title:'Fire engine donation',text:'The developer donated a new fire engine to the volunteer fire department.',dev:'First responders keep us all safe. It is the least we could do.',trust:3})},
  {good:1,st:[3,4],when:p=>p.jobs>=15,id:'jobfair',make:p=>({title:'Local job fair',text:`The developer hosted a job fair and hired ${ri(20,Math.max(21,Math.min(120,p.jobs)))} local residents on the spot.`,dev:'We want Clifton to build Clifton.',trust:3})},
  {good:1,st:[3,4],when:p=>p.cost>=1e7,id:'solar',make:p=>({title:'Solar canopy',text:'The developer installed a solar canopy over the library parking lot at no cost to the city.',dev:'A small thank-you for the warm welcome.',trust:2,env:3})},
  {good:1,st:[2,3,4],when:p=>p.cost>=3e7,id:'main',make:p=>({title:'Water main upgrade',text:`The developer replaced two miles of leaky water main, saving about ${num(ri(20,90)*1000)} gallons a day.`,dev:'Wasting water helps nobody. We fixed it.',trust:2,env:4})}
 ];
 const RESP=[
- {k:'fine',label:'Issue a fine',sub:'Collect the fine. Developer cools toward you. Residents see action.',mult:.6,dev:-6,trust:3},
- {k:'stop',label:'Stop-work order (1 week delay)',sub:'Hard line. Biggest environmental protection, biggest developer backlash.',mult:.2,dev:-14,trust:7},
+ {k:'fine',label:'Issue a fine',sub:'Collect the fine. Developer cools toward you. Residents see action.',mult:.6,dev:-6,trust:1},
+ {k:'stop',label:'Stop-work order (1 week delay)',sub:'Hard line. Biggest environmental protection, biggest developer backlash.',mult:.2,dev:-14,trust:3},
  {k:'forgive',label:'Accept their apology',sub:'Developer is relieved. Residents will not be.',mult:1,dev:6,trust:-6}
 ];
 
@@ -788,14 +788,14 @@ async function projectUpdates(mode){
   if(p.curtail>0)p.curtail--;
   if(p.watch>0)p.watch--;
   if(p.stage<OPER){p.stageLeft--;if(p.stageLeft<=0){p.stage++;p.stageLeft=p.durs[p.stage]||0;changes.push(`${p.type.name} is now in ${stageName(p)}`);if(p.stage===OPER){minutes(`${p.type.name} opened for operation.`,'g');if(p.units){S.housing+=p.units;minutes(`${num(p.units)} new homes opened.`,'g')}}}}
-  else rev+=p.tax/52*S.rate;
+  else rev+=p.tax/52*S.rate*.12;
   const c=p.conds;
   if(c.road&&p.stage>=1&&!p.delivered.road&&!p.seen.road){p.delivered.road=1;const e=EV.find(x=>x.id==='road');pending.push([p,e,true])}
   else if(c.park&&p.stage>=3&&!p.delivered.park&&!p.seen.park){p.delivered.park=1;const e=EV.find(x=>x.id==='park');pending.push([p,e,true])}
   else{
    const base=(.18+.4*p.sizeF)*(c.monitor?.6:1)*(S.dev<30?1.3:1)*(p.waived?1.5:1)*(p.watch>0?.6:1)*(1-.15*S.fund.insp)*(p.stage===0?.5:p.stage===OPER?.6:1);
    if(bad<2&&Math.random()<base){const el=EV.filter(e=>e.bad&&e.st.includes(p.stage)&&(!e.when||e.when(p)));if(el.length){pending.push([p,pick(el),false]);bad++;continue}}
-   if(Math.random()<.2+(S.dev>60?.1:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
+   if(Math.random()<.13+(S.dev>60?.07:0)){const el=EV.filter(e=>e.good&&e.st.includes(p.stage)&&!p.seen[e.id]&&(!e.when||e.when(p)));if(el.length)pending.push([p,pick(el),false])}
   }
  }
  const gl=gridLoad();
@@ -840,13 +840,13 @@ async function runEvent(p,evDef,promised,mode){
   await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
  }
- const fine=Math.round(ev.fine*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||20000;
+ const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
  if(p.exposed){const cost=ri(40,120)*1000;addBudget(-cost,'cleanup the city absorbed (no indemnity)')}
  const opts=RESP.map(r=>({k:r.k,label:r.label,sub:r.k==='fine'?`Collect ${money(fine)}. ${r.sub}`:r.sub}));
  if(ev.extra)opts.splice(2,0,{k:'extra',label:ev.extra.label,sub:ev.extra.sub,cls:'go'});
  const k=await ask(`${ev.title} at the ${p.type.name}. Your response?`,opts,p.type.name+' · '+p.company);
  const r=k==='extra'?ev.extra:RESP.find(x=>x.k===k);
- adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)),ev.title);adj('dev',r.dev);adj('trust',r.trust);
+ adj('env',-Math.round(ev.env*r.mult*(p.conds.monitor?.7:1)*(mode==='early'?.5:1)*(1-.1*S.fund.safety)*.6),ev.title);adj('dev',r.dev);adj('trust',r.trust);
  if(k==='fine'){addBudget(fine,'fine')}
  if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
  if(k==='extra')ev.extra.apply(p);
@@ -1467,14 +1467,14 @@ const DEPTS=[
 const MULT=[.7,1,1.4],ADMIN=5000,BOND=500000;
 function finCalc(rate=S.rate,fund=S.fund,debt=S.debt){
  const k=S.pop/12000,rev=Math.round(2e8*k*rate/100/52+33000*k*(.9+S.trust/500));
- const exp=DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)+ADMIN+Math.round(debt*.004);
+ const ops=S.projects.filter(p=>p.stage===OPER).length,exp=Math.round(DEPTS.reduce((a,d)=>a+Math.round(d.base*MULT[fund[d.k]+1]),0)*(1+.3*(S.pop/12000-1)))+ADMIN+Math.round(debt*.004)+ops*1200;
  return{rev,exp,net:rev-exp};
 }
 const signMoney=v=>(v>=0?'+':'-')+money(Math.abs(v));
 function renderFin(){
  const el=$('#fin');if(!el)return;
  const f=finCalc(),lv=['Cut','Std','Boost'];
- const pt=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.tax/52*S.rate,0);
+ const pt=S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.tax/52*S.rate*.12,0);
  el.innerHTML=`<h3>City Finances</h3><table><tr><td>Property tax rate</td><td>${S.rate.toFixed(1)}%</td></tr><tr><td>Weekly revenue</td><td>${money(f.rev)}</td></tr>${pt>0?`<tr><td>Project taxes</td><td>+${money(pt)}</td></tr>`:''}<tr><td>Weekly expenses</td><td>${money(f.exp)}</td></tr><tr><td>Net per week</td><td style="color:${f.net+pt>=0?'var(--good)':'var(--bad)'}">${signMoney(f.net+pt)}</td></tr>${S.debt?`<tr><td>Bond debt</td><td>${money(S.debt)}</td></tr>`:''}</table><div class="mut" style="margin-top:6px;font-size:12px">${DEPTS.map(d=>`${d.name}: ${lv[S.fund[d.k]+1]}`).join(' &middot; ')}</div>`;
 }
 function weeklyFinance(){
@@ -1482,6 +1482,7 @@ function weeklyFinance(){
  S.budget+=f.net;S.q.rev+=f.rev;S.q.exp+=f.exp;
  S.trust=clamp(S.trust+.25*L.parks+.15*L.pw+.1*L.safety-(S.rate-1)*1.2);
  S.dev=clamp(S.dev-(S.rate-1)*.8);
+ if(S.trust>55)S.trust=clamp(S.trust-(S.trust-55)*.06);
  S.env=clamp(S.env+.08*L.parks);
  if(S.budget<0){S.budget-=Math.round(-S.budget*.01);S.defWeeks=(S.defWeeks||0)+1;if(S.defWeeks%2===0)adj('trust',-1,'unpaid bills')}else S.defWeeks=0;
  if(S.temp.weeks>0){S.temp.weeks--;if(S.temp.weeks<=0){S.temp.grid=0;S.temp.water=0}}
@@ -1630,7 +1631,7 @@ async function minorProject(p){
  clearTags();
  COUNCIL.forEach(m=>adjRel(m.id,(k==='deny'?!r.votes[m.id]:r.votes[m.id])?1:-.7,'',true));
  if(r.passed){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.round(p.cost*.01),'impact fee');
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pub>0?2:pub<0?-3:0);adj('dev',k==='cond'?4:7);minutes(`Approved the ${p.type.name} (${r.yes}-${r.no}).`,'g');renderProjects();
  }else{
   S.stats.denied++;adj('trust',pub<0?3:-2);adj('dev',-5);minutes(`Denied the ${p.type.name} (${r.yes}-${r.no}).`,'b');
@@ -1793,7 +1794,7 @@ async function newProject(){
  }
  const pubSign=sup-opp;
  if(final){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.round(p.cost*.01),'impact fee');
+  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(10-burden(p.conds,p)*1.5,2,12)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
@@ -1814,8 +1815,8 @@ async function adjourn(meeting=true){
  weeklyGrowth();
  const d={trust:S.trust-snap.trust,env:S.env-snap.env,dev:S.dev-snap.dev,budget:S.budget-snap.budget};
  // weekly drift
- S.projects.filter(p=>p.stage===OPER).forEach(p=>{S.env=clamp(S.env-impacts(p,p.conds).env*.25*(p.conds.monitor?.6:1))});
- S.env=clamp(S.env+.15);
+ S.env=clamp(S.env-Math.min(1.2,S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+impacts(p,p.conds).env*.12*(p.conds.monitor?.6:1),0)));
+ S.env=clamp(S.env+.25);
  if(S.corrupt>0)S.corrupt=clamp(S.corrupt-.3);
  hud();
  const sign=v=>(v>0?'+':'')+Math.round(v);
@@ -1914,12 +1915,14 @@ async function actSession(ap){
  const opts=[];
  if(S.budget>=150000)opts.push({k:'grid',label:'Fund a substation upgrade ($150K)',sub:'Permanently lowers grid load by 12 points.'});
  if(S.budget>=120000)opts.push({k:'water',label:'Fund water main renewal ($120K)',sub:'Lowers water system draw and prevents main breaks on current projects.'});
+ if(S.budget>=30000)opts.push({k:'cleanup',label:'Fund an environmental cleanup ($30K)',sub:'Restores part of the environment: creek cleanup and tree planting.'});
  if(S.budget>=25000)opts.push({k:'report',label:`Commission an early report on the ${ap.type.name} ($25K)`,sub:'A study on its biggest risk lands before the meeting.'});
  opts.push({k:'skip',label:'Skip the work session'});
  await say(U,fresh('ws',['Mayor, we have budget room for one priority this session. Where do you want it to go?','The board is ready to act on whatever you prioritize.','We have a few shovel-ready items. Your call, Mayor.']));
  const k=await ask('Work session: how do you spend your time?',opts);
  if(k==='grid'){addBudget(-150000,'substation upgrade');S.gridBoost=(S.gridBoost||0)+12;adj('trust',1);await say(U,'The upgrade will take the pressure off the grid.')}
  else if(k==='water'){addBudget(-120000,'water main renewal');S.waterBoost=(S.waterBoost||0)+15;S.projects.forEach(p=>p.fixedMain=true);adj('trust',1);await say(U,'The renewal will stabilize pressure across the system.')}
+ else if(k==='cleanup'){addBudget(-30000,'environmental cleanup');adj('env',4,'cleanup');adj('trust',1);await say(U,'The volunteers have already filled forty trash bags. The creek looks better already.')}
  else if(k==='report'){
   addBudget(-25000,'early report');
   const t=['water','noise','traffic','power','chem','fiscal','jobs'].sort((a,b)=>severity(ap,b)-severity(ap,a))[0];

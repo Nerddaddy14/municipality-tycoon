@@ -50,7 +50,7 @@
   const t0=performance.now();
   try{await runGame()}catch(e){stats.errors.push(String(e&&e.stack||e));}
   const out={...snapshotState(),end:last,lines:stats.lines,chars:stats.chars,asks:stats.asks,ms:Math.round(performance.now()-t0)};
-  out.estMinutes=+((stats.lines*3+stats.chars*.012+stats.asks*6)/60).toFixed(1);
+  out.estMinutes=+((stats.chars/16+stats.lines*1.0+stats.asks*8)/60).toFixed(1);
   return out;
  }
  async function batch(maxWeeks,n,pol,init){
@@ -58,7 +58,7 @@
   for(let i=0;i<n;i++)runs.push(await runOne(maxWeeks,pol,init));
   const avg=k=>+(runs.reduce((a,r)=>a+(r[k]||0),0)/runs.length).toFixed(1);
   const ends={};runs.forEach(r=>{const e=(r.end||'none').split('|')[0];ends[e]=(ends[e]||0)+1});
-  return{runs,summary:{n,maxWeeks,policy:pol||'sensible',ends,avgWeek:avg('week'),trust:avg('trust'),env:avg('env'),dev:avg('dev'),corrupt:avg('corrupt'),budget:avg('budget'),approved:avg('approved'),denied:avg('denied'),incidents:avg('incidents'),projects:avg('projects'),pop:avg('pop'),lines:avg('lines'),asks:avg('asks'),estMinutes:avg('estMinutes'),errors:stats.errors.slice(0,3)}};
+  return{runs,summary:{n,maxWeeks,policy:pol||'sensible',ends,avgWeek:avg('week'),trust:avg('trust'),env:avg('env'),dev:avg('dev'),corrupt:avg('corrupt'),budget:avg('budget'),approved:avg('approved'),denied:avg('denied'),incidents:avg('incidents'),projects:avg('projects'),pop:avg('pop'),lines:avg('lines'),chars:avg('chars'),asks:avg('asks'),estMinutes:avg('estMinutes'),errors:stats.errors.slice(0,3)}};
  }
  window.SIM={runOne,batch,stats};
 })();
