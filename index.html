@@ -285,6 +285,40 @@ body.fit #choices{position:absolute;left:0;top:0;width:100%;max-height:100%;over
 @media (max-height:640px){#overlay{padding:10px}#overlay .box{padding:14px 20px}#overlay h1{font-size:22px;margin-bottom:4px}#overlay p{font-size:13px;margin:6px 0;line-height:1.4}#overlay button{margin-top:8px;padding:8px 18px;font-size:14px}.modes label{margin:3px 0;font-size:13px}}
 .ctl .coffee{border-color:#7a5a1c;color:#f2d28a}
 .guide{color:var(--mut);font-size:12px;text-decoration:underline}
+/* ---------- phone layout: only active when body.mob is set (narrow screens); desktop is untouched ---------- */
+body.mob{--ms:.38;-webkit-text-size-adjust:100%;touch-action:manipulation;overflow-x:hidden}
+body.mob #app{padding:6px;max-width:none}
+body.mob #hud{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 10px;padding:6px 10px;margin-bottom:6px}
+body.mob #hud .brand{grid-column:1/-1;font-size:15px;margin:0}
+body.mob .stat{min-width:0;font-size:11px}
+body.mob .stat b{font-size:14px}
+body.mob .stat .bar{height:5px;margin:2px 0 0}
+body.mob .ctl{grid-column:1/-1;margin-left:0;display:flex;flex-wrap:wrap;gap:6px}
+body.mob .ctl button{flex:1 1 30%;min-height:36px;padding:5px 6px;font-size:12px;text-align:center}
+body.mob .ctl .coffee{order:10;flex:1 1 100%}
+body.mob .ctl input#vol{display:none}
+body.mob #main{display:block}
+body.mob #left{width:100%;overflow:hidden}
+body.mob #scene{width:960px;box-sizing:border-box;transform-origin:0 0;transform:scale(var(--ms));margin-bottom:calc(540px*(var(--ms) - 1) - 6px)}
+body.mob #scene.shake{animation:none}
+body.mob #banner{font-size:calc(30px/var(--ms));letter-spacing:calc(2px/var(--ms))}
+body.mob #toasts{top:calc(6px/var(--ms));right:calc(8px/var(--ms));gap:calc(4px/var(--ms))}
+body.mob .toast{font-size:calc(13px/var(--ms));padding:calc(5px/var(--ms)) calc(10px/var(--ms));border-left-width:calc(4px/var(--ms));border-radius:calc(6px/var(--ms))}
+body.mob .tag{font-size:calc(13px*.8/var(--ms)*.5);padding:calc(2px/var(--ms)*.5) calc(9px/var(--ms)*.5)}
+body.mob #dlg,body.mob #choices{margin-top:8px;min-height:110px;padding:10px 12px}
+body.mob #dlgText{font-size:17px;min-height:64px;padding-bottom:14px}
+body.mob #dlgNext{font-size:12px}
+body.mob #choices{max-height:none}
+body.mob button.opt,body.mob .btnrow button{padding:12px 14px;font-size:15px;width:100%}
+body.mob .btnrow{gap:8px}
+body.mob .conds{grid-template-columns:1fr}
+body.mob .conds label{padding:10px;font-size:14px}
+body.mob #side{margin-top:6px}
+body.mob #overlay{padding:10px}
+body.mob #overlay .box{padding:16px 16px}
+body.mob #overlay h1{font-size:24px}
+body.mob #modal .box{max-width:100%;width:calc(100vw - 20px);max-height:92vh;overflow-y:auto}
+body.mob input,body.mob select,body.mob textarea{font-size:16px}
 </style>
 </head>
 <body>
@@ -542,7 +576,7 @@ function buildHud(){
  <div class="stat hidden" id="hRecall"><span>Recall election</span><b></b></div>
  <div class="stat" data-k="budget"><span>Treasury</span><b id="hBudget"></b></div>
  ${METERS.map(([k,l])=>`<div class="stat" data-k="${k}"><span>${l}</span><div class="bar"><i></i></div><b></b></div>`).join('')}
- <div class="ctl"><button id="coffee" class="coffee ${TIP_URL&&!isFramed?'':'hidden'}" title="Support the developer">&#9749; Buy the Mayor a Coffee</button><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="${speedUnlocked()?'Dialogue speed (F)':'Faster speeds unlock after your first 12-week term'}">Speed 1x${speedUnlocked()?'':' (locked)'}</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
+ <div class="ctl"><button id="coffee" class="coffee ${TIP_URL&&!isFramed?'':'hidden'}" title="Support the developer">&#9749; Buy the Dev a Coffee</button><button id="menuBtn" title="Save, quit, or start over">Menu</button><button id="helpBtn" title="How to play">Help</button><button id="fbBtn" title="Send feedback">Feedback</button><button id="spd" title="${speedUnlocked()?'Dialogue speed (F)':'Faster speeds unlock after your first 12-week term'}">Speed 1x${speedUnlocked()?'':' (locked)'}</button><button id="auto" title="Auto-advance dialogue (A)">Auto: off</button><button id="mute">Sound: on</button><input id="vol" type="range" min="0" max="100" value="70" title="Volume"></div>`;
  $('#mute').onclick=()=>{MUTE=!MUTE;$('#mute').textContent='Sound: '+(MUTE?'off':'on');setVol();if(MUTE)ambience(false)};
  $('#vol').oninput=e=>{VOL=e.target.value/100;setVol()};
  $('#spd').onclick=cycleSpeed;$('#auto').onclick=toggleAuto;
@@ -601,7 +635,7 @@ function unlockSpeed(){
  if(speedUnlocked())return;
  SPEED_SESSION=true;try{localStorage.setItem(SPEED_KEY,'1')}catch(e){}
  const b=$('#spd');if(b){b.title='Dialogue speed (F)';b.textContent='Speed '+(SPD>=8?'MAX':SPD+'x')}
- toast(TIP_URL&&!isFramed?'Faster text speeds unlocked. Enjoying it? Buy the Mayor a Coffee, top bar.':'Faster text speeds unlocked',true);
+ toast(TIP_URL&&!isFramed?'Faster text speeds unlocked. Enjoying it? Buy the Dev a Coffee, top bar.':'Faster text speeds unlocked',true);
 }
 function cycleSpeed(){
  if(!speedUnlocked()){toast('Faster speeds unlock after your first 12-week term',false);return}
@@ -2734,7 +2768,7 @@ function ending(code){
  <p class="mut">Projects approved ${S.stats.approved} &middot; denied or withdrawn ${S.stats.denied} &middot; incidents ${S.stats.incidents} &middot; developer perks ${S.stats.perks} &middot; bribes taken ${S.stats.bribes||0} (leaked ${S.stats.leaks||0}) &middot; legal advice followed: ${S.stats.legalGood||0} sound, ${S.stats.legalBad||0} bad &middot; water lost or contaminated ${num(S.stats.gallons)} gal &middot; jobs created ${num(jobs)} &middot; tax collected ${money(S.stats.tax)}</p>
  <p class="mut">Trust ${Math.round(S.trust)} &middot; Environment ${Math.round(S.env)} &middot; Developer ${Math.round(S.dev)} &middot; Scandal ${Math.round(S.corrupt)} &middot; Treasury ${money(S.budget)}</p>
  ${GATING?`<p><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener"><b>Play the full 52-week term</b></a> with recall elections, themes and more.</p>`:''}
- ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Mayor a Coffee</a></p>`:''}
+ ${TIP_URL&&!isFramed?`<p><a class="guide" href="${TIP_URL}" target="_blank" rel="noopener">Enjoyed your term? Buy the Dev a Coffee</a></p>`:''}
  <button onclick="location.reload()">Run for mayor again</button></div>`;
  $('#overlay').classList.remove('hidden');
 }
@@ -3034,6 +3068,24 @@ document.addEventListener('visibilitychange',()=>{if(AC){try{document.hidden?AC.
  setFit(q?q[1]==='1':pref!==null?pref==='1':isFramed);
  if(isFramed){const g=document.getElementById('guideLink');if(g)g.parentElement.classList.add('hidden')}
 }
+/* ---------- phone mode ---------- */
+const MOBQ=()=>innerWidth<=820||(matchMedia('(pointer:coarse)').matches&&innerWidth<=1000);
+function applyMob(){
+ const on=MOBQ(),b=document.body;
+ if(on===b.classList.contains('mob')&&on===!!b.dataset.mobInit){mobScale();return}
+ b.dataset.mobInit=on?'1':'';
+ b.classList.toggle('mob',on);
+ if(on){b.classList.remove('fit');b.style.removeProperty('--fs')}
+ else{let pref=null;try{pref=localStorage.getItem(FIT_KEY)}catch(e){}const q=/[?&]fit=(0|1)/.exec(location.search);setFit(q?q[1]==='1':pref!==null?pref==='1':isFramed)}
+ mobScale();
+}
+function mobScale(){
+ if(!document.body.classList.contains('mob'))return;
+ const w=(document.getElementById('left')||document.body).clientWidth||innerWidth-12;
+ document.body.style.setProperty('--ms',(w/960).toFixed(4));
+}
+addEventListener('resize',applyMob);addEventListener('orientationchange',()=>setTimeout(applyMob,200));
+applyMob();
 buildHud();buildScene();hud();renderProjects();showAgenda(null);
 {
  const sv=readSave();

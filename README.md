@@ -22,7 +22,7 @@ The game scales to fit any frame without page scrolling. It switches to fit mode
 
 ## Support and launch
 
-- **Tip button:** set `TIP_URL` in `index.html` to a Ko-fi, Patreon, or Stripe link and a "Buy the Mayor a Coffee" button appears in the top bar. It hides itself inside iframes.
+- **Tip button:** set `TIP_URL` in `index.html` to a Ko-fi, Patreon, or Stripe link and a "Buy the Dev a Coffee" button appears in the top bar. It hides itself inside iframes.
 - **Speed unlock:** faster text speeds stay locked until a player finishes their first 12-week term.
 - **itch.io:** `python tools/build_itch.py` builds `dist/municipality-tycoon-itch.zip`. Steps and page settings are in `portal/ITCH.md`.
 

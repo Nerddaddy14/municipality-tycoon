@@ -30,7 +30,7 @@ Each push builds the game, uploads only what changed, and tags the build with th
 
 ## In-game tip button
 
-The game has a "Buy the Mayor a Coffee" button in the top bar next to Menu. It stays hidden until you give it a link:
+The game has a "Buy the Dev a Coffee" button in the top bar next to Menu. It stays hidden until you give it a link:
 
 - In `index.html`, set `TIP_URL` (near `FEEDBACK_URL`) to your Ko-fi, Patreon, or Stripe checkout link.
 - The button hides itself inside iframes, since itch.io and game portals have their own tip and payment features. Players on your own site (the GitHub Pages copy) will see it.
