@@ -730,6 +730,12 @@ const TYPES=[
  {k:'hotel',name:'Hotel & Conference Center',icon:'&#127976;',min:1e7,max:2e8,water:9000,noise:50,jobs:6,tax:.025,traffic:6,power:3,tags:[]},
  {k:'chem',name:'Chemical Processing Plant',icon:'&#9879;&#65039;',min:5e7,max:1e9,water:60000,noise:70,jobs:3,tax:.015,traffic:7,power:6,tags:['chem']},
  {k:'cams',name:'Automated Camera Network',icon:'&#128247;',min:1e5,max:2.5e7,water:50,noise:30,jobs:.3,tax:.004,traffic:1,power:1,tags:['surv']},
+ {k:'hospital',name:'Medical Center',icon:'&#127973;',min:2e7,max:4e8,water:20000,noise:52,jobs:6,tax:.004,traffic:6,power:5,tags:[]},
+ {k:'school',name:'Charter School Campus',icon:'&#127979;',min:3e6,max:6e7,water:4000,noise:55,jobs:3,tax:.003,traffic:7,power:2,tags:[]},
+ {k:'ev',name:'EV Charging Hub',icon:'&#128268;',min:3e5,max:2e7,water:100,noise:35,jobs:.6,tax:.01,traffic:4,power:6,tags:[]},
+ {k:'dispensary',name:'Cannabis Dispensary',icon:'&#127807;',min:2e5,max:4e6,water:600,noise:40,jobs:5,tax:.05,traffic:5,power:2,tags:[]},
+ {k:'brewery',name:'Craft Brewery and Taproom',icon:'&#127866;',min:1e6,max:3e7,water:25000,noise:55,jobs:4,tax:.02,traffic:4,power:3,tags:[]},
+ {k:'airstrip',name:'Regional Airstrip',icon:'&#9992;&#65039;',min:5e6,max:1.5e8,water:500,noise:82,jobs:2,tax:.01,traffic:2,power:2,tags:[]},
  {k:'mall',name:'Strip Mall',icon:'&#128717;&#65039;',min:1e6,max:6e7,water:3000,noise:52,jobs:8,tax:.03,traffic:8,power:2,tags:[]}
 ];
 const PACKS={
@@ -768,9 +774,13 @@ function genProject(){
  return p;
 }
 const T=(...ks)=>p=>ks.includes(p.type.k);
-const crimeProne=p=>['gas','mall','storage','warehouse','hotel','crypto'].includes(p.type.k);
+const crimeProne=p=>['gas','mall','storage','warehouse','hotel','crypto','dispensary'].includes(p.type.k);
 const isSurv=p=>p.type.tags.includes('surv');
 const CONDS=[
+ {k:'clinic',spec:1,when:p=>p.type.k==='hospital',name:'Free community clinic hours',desc:'Weekly free care for residents. Raises trust.',b:2,trust:2,appeal:{res:.6,jobs:.2,dev:-.2}},
+ {k:'dropoff',spec:1,when:p=>p.type.k==='school',name:'Drop-off traffic plan',desc:'Staggered pickup and a turn lane. Eases traffic.',b:1,mod:{traffic:-2},appeal:{res:.5,dev:-.1}},
+ {k:'canopy',spec:1,when:p=>p.type.k==='ev',name:'Solar canopy over the chargers',desc:'Cuts grid demand and looks good.',b:2,mod:{power:-2},appeal:{env:.5,dev:-.2}},
+ {k:'curfew',spec:1,when:p=>p.type.k==='airstrip',name:'Night flight curfew',desc:'About 10 dB quieter at night. Fewer flights.',b:1,mod:{db:-10,jobs:.95},appeal:{res:.6,dev:-.3}},
  {k:'retain',spec:1,when:isSurv,name:'Data retention limit (30 days)',desc:'Plate data is deleted after a month. Less to misuse or leak.',b:1,risk:.8,appeal:{res:.5,dev:-.1}},
  {k:'warrant',spec:1,when:isSurv,name:'Warrant required for searches',desc:'Officers need a judge before looking anyone up. Cuts wrongful stops and misuse.',b:2,risk:.6,appeal:{res:.7,dev:-.3}},
  {k:'audit',spec:1,when:isSurv,name:'Public audit log and transparency portal',desc:'Every search is logged and published. Raises trust.',b:2,risk:.7,trust:2,appeal:{res:.6,dev:-.2}},
@@ -976,6 +986,8 @@ const TOPICS={
  land:{sign:['SAVE THE PRAIRIE','FARMS NOT PANELS','PROTECT HABITAT'],opp:['That used to be pasture and prairie. You are covering it in steel and glass and calling it green.','The deer, the hawks and the old fence rows are all gone from that field. Clean power should not cost us our land.']},
  privacy:{sign:['STOP SPYING','NO DRAGNET','WARRANTS NOT CAMERAS'],opp:['A camera that reads every plate that passes is not safety, it is a diary of where I go.','Who can search that data? For how long? Nobody has answered me.','They will say it is for criminals. Then it is for everyone.']},
  crime:{sign:['SAFE STREETS','CATCH THE CROOKS'],sup:['Somebody stole my truck in March. Nobody was ever caught. I want these cameras.','If it finds one missing kid, it is worth it.']},
+ health:{sign:['CLOSER CARE','SAVE LIVES'],sup:['My mother drives forty minutes to the nearest hospital. This could save her life one day.','When my son broke his arm we waited five hours at urgent care. We need this.']},
+ kids:{sign:['SCHOOL CHOICE','OUR KIDS FIRST'],sup:['My kids deserve a school that fits them. Give families a choice.','Our public school is packed to the walls. We need the seats.']},
  nimby:{sign:['NOT HERE','KEEP IT RURAL'],opp:['I am not against progress, I am against it next to my backyard.','Our property values will tank. Put it somewhere else.']},
  safety:{sign:['SAFE JOBS','PROTECT WORKERS'],opp:['A worker got hurt and they hid it for two days. Safety first, or no project.','This outfit cuts corners. Today it is a worker. Tomorrow it is a neighbor.']},
  jobs:{sign:['JOBS NOW','HIRE LOCAL'],sup:['I have been out of work eight months. {jobs} jobs would change my family\'s life.','Local jobs, Mr. Mayor. That is all I am asking.']},
@@ -1007,7 +1019,7 @@ function genCitizens(p,c,n){
  reps.forEach(r=>{if(r.res==='better')oppT=oppT.filter(t=>t!==r.topic);if(r.res==='worse'&&TOPICS[r.topic]&&TOPICS[r.topic].opp)oppT.push(r.topic,r.topic,r.topic)});
  if(p.biasTopic&&TOPICS[p.biasTopic]&&TOPICS[p.biasTopic].opp)oppT.push(p.biasTopic,p.biasTopic);
  if(!oppT.length)oppT=['nimby'];
- const supT=['jobs','tax','local'];if(isSurv(p))supT.push('crime','crime','crime','crime');
+ const supT=['jobs','tax','local'];if(p.type.k==='hospital')supT.push('health','health','health');if(p.type.k==='school')supT.push('kids','kids','kids');if(isSurv(p))supT.push('crime','crime','crime','crime');
  if(p.type.k==='apts'&&housingRatio()<.92)supT.push('housing','housing','housing');
  if(trafficIdx()>75)oppT.push('traffic','traffic');
  const out=[];
@@ -1052,6 +1064,13 @@ const EV=[
  {good:1,id:'recovered',st:[4],when:isSurv,make:p=>({title:'Stolen vehicle recovered',text:`The ${p.type.name} flagged a stolen car heading out of town. Officers recovered it within the hour and arrested two suspects wanted in three counties.`,dev:'This is exactly what the system is for.',chief:'That is a case we would not have made a year ago. I will take wins like this all day.',trust:2,env:0})},
  {good:1,id:'missing',st:[4],when:isSurv,make:p=>({title:'Missing person found',text:`A camera alert helped officers find a missing teenager at a bus station two counties away, safe and unharmed.`,dev:'We are glad it helped, and we will keep working with the department.',chief:'The family called us crying. I am not going to pretend that does not matter.',trust:3,env:0})},
  {good:1,id:'ring',st:[4],when:isSurv,make:p=>({title:'Burglary ring arrested',text:`Plate reads tied one van to eleven burglaries across Clifton and Millbrook. Police made arrests Tuesday.`,dev:'We are proud of the role our system played.',chief:'Eleven burglaries, one van. That is a case that used to take months.',trust:2,env:0})},
+ {bad:1,id:'ambulance',st:[4],when:p=>p.type.k==='hospital',make:p=>({title:'Ambulance gridlock',text:`Ambulances backed up for forty minutes outside the ${p.type.name} after a road closure, and two patients were diverted to Millbrook.`,dev:'We have asked the city to improve access. We staff to the standard we were given.',chief:'Every minute matters, Mayor. A second access road would help my officers as well.',env:0,fine:50000,topic:'traffic',extra:{label:'Require a second access road',sub:'The developer pays. Fewer repeat incidents.',dev:-5,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}})},
+ {good:1,id:'healthfair',st:[4],when:p=>p.type.k==='hospital',make:p=>({title:'Free health fair',text:`The ${p.type.name} hosted a free health fair at the high school gym. Four hundred residents got screenings, and eleven were referred for early treatment.`,dev:'This is why we are here.',trust:3,env:0})},
+ {bad:1,id:'dropgrid',st:[4],when:p=>p.type.k==='school',make:p=>({title:'Drop-off gridlock',text:`Parents lined up for half a mile at the ${p.type.name} on the first rainy morning of the term. A school bus was blocked for twenty minutes.`,dev:'We are adding staggered start times. Families are still adjusting.',env:0,fine:30000,topic:'traffic',extra:{label:'Require a traffic plan and turn lane',sub:'The school pays. Cuts repeat jams.',dev:-4,trust:3,mult:1,apply:p=>{p.riskMult=(p.riskMult||1)*.7}}})},
+ {bad:1,id:'chargerfire',st:[4],when:p=>p.type.k==='ev',make:p=>({title:'Charger fire',text:`A battery cabinet caught fire at the ${p.type.name}. Firefighters needed three hours and special foam to put it out.`,dev:'The equipment passed inspection. We are working with the manufacturer on a recall.',env:3,fine:60000,topic:'safety'})},
+ {bad:1,id:'odor',st:[4],when:p=>p.type.k==='dispensary'||p.type.k==='brewery',make:p=>({title:'Odor complaints',text:`Neighbors filed ${ri(12,40)} odor complaints about the ${p.type.name} in a single month. Some say they can smell it from their porches.`,dev:'We are installing carbon filters and will meet with neighbors.',env:1,fine:25000,topic:'nimby'})},
+ {bad:1,id:'wastewater',st:[4],when:p=>p.type.k==='brewery',make:p=>({title:'Wastewater violation',text:`The state flagged high-strength wastewater from the ${p.type.name}. Spent grain and cleaning chemicals overloaded the sewer line.`,dev:'We will add a pretreatment tank and test every discharge.',env:3,fine:40000,topic:'water'})},
+ {bad:1,id:'lowflights',st:[4],when:p=>p.type.k==='airstrip',make:p=>({title:'Low-flight complaints',text:`Residents filmed small planes passing under 400 feet over a subdivision near the ${p.type.name}. A day care reported a child sobbing at the noise.`,dev:'Every flight was within regulations, and we will brief the pilots again.',env:1,fine:40000,topic:'noise'})},
  {bad:1,st:[1,2],when:p=>!!p.type.land,make:p=>({title:'Habitat cleared',text:`Biologists found that crews cleared ${ri(40,400)} acres of native prairie and nesting ground at the ${p.type.name} site before the survey was finished.`,dev:'The clearing fell inside our permitted footprint. We will replant where we can.',env:6,fine:60000,topic:'land'})},
  {bad:1,st:[4],when:p=>p.type.k==='wind',make:p=>({title:'Bird and bat kills',text:`The state wildlife office reports ${ri(60,400)} bird and bat deaths at the ${p.type.name} this season, including a protected raptor.`,dev:'Every wind farm has some losses. We will add detection systems and curtail at dusk.',env:5,fine:50000,topic:'land'})},
  {bad:1,st:[2,3,4],when:p=>p.type.k==='solar',make:p=>({title:'Runoff and erosion',text:`Heavy rain washed topsoil off the graded slopes at the ${p.type.name} into the creek, burying a culvert and a neighbor's field.`,dev:'The storm exceeded our design event. We are installing silt fencing and replanting.',env:5,fine:55000,topic:'land'})},
@@ -1322,7 +1341,7 @@ async function runEvent(p,evDef,promised,mode){
  }else{
   if(k==='fine'){addBudget(fine,'fine')}
   if(k==='stop'){p.stageLeft+=1;if(p.stage===OPER){p.stageLeft=0;p.curtail=3}}
-  if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);if(k==='extra')S.stats.fixes=(S.stats.fixes||0)+1;
+  if(k==='extra'&&ev.extra.apply)ev.extra.apply(p);if(k==='extra'){S.stats.fixes=(S.stats.fixes||0)+1;if(Math.random()<.5)gaffe('mayor','I ordered the developer to fix it at their own expense','praise')}
  }
  const short=custom&&k!=='extra'?r.label.replace(/ \(.*\)/,''):k==='fine'?'fined '+money(fine):k==='stop'?'stop-work order':k==='extra'?'ordered a fix':'forgiven';
  if(custom&&k!=='extra'&&r.soft&&r.say)gaffe('mayor',r.say.replace(/\.$/,''),'demeaning');
@@ -1445,8 +1464,8 @@ function openRoom(label,vis){
  return om;
 }
 /* ---------- construction site scene ---------- */
-const ARCH={cams:'poles',coffee:'shop',storage:'box',gas:'shop',apts:'tower',warehouse:'box',solar:'solar',battery:'box',datacenter:'box',crypto:'box',bottling:'plant',quarry:'pit',fab:'box',hotel:'tower',chem:'plant',mall:'shop',stadium:'stadium',casino:'tower',themepark:'stadium',arena:'stadium',wind:'wind',gasplant:'plant',hydro:'box'};
-const ARCHCOLOR={datacenter:'#556678',warehouse:'#8d9296',storage:'#c98d4e',fab:'#dfe6ee',crypto:'#414c58',battery:'#5d7c70',hydro:'#9aa9b3',apts:'#c6a283',hotel:'#bfd0df',casino:'#8e3b7a',coffee:'#b9824e',gas:'#d7d3c8',mall:'#c7b6a0'};
+const ARCH={cams:'poles',hospital:'tower',school:'box',ev:'shop',dispensary:'shop',brewery:'plant',airstrip:'box',coffee:'shop',storage:'box',gas:'shop',apts:'tower',warehouse:'box',solar:'solar',battery:'box',datacenter:'box',crypto:'box',bottling:'plant',quarry:'pit',fab:'box',hotel:'tower',chem:'plant',mall:'shop',stadium:'stadium',casino:'tower',themepark:'stadium',arena:'stadium',wind:'wind',gasplant:'plant',hydro:'box'};
+const ARCHCOLOR={hospital:'#e6eef5',school:'#c98f6b',ev:'#cfd4d8',dispensary:'#7ea36b',brewery:'#b98a4e',airstrip:'#9aa3ab',datacenter:'#556678',warehouse:'#8d9296',storage:'#c98d4e',fab:'#dfe6ee',crypto:'#414c58',battery:'#5d7c70',hydro:'#9aa9b3',apts:'#c6a283',hotel:'#bfd0df',casino:'#8e3b7a',coffee:'#b9824e',gas:'#d7d3c8',mall:'#c7b6a0'};
 function buildProgress(p){
  if(p.stage>=4)return 1;
  const d=p.durs,total=d.reduce((a,b)=>a+b,0)||1;
@@ -2136,6 +2155,7 @@ async function maybeDemean(chance){
 }
 function lastName(id){const m=CAST[id];return id==='mayor'?'MAYOR':(m.short||m.name).replace(/^Dr\.\s*/,'').split(' ').pop().toUpperCase()}
 function paperText(g,tone){
+ if(g.kind==='praise'){const who=lastName(g.who),q=g.quote.length>70?g.quote.slice(0,67).replace(/[ ,.;]+$/,'')+'...':g.quote;return{h:`${who} WINS PRAISE FOR TOUGH STAND`,sub:`"${q}" Residents told the Courier it was about time.`}}
  const who=lastName(g.who),q=g.quote.length>70?g.quote.slice(0,67).replace(/[ ,.;]+$/,'')+'...':g.quote;
  if(g.flag==='sun')return{h:'"BUT ENERGY COMES FROM THE SUN, DOESN\'T IT?"',sub:`${who} stuns the chamber during a debate about the power grid. Residents are still asking what happened.`};
  if(g.kind==='demeaning')return tone==='outrage'?{h:`${who} TO RESIDENTS: "${q}"`,sub:`Speakers say they felt talked down to at the podium. Calls for an apology are growing.`}:{h:`${who} TAKES SHOTS AT PUBLIC`,sub:`Remarks at the podium drew groans from the gallery.`};
@@ -2143,7 +2163,7 @@ function paperText(g,tone){
 }
 async function showPaper(g,tone,counts,N){
  const t=paperText(g,tone),m=CAST[g.who]||CAST.mayor;
- const pr={laugh:'find the remark laughable',outrage:'find the remark offensive'}[tone];
+ const pr={laugh:'find the remark laughable',outrage:'find the remark offensive',cheer:'approve of the decision'}[tone];
  const el=document.createElement('div');el.id='paper';
  el.innerHTML=`<div class="np"><div class="npTop">The Clifton Courier</div><div class="npDate"><span>Clifton edition</span><span>Week ${S.week} · Special Edition</span><span>50&cent;</span></div><div class="npHead">${t.h}</div><div class="npSub">${t.sub}</div><div class="npBody"><div class="npPhoto">${figHTML({...m,mood:tone==='outrage'?'angry':'happy'})}</div><div class="npCols">${Array.from({length:9},(_,i)=>`<i style="width:${i%4===3?'62%':'100%'}"></i>`).join('')}</div></div><div class="npPoll"><b>Courier snap poll:</b> ${counts[tone]} of ${N} residents ${pr}.</div></div>`;
  el.style.pointerEvents='auto';el.onclick=()=>$('#dlg').click();document.body.appendChild(el);sfx.chime&&sfx.chime();
@@ -2151,8 +2171,18 @@ async function showPaper(g,tone,counts,N){
 }
 async function newsStep(){
  const G=S.gaffes||[];if(!G.length)return;S.gaffes=[];
- const g=G.reduce((a,b)=>((b.kind==='demeaning'?2:1)>(a.kind==='demeaning'?2:1)||((b.kind===a.kind)&&Math.random()<.5))?b:a);
- const N=20,counts={outrage:0,laugh:0,shrug:0};
+ const RK={demeaning:3,silly:2,praise:1};const g=G.reduce((a,b)=>((RK[b.kind]||1)>(RK[a.kind]||1)||((b.kind===a.kind)&&Math.random()<.5))?b:a);
+ const N=20,counts={outrage:0,laugh:0,shrug:0,cheer:0};
+ if(g.kind==='praise'){
+  const pc=clamp(.5+(S.trust-45)/250,.3,.8);for(let i=0;i<N;i++){Math.random()<pc?counts.cheer++:counts.shrug++}
+  if(counts.cheer<=N/2){return}
+  const el=await showPaper(g,'cheer',counts,N);S.stats.paper=(S.stats.paper||0)+1;S.stats.praise=(S.stats.praise||0)+1;
+  await say('office',fresh('news-p',['The Courier lands on porches with some good news for a change.','A copy of the Courier is on your seat, and it is kind to you.']));
+  el.classList.add('out');await sleep(AUTO?10:500);el.remove();
+  adj('trust',2.5,'good press');S.newsMood='happy';S.lastPaper={kind:'praise',who:g.who,handled:false};minutes('The Courier praised the mayor on the front page.','g');
+  await say('clerk',fresh('news-pc',['Mayor, the phones are ringing with thank-you calls.','Mayor, somebody framed the front page and left it outside your office.']));
+  return;
+ }
  const po=g.kind==='demeaning'?clamp(.52+(55-S.trust)/250,.3,.8):clamp(.15+(55-S.trust)/300,.08,.4),pl=g.kind==='demeaning'?.1:.5;
  for(let i=0;i<N;i++){const r=Math.random();if(r<po)counts.outrage++;else if(r<po+pl)counts.laugh++;else counts.shrug++}
  const top=counts.outrage>=counts.laugh?'outrage':'laugh';
@@ -2163,7 +2193,7 @@ async function newsStep(){
  const mayor=g.who==='mayor';
  if(top==='outrage'){adj('trust',mayor?-4:-3,'the Courier front page');if(!mayor)adjRel(g.who,-3,'embarrassed the council');S.newsMood='angry'}
  else{adj('trust',-1.5,'the Courier front page');if(!mayor)adjRel(g.who,-1,'');S.newsMood='happy'}
- minutes(`The Courier ran a front page about ${mayor?'the mayor':CAST[g.who].short}. ${counts[top]} of ${N} residents ${top==='outrage'?'were offended':'laughed'}.`,'b');
+ S.lastPaper={kind:g.kind,who:g.who,handled:false,tone:top};minutes(`The Courier ran a front page about ${mayor?'the mayor':CAST[g.who].short}. ${counts[top]} of ${N} residents ${top==='outrage'?'were offended':'laughed'}.`,'b');
  await say('clerk',mayor?fresh('news-cm',['Mayor, the phones have been ringing about the Courier since breakfast.','Mayor, you may want to address that front page tonight.']):fresh('news-cc',[`Mayor, I would not bring up ${CAST[g.who].short}'s remarks tonight.`,'Mayor, the gallery has read the Courier. Expect a full house.']));
 }
 async function sunQuip(chance){
@@ -3128,7 +3158,7 @@ async function actWalk(ap){
   const opts=[];if(S.budget>=8000)opts.push({k:'fix',label:'Promise a quick fix ($8K)',sub:'Streetlights, a pothole crew, a lot cleanup. Trust gain.'});
   opts.push({k:'note',label:'Take notes and refer it to Public Works',sub:'Small trust gain, no cost.'},{k:'skip',label:'Keep walking',sub:'Costs trust.'});
   const k=await ask('Residents raise neglected streets',opts);
-  if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
+  if(k==='fix'){addBudget(-8000,'neighborhood quick fix');adj('trust',4,'neighborhood fix');gaffe('mayor','I will have a crew out here this week','praise');await say('mayor','I will have a crew out here this week, and I will check on it myself.')}
   else if(k==='note'){adj('trust',2,'walked the neighborhood');await say('mayor','I have written it down, and it goes to Public Works today.')}
   else{adj('trust',-2,'walked past residents');await say('mayor','I have a lot of other neighborhoods to see.');gaffe('mayor','I have a lot of other neighborhoods to see.','demeaning')}
   if(sev>.3){ap.biasTopic=t}
@@ -3145,6 +3175,22 @@ async function actPress(){
  const r={name:'Dana Whitfield',role:'Clifton Courier reporter',color:'#8a2b2b',...look()};
  openRoom('PRESS INTERVIEW',r);
  await say('office','A reporter from the Courier sits down for an interview.');
+ const LP=S.lastPaper;
+ if(LP&&!LP.handled){
+  LP.handled=true;
+  if(LP.kind==='praise'){
+   await say(r,'Mayor, your front page last week got a lot of attention. Do you want to say anything about it?');
+   const k2=await ask('The Courier asks about the good press',[{k:'humble',label:'Credit the staff and residents',sub:'Modest and well liked.'},{k:'boast',label:'Take the credit',sub:'Feels great. A few people roll their eyes.'}]);
+   if(k2==='humble'){adj('trust',2,'gracious');await say('mayor','This was a team effort, and Clifton deserves the credit.')}else{adj('trust',1);adj('dev',-1);await say('mayor','I said I would get it done, and I did.')}
+  }else{
+   const who=LP.who==='mayor'?'your remark':(CAST[LP.who].short+'\'s remark');
+   await say(r,`Mayor, ${who} made the front page last week. Residents want to know what you think.`);
+   const k2=await ask('The Courier asks about the front page',[{k:'apol',label:'Apologize on the record',sub:'Costs a little pride. Trust recovers.'},{k:'down',label:'Double down',sub:'A gamble. Some residents may rally, others will not.'},{k:'deflect',label:'Change the subject',sub:'Safe, but it looks evasive.'}]);
+   if(k2==='apol'){adj('trust',3,'apologized');if(LP.who!=='mayor')adjRel(LP.who,-1,'');await say('mayor',LP.who==='mayor'?'That was not the way to talk to residents, and I apologize.':'That remark did not reflect the views of this office, and I apologize on behalf of the council.')}
+   else if(k2==='down'){if(Math.random()<.45){adj('trust',3,'resonated');await say('mayor','I stand by what was said, and I think many people agree.')}else{adj('trust',-4,'doubled down');await say('mayor','I stand by what was said.');await say(r,'The comments section would like a word.')}}
+   else{adj('trust',-1);await say('mayor','There are more important topics in Clifton this week.')}
+  }
+ }
  const rumor=S.leaks.length>0,hot=S.stats.incidents>=Math.max(2,S.projects.length);
  await say(r,rumor?'Mayor, people are talking about developer money around city hall. Anything you want to say?':hot?'Mayor, this city has had a string of incidents at the project sites. Are you in control?':'Mayor, how would you grade your first months in office?');
  const k=await ask('How do you handle the interview?',[{k:'boast',label:'Talk up your record',sub:'Great if things are going well. Risky if they are not.'},{k:'open',label:'Be transparent about problems',sub:'Steady trust gain. Developers do not love it.'},{k:'none',label:'No comment',sub:'Avoids trouble, but reporters keep digging.'}]);
