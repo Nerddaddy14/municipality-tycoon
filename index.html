@@ -798,6 +798,8 @@ const CONDS=[
  {k:'audit',spec:1,when:isSurv,name:'Public audit log and transparency portal',desc:'Every search is logged and published. Raises trust.',b:2,risk:.7,trust:2,appeal:{res:.6,dev:-.2}},
  {k:'noshare',spec:1,when:isSurv,name:'No data sharing with outside agencies',desc:'Keeps the data in Clifton. Less federal and out-of-state access.',b:2,risk:.75,appeal:{res:.7,dev:-.3}},
  {k:'lighting',spec:1,when:crimeProne,name:'Security lighting and private patrol',desc:'Cuts after-hours crime. The developer pays.',b:1,risk:.8,appeal:{res:.4,dev:-.1}},
+ {k:'pretreat',spec:1,when:p=>sewOf(p,{})>=3,name:'Wastewater pretreatment system',desc:'Cuts the project\'s sewer load by 40%.',b:1,appeal:{env:.4,dev:-.1}},
+ {k:'stormwater',spec:1,when:p=>p.sizeF>.2,name:'Stormwater detention basin',desc:'Holds runoff on site. Fewer flooding and erosion problems.',b:1,risk:.9,appeal:{env:.4,res:.2,dev:-.1}},
  {k:'recycle',name:'Closed-loop water recycling',desc:'Cuts water use by about 65%.',b:2,when:p=>p.water>=8000},
  {k:'noise',name:'Noise barrier and sound cap',desc:'About 12 dB quieter at the property line.',b:1,when:p=>p.db>=55},
  {k:'fund',name:'Community benefit fund (1% of cost)',desc:'Neighbors and council like this.',b:2},
@@ -904,6 +906,7 @@ function impacts(p,c){
   res:clamp((e.db-45)/40*.5+(p.traffic+cm.traffic)/10*.5-(c.road?.1:0)+(isSurv(p)?(.3+p.sizeF*.4)*(1-.5*(c.warrant?1:0)-.2*(c.retain?1:0)-.2*(c.noshare?1:0)):0),0,1),jobs:clamp(p.jobs*cm.jobs/250,0,1),tax:clamp(p.tax*cm.tax/1.5e6,0,1)};
 }
 function score(m,p,c,ctx){
+ const engB=(p.engRec||[]).reduce((a,k)=>a+(c&&c[k]?.07:0),0);
  const I=impacts(p,c);
  let s=-m.w.env*I.env-m.w.res*I.res+m.w.jobs*I.jobs*1.5+m.w.tax*I.tax*1.5+m.w.dev*.3+.25;
  if(c.fund)s+=.15+.2*m.w.res;if(c.road)s+=.1+.1*m.w.res;if(c.park)s+=.1+.12*(m.w.res+m.w.env)/2;
@@ -913,7 +916,7 @@ function score(m,p,c,ctx){
  if(p.type.k==='apts'&&housingRatio()<.92)s+=.15;
  const zl=p.waived?0:p.zl,fl=p.waived?0:p.fl;
  s-=Math.max(0,zl*.1-(c.buffer?.1:0)-(c.noise?.05:0))+Math.max(0,fl*.12-(c.fireplan?.15:0)-(c.road?.05:0));
- s+=p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
+ s+=engB+p.jit[m.id]+(ctx.pub||0)*(m.id==='wong'?.25:.15)+(ctx.mayor||0)+(ctx.bribe||0)+(S.trust-50)/250+(S.rel[m.id]-50)/200+(S.commit[m.id]||0);
  return s;
 }
 function fill(s,p,c={}){const e=eff(p,c);return s.replace(/\{water\}/g,num(e.water)).replace(/\{noise\}/g,Math.round(e.db)).replace(/\{jobs\}/g,num(p.jobs)).replace(/\{tax\}/g,money(p.tax)).replace(/\{name\}/g,p.type.name).replace(/\{site\}/g,p.site).replace(/\{cost\}/g,money(p.cost))}
@@ -1587,6 +1590,44 @@ async function orionRate(){
  minutes(`Orion Power rate request: ${k==='yes'?'approved':k==='cap'?'smaller surcharge':k==='books'?'books requested':'denied'}.`);
  showAgenda(null);
 }
+/* ---------- the City Engineer ---------- */
+let _eng=null;
+function engineerRep(){return _eng||(_eng={...lookPro(),name:'Gene Wiese',role:'City Engineer',color:'#6a7a2a',cl:'vest',hs:'short',suit:'#7a8a3a',shirt:'#fff',gl:'square',hair:'#a8a8a8',acc:'pin'})}
+async function engineerSays(t){const E=engineerRep();await showSpeaker(E);await say(E,t);await hideSpeaker()}
+function engAssess(p){
+ const e=eff(p,p.conds||{}),notes=[],rec=[];
+ if(e.water>=2e4){notes.push(`it would draw about ${num(Math.round(e.water))} gallons a day, and the water system is already at ${waterLoad()} percent`);rec.push('recycle')}
+ const sw=sewOf(p,p.conds||{});if(sw>=3){notes.push(`it adds roughly ${sw.toFixed(1)} points to the sewer plant, which sits at ${sewerLoad()} percent`);rec.push('pretreat')}
+ if(p.power>=7){notes.push(`it adds a major load to a grid already running at ${gridLoad()} percent`);rec.push(p.power>=9?'substation':'ppa')}
+ if(p.traffic>=6){notes.push(`it would bring about ${Math.round(p.traffic*(40+p.sizeF*160))} truck trips a day onto roads we rate at ${Math.round(STR())} out of 100`);rec.push('road')}
+ if(p.sizeF>.25){notes.push('its paved area will add stormwater runoff to drains that already struggle');rec.push('stormwater')}
+ if(e.db>=65){notes.push(`it will run about ${Math.round(e.db)} decibels at the property line`);rec.push('noise')}
+ const ok=rec.filter(k=>CONDS.some(c=>c.k===k&&(!c.when||c.when(p))));
+ return{notes,rec:ok,level:notes.length>=3?2:notes.length>=1?1:0};
+}
+async function engineerInput(p,returning){
+ if(!returning&&engAssess(p).level===0&&(p.sizeF<.4||Math.random()<.6))return;
+ if(returning){await say('mayor','The City Engineer wants to add something.');await engineerSays(p.engLevel>=2?'My concerns still stand. Please look at the conditions I recommended before you vote.':p.engLevel===1?'Nothing has changed from my review. The conditions I suggested would address my concerns.':'My review stands. I have no engineering objection.');return}
+ await say('mayor','And the City Engineer.');
+ if(p.waived){await engineerSays('The engineering review was waived at the applicant\'s request. For the record, I did not sign off, and I did not see the plans.');p.engRec=[];p.engLevel=0;return}
+ const a=engAssess(p);p.engRec=a.rec;p.engLevel=a.level;
+ if(a.level===0){await engineerSays(fresh('eng-ok',[`I have reviewed the plans for the ${p.type.name}. The infrastructure can handle it, and I have no engineering objections.`,`Engineering sees no problem with the ${p.type.name}. The utilities, the roads and the drainage all check out.`]))}
+ else{
+  const list=a.notes.length===1?a.notes[0]:a.notes.slice(0,-1).join('; ')+'; and '+a.notes[a.notes.length-1];
+  await engineerSays(`${a.level>=2?'I have serious concerns.':'I can support it with conditions.'} From an engineering standpoint, ${list}.`);
+  if(a.rec.length){const nm=a.rec.map(k=>cdef(k).name.toLowerCase()).slice(0,3).join(', ');await engineerSays(`I recommend these conditions: ${nm}.`)}
+  if(a.level>=2)await say(pick(['chen','jennings']),'The engineer has handed us a list. I would be foolish to ignore it.');
+ }
+}
+const ENG_TOPIC={
+ water:p=>`From an engineering view, the water problem at the ${p.type.name} is a system problem, not just a developer problem. Our mains are old, and a fine will not replace a pipe.`,
+ power:p=>`That load has been climbing for a year. The ${p.type.name} did not cause the grid to be tight, but it is the one that tipped it. A dedicated substation would have prevented this.`,
+ traffic:p=>`Those trucks are rated for loads our roads were never built to carry. A temporary haul route would protect the pavement and the neighbors.`,
+ noise:p=>`The sound readings at the property line exceed what the permit allows. A barrier wall and a night schedule would fix most of it.`,
+ chem:p=>`Containment at that site is not up to the code I would hold a school to. I would not sign off on the next phase without an inspection.`,
+ land:p=>`The grading plan did not account for the slope. Detention basins and a silt barrier should have been in the permit.`,
+ safety:p=>`A site this size needs a safety engineer on staff, not on call. I would make that a condition for the next phase.`
+};
 async function scandalCheck(){
  if(S.corrupt>=100)return;
  const li=S.leaks.findIndex(l=>l.week<S.week&&Math.random()<l.prob);
@@ -1722,6 +1763,7 @@ async function runEvent(p,evDef,promised,mode){
   await say(reactor,fresh('react-bad',['This is exactly what I was afraid of.','Mr. Mayor, we cannot let this pass without consequences.','Unbelievable. Do they even read their own permits?','How many warnings does this developer need?','This is why we ask for conditions in the first place.']));
   await showSpeaker(p.rep);await say(p.rep,ev.dev);await hideSpeaker();
   if(ev.chief)await chiefSays(ev.chief);
+  else if(ENG_TOPIC[ev.topic]&&Math.random()<.55)await engineerSays(ENG_TOPIC[ev.topic](p));
   if(ev.topic==='power'||ev.grid){await orionStatement(ev);await sunQuip(.4)}
  }
  const fine=Math.round(ev.fine*.45*(p.conds.bond?1.6:1)*(p.noBond?.5:1)*(p.enforceable?1.3:1))||15000;
@@ -2216,6 +2258,7 @@ async function staffReports(p,returning){
   await say(F,changed?fresh('f-ret-c',['The hazmat findings are noted. My conditions follow from them.','Given the hazmat report, I stand by my recommendations.']):fresh('f-ret',[`The Fire Marshal's position stands.${fl>0?' My conditions still apply.':''}`,`No change from Fire.${fl>0?' I still want the safety plan.':' I still have no objection.'}`]));
   await hideSpeaker();
   await chiefInput(p,true);
+  await engineerInput(p,true);
   return;
  }
  await say('mayor','Now comments from staff. First, Zoning.');
@@ -2227,6 +2270,7 @@ async function staffReports(p,returning){
  await say(F,p.waived?'The fire review was waived as well. For the record, I did not sign off on anything.':ft[fl]);
  await hideSpeaker();
  await chiefInput(p,false);
+ await engineerInput(p,false);
  if(p.power>=7||p.type.k==='datacenter')await orionHearing(p);
  if(p.waived){await say('wong','Waived? By whom? Who authorized skipping a safety review?');adj('trust',-2,'review waived')}
  else if(zl+fl>=3)await say('chen','Staff is practically waving a red flag. We should take this seriously.');
@@ -2679,7 +2723,7 @@ async function chiefInput(p,returning){
 const LFD=()=>S.lf||(S.lf={used:38,cap:100,haul:0,rec:0,fee:0,cd:0,warn:0});
 const workers=()=>S.projects.filter(p=>p.stage===OPER).reduce((a,p)=>a+p.jobs,0);
 const sewOf=(p,c)=>Math.min(22,Math.sqrt(eff(p,c||{}).water)/150+p.jobs/60);
-const sewLoadOf=p=>p.stage===OPER&&!(p.curtail>0)?sewOf(p,p.conds)*(p.pre?.6:1):0;
+const sewLoadOf=p=>p.stage===OPER&&!(p.curtail>0)?sewOf(p,p.conds)*((p.pre||(p.conds&&p.conds.pretreat))?.6:1):0;
 const sewerLoad=()=>Math.max(8,Math.round(34-(S.sewerBoost||0)-S.fund.pw*3-(S.prio&&S.prio.k==='infra'?4:0)+(S.pop-12000)/260+S.projects.reduce((a,p)=>a+sewLoadOf(p),0)));
 const trashPct=()=>Math.round(LFD().used/LFD().cap*100);
 const trashRate=()=>{const L=LFD();return(S.pop/12000*2+workers()/260+S.projects.filter(p=>p.stage===2).length*.25)*(L.haul?.45:1)*(L.rec?.8:1)};
@@ -3557,7 +3601,7 @@ async function minorProject(p){
  clearTags();
  COUNCIL.forEach(m=>adjRel(m.id,(k==='deny'?!r.votes[m.id]:r.votes[m.id])?1:-.7,'',true));
  if(r.passed){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
+  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pub>0?2:pub<0?-3:0);adj('dev',k==='cond'?4:7);minutes(`Approved the ${p.type.name} (${r.yes}-${r.no}).`,'g');renderProjects();
  }else{
   S.stats.denied++;adj('trust',pub<0?3:-2);adj('dev',-5);minutes(`Denied the ${p.type.name} (${r.yes}-${r.no}).`,'b');
@@ -3732,7 +3776,7 @@ async function newProject(){
  }
  const pubSign=sup-opp;
  if(final){
-  p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
+  if(p.engRec&&p.engRec.length&&p.engRec.some(k=>p.conds&&p.conds[k]))S.stats.engFollowed=(S.stats.engFollowed||0)+1;p.stage=0;p.stageLeft=p.durs[0];S.projects.push(p);S.stats.approved++;histNote(p.company,'proj');if(S.ords.includes('impact'))addBudget(Math.min(300000,Math.round(p.cost*.01)),'impact fee');
   adj('trust',pubSign>0?3:pubSign<0?-5:0,pubSign>0?'public supports':pubSign<0?'public opposed':'');adj('dev',Math.round(clamp(7-burden(p.conds,p)*1.2,1,8)));
   if(p.noFindings)adj('trust',-3,'residents appealed the approval');
   await showSpeaker(p.rep);await say(p.rep,'Thank you. We will break ground the moment the permits are in order. Which they will be.');await hideSpeaker();
@@ -3806,6 +3850,7 @@ const ACHS=[
  {k:'sunlight',name:'Sunlight Policy',desc:'Finish with at least two deals made public and no secret ones leaked.',test:()=>(S.deals||[]).filter(d=>d.ended||!d.secret).length>=2&&!(S.deals||[]).some(d=>d.revealed&&d.secret)},
  {k:'records',name:'Open Book',desc:'Survive an open records request.',test:()=>(S.stats.records||0)>=1},
  {k:'straight',name:'Straight Answers',desc:'Press Orion Power for a straight answer at least twice.',test:()=>(S.stats.orionPress||0)>=2},
+ {k:'engineered',name:'Well Engineered',desc:'Approve four projects with conditions the City Engineer recommended.',test:()=>(S.stats.engFollowed||0)>=4},
  {k:'scandalfree',name:'Spotless',desc:'End with a scandal risk of zero.',test:()=>S.corrupt<=0.5}
 ];
 function loadAch(){try{return JSON.parse(localStorage.getItem(ACH_KEY)||'{}')}catch(e){return {}}}
@@ -3884,8 +3929,13 @@ async function actHours(){
    const t=p.water>=5000?'water':p.db>=58?'noise':p.traffic>=6?'traffic':'nimby';
    await say(R,`Mayor, I live near the ${p.type.name}. ${fill(fresh('oh-'+t,TOPICS[t].opp),p,p.conds||{})}`);
    if(Math.random()<.5)await say(R,fresh('oh-tip',['And I saw crews working after dark last week, near the back fence.','Also, some of their trucks were hauling something that smelled awful.','I think they are cutting corners. A neighbor says the same.']));
-   const k=await ask(`Resident concern about the ${p.type.name}`,[{k:'inq',label:'Open an inquiry ($10K)',sub:'Staff watches the site closely for two weeks. Good odds your next inspection finds something.'},{k:'look',label:'Promise to look into it',sub:'Small trust gain, no cost.'},{k:'brush',label:'Brush it off',sub:'Saves time. Costs trust.'}]);
-   if(k==='inq'){addBudget(-10000,'inquiry');p.watch=2;p.tip=true;adj('trust',2);await say('mayor','I am opening a formal inquiry. You will hear back from staff.')}
+   const k=await ask(`Resident concern about the ${p.type.name}`,[{k:'eng',label:'Ask the City Engineer to inspect ($4K)',sub:'A technical answer, on the record. Cheaper than a full inquiry.'},{k:'inq',label:'Open an inquiry ($10K)',sub:'Staff watches the site closely for two weeks. Good odds your next inspection finds something.'},{k:'look',label:'Promise to look into it',sub:'Small trust gain, no cost.'},{k:'brush',label:'Brush it off',sub:'Saves time. Costs trust.'}]);
+   if(k==='eng'){
+    addBudget(-4000,'engineering inspection');
+    if(severity(p,t)>.3||p.tip){await engineerSays(`I walked the site. The resident is right: ${t==='water'?'the water draw is higher than permitted':t==='noise'?'the noise readings are over the limit at the property line':t==='traffic'?'the truck routing is damaging the road':'the site has real problems'}. I recommend a closer watch and a corrective plan.`);p.watch=2;p.tip=true;adj('trust',2);await say('mayor','Thank you, Gene. We will follow up.')}
+    else{await engineerSays('I walked the site and took readings. Everything is within permit limits. I explained the numbers to the resident, and I think they felt heard.');adj('trust',1);await say('mayor','Thank you for checking.')}
+   }
+   else if(k==='inq'){addBudget(-10000,'inquiry');p.watch=2;p.tip=true;adj('trust',2);await say('mayor','I am opening a formal inquiry. You will hear back from staff.')}
    else if(k==='look'){adj('trust',1);await say('mayor','Thank you for coming in. I will look into it personally.')}
    else{adj('trust',-3,'brushed off a resident');await say('mayor','The council has already considered those issues. Thank you.');gaffe('mayor','The council has already considered those issues.','demeaning')}
   }else{
