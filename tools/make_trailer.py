@@ -3,26 +3,30 @@
 Needs: pip install playwright imageio-ffmpeg, and Google Chrome (or Edge) installed.
 Start the local server first (python -m http.server 8765 in the repo root), then:
 
-    python tools/make_trailer.py
+    python tools/make_trailer.py [--vertical]
 
 Each scene is recorded in a fresh page, with a caption injected into the page, then the clips are
-joined with ffmpeg. Writes portal/trailer.mp4.
+joined with ffmpeg. Writes portal/trailer.mp4 (or portal/trailer-vertical.mp4, 1080x1920, with --vertical).
 """
 import glob, os, shutil, subprocess, sys, tempfile, time
 import imageio_ffmpeg
 from playwright.sync_api import sync_playwright
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "portal", "trailer.mp4")
-BASE = "http://localhost:8765/index.html?fit=1"
+VERT = "--vertical" in sys.argv   # 9:16 cut for Reels / TikTok / Shorts
+OUT = os.path.join(ROOT, "portal", "trailer-vertical.mp4" if VERT else "trailer.mp4")
+BASE = "http://localhost:8765/index.html" + ("" if VERT else "?fit=1")
+VW, VH = (720, 1280) if VERT else (1280, 720)
+OW, OH = (1080, 1920) if VERT else (1280, 720)
 FF = imageio_ffmpeg.get_ffmpeg_exe()
 
 CAP_JS = """
 (text) => {
+  const FS = window.innerWidth < 800 ? 46 : 44;
   let c = document.getElementById('cap');
   if (!c) {
     c = document.createElement('div'); c.id = 'cap';
-    c.style.cssText = 'position:fixed;left:0;right:0;top:34px;text-align:center;z-index:99999;pointer-events:none;font:800 44px/1.15 Georgia,serif;color:#fff;text-shadow:0 3px 14px #000,0 0 3px #000;padding:60px 60px 40px;background:linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,0));top:0;transition:opacity .4s';
+    c.style.cssText = 'position:fixed;left:0;right:0;top:34px;text-align:center;z-index:99999;pointer-events:none;font:800 '+FS+'px/1.15 Georgia,serif;color:#fff;text-shadow:0 3px 14px #000,0 0 3px #000;padding:60px 60px 40px;background:linear-gradient(rgba(0,0,0,.72),rgba(0,0,0,0));top:0;transition:opacity .4s';
     document.body.appendChild(c);
   }
   c.textContent = text;
@@ -80,8 +84,8 @@ def record(name, fn, tmp):
     os.makedirs(d)
     with sync_playwright() as p:
         b = launch(p)
-        ctx = b.new_context(viewport={"width": 1280, "height": 720}, record_video_dir=d,
-                            record_video_size={"width": 1280, "height": 720})
+        ctx = b.new_context(viewport={"width": VW, "height": VH}, record_video_dir=d,
+                            record_video_size={"width": VW, "height": VH})
         t0 = time.time()
         page = ctx.new_page()
         page.goto(BASE)
@@ -180,7 +184,7 @@ def main():
     inputs, filt = [], []
     for i, (c, st, en) in enumerate(clips):
         inputs += ["-i", c]
-        filt.append(f"[{i}:v]trim=start={st + 0.25:.2f}:end={en:.2f},setpts=PTS-STARTPTS,fps=30,scale=1280:720,format=yuv420p[v{i}]")
+        filt.append(f"[{i}:v]trim=start={st + 0.25:.2f}:end={en:.2f},setpts=PTS-STARTPTS,fps=30,scale={OW}:{OH}:flags=lanczos,format=yuv420p[v{i}]")
     chain = "".join(f"[v{i}]" for i in range(len(clips))) + f"concat=n={len(clips)}:v=1:a=0[out]"
     cmd = [FF, "-y"] + inputs + ["-filter_complex", ";".join(filt) + ";" + chain, "-map", "[out]",
            "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-movflags", "+faststart", OUT]
