@@ -9,6 +9,7 @@ Each scene is recorded in a fresh page, with a caption injected into the page, t
 joined with ffmpeg. Writes portal/trailer.mp4 (or portal/trailer-vertical.mp4, 1080x1920, with --vertical).
 """
 import glob, os, shutil, subprocess, sys, tempfile, time
+import re
 import imageio_ffmpeg
 from playwright.sync_api import sync_playwright
 
@@ -31,6 +32,19 @@ CAP_JS = """
   }
   c.textContent = text;
   c.style.opacity = text ? 1 : 0;
+}
+"""
+
+PREP = """
+() => {
+  const st = document.createElement('style');
+  st.textContent = `#side{display:none!important}
+    body.mob #app{display:flex;flex-direction:column;justify-content:center;padding-top:150px;padding-bottom:40px}
+    body{background:radial-gradient(circle at 50% 30%,#1b2740,#080c14)!important}
+    body.mob #dlgText{font-size:22px;min-height:84px}
+    body.mob #dlg,body.mob #choices{min-height:130px}
+    #overlay .box,#modal .box{zoom:1.3}`;
+  document.head.appendChild(st);
 }
 """
 
@@ -90,12 +104,22 @@ def record(name, fn, tmp):
         page = ctx.new_page()
         page.goto(BASE)
         page.wait_for_timeout(700)
+        if VERT:
+            page.evaluate(PREP)
+            page.wait_for_timeout(300)
         start = time.time() - t0
         fn(page)
         end = time.time() - t0
         ctx.close()
         b.close()
     return glob.glob(os.path.join(d, "*.webm"))[0], start, end
+
+
+def clip_len(path):
+    """Real length of a recorded clip in seconds (the page clock and the video clock can drift)."""
+    out = subprocess.run([FF, "-i", path], capture_output=True, text=True).stderr
+    h, m, sec = re.search(r"Duration: (\d+):(\d+):([\d.]+)", out).groups()
+    return int(h) * 3600 + int(m) * 60 + float(sec)
 
 
 def cap(page, text):
@@ -181,12 +205,20 @@ def main():
     for name, fn in SCENES:
         print("recording", name, flush=True)
         clips.append(record(name, fn, tmp))
-    inputs, filt = [], []
+    inputs, filt, durs = [], [], []
     for i, (c, st, en) in enumerate(clips):
         inputs += ["-i", c]
+        en = min(en, clip_len(c) - 0.05)
+        durs.append(en - (st + 0.25))
         filt.append(f"[{i}:v]trim=start={st + 0.25:.2f}:end={en:.2f},setpts=PTS-STARTPTS,fps=30,scale={OW}:{OH}:flags=lanczos,format=yuv420p[v{i}]")
-    chain = "".join(f"[v{i}]" for i in range(len(clips))) + f"concat=n={len(clips)}:v=1:a=0[out]"
-    cmd = [FF, "-y"] + inputs + ["-filter_complex", ";".join(filt) + ";" + chain, "-map", "[out]",
+    T = 0.55   # crossfade length between scenes
+    cur, total = "v0", durs[0]
+    for i in range(1, len(clips)):
+        out = f"x{i}"
+        filt.append(f"[{cur}][v{i}]xfade=transition=fade:duration={T}:offset={total - T:.2f}[{out}]")
+        cur, total = out, total + durs[i] - T
+    filt.append(f"[{cur}]fade=t=in:st=0:d=0.4[out]")
+    cmd = [FF, "-y"] + inputs + ["-filter_complex", ";".join(filt), "-map", "[out]",
            "-c:v", "libx264", "-crf", "20", "-preset", "medium", "-movflags", "+faststart", OUT]
     subprocess.run(cmd, check=True, stderr=subprocess.DEVNULL)
     print("Wrote", OUT, os.path.getsize(OUT) // 1024, "KB")
