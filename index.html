@@ -498,12 +498,14 @@ const SPEED=AUTO?1:16;
 
 /* ---------- free / paid gating (off by default: everything is unlocked) ---------- */
 /* EDITION is stamped by tools/build_itch.py: 'free' (12-week) or 'full' (everything). 'dev' leaves everything unlocked. The source ships as 'free' so GitHub Pages serves the free edition. */
-const EDITION='free',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full';
+const EDITION='free',FULL_URL='https://nerddaddy.itch.io/municipality-tycoon-full',FREE_URL='https://nerddaddy.itch.io/municipality-tycoon';
 const PORTAL=EDITION==='portal',GATING=EDITION==='free'||PORTAL,LICENSE_KEY='municipality-tycoon-license',LICENSE_SALT='mt-clifton-2026';
 const FREE_FEATURES=['quick'];
 const fnv=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return (h>>>0).toString(36).toUpperCase()};
 function validKey(k){const m=/^MT-([A-Z0-9]{4})-([A-Z0-9]{4})-([A-Z0-9]{1,8})$/.exec((k||'').trim().toUpperCase());return !!m&&fnv(m[1]+'-'+m[2]+LICENSE_SALT)===m[3]}
-function licensed(){try{return validKey(localStorage.getItem(LICENSE_KEY))}catch(e){return false}}
+const REVOKED=[];
+function licensed(){try{const k=(localStorage.getItem(LICENSE_KEY)||'').trim().toUpperCase();return validKey(k)&&!REVOKED.includes(k)}catch(e){return false}}
+const LOCKED=()=>EDITION==='full'&&!licensed();
 const FVL=PORTAL?' (locked)':' (full version)';
 function feature(k){return !GATING||FREE_FEATURES.includes(k)||licensed()}
 
@@ -5347,8 +5349,17 @@ function applyDialoguePacks(){
   {t:'The senior bingo tournament has been moved to the community center because of a scheduling dispute.',w:'wong',q:'I have seen this dispute escalate before. Please send security.'}
  );
 }
+function lockTitle(){
+ ['startBtn','contBtn','slotsBtn','licBtn'].forEach(id=>{const b=$('#'+id);if(b)b.classList.add('hidden')});
+ if($('#lockBox'))return;
+ const d=document.createElement('div');d.id='lockBox';d.style.cssText='margin:14px 0;padding:14px;border:1px solid #34425c;border-radius:10px;background:#0b1019';
+ d.innerHTML=`<h3 style="margin:0 0 6px">Enter your license key</h3><p class="mut" style="margin:0 0 8px">This is the paid edition. After you buy it on itch.io, download <b>license-key.txt</b> from the game page and paste the key here. Want to try first? Play the <a href="${FREE_URL}" target="_blank" rel="noopener">free 12-week version</a>.</p><input id="lkIn2" placeholder="MT-XXXX-XXXX-XXXXX" style="width:100%;box-sizing:border-box;background:#10192a;color:var(--ink);border:1px solid #34425c;border-radius:8px;padding:8px"><div class="btnrow" style="margin-top:8px"><button class="go" id="lkOk2">Unlock</button><a class="guide" href="${FULL_URL}" target="_blank" rel="noopener">Buy on itch.io</a></div><div id="lkMsg2" class="mut" style="margin-top:6px"></div>`;
+ const host=$('#startBtn')?$('#startBtn').parentNode:$('#overlay .box');host.appendChild(d);
+ $('#lkOk2').onclick=()=>{const k=$('#lkIn2').value.trim().toUpperCase();if(validKey(k)&&!REVOKED.includes(k)){try{localStorage.setItem(LICENSE_KEY,k)}catch(e){}$('#lkMsg2').textContent='Unlocked! Loading...';setTimeout(()=>location.reload(),500)}else $('#lkMsg2').textContent='That key is not valid.'};
+}
 function openTitleExtras(){
  titlePickers();
+ if(LOCKED())lockTitle();
  {const md=document.querySelector('.modes');if(md&&!document.querySelector('input[name=mode][value="520"]')){const lb=document.createElement('label');lb.innerHTML='<input type="radio" name="mode" value="520"> Endless mode: no end date, retire when you like';md.appendChild(lb);if(!feature('full')){const r=lb.querySelector('input');r.disabled=true;lb.append(FVL)}}}
  const lic=$('#licBtn');if(lic){if(GATING&&!PORTAL&&!licensed())lic.classList.remove('hidden');else lic.classList.add('hidden')}
  if(PORTAL){const sp=document.querySelector('input[name=mode][value="3"]');if(sp)sp.checked=true}
@@ -5436,12 +5447,12 @@ buildHud();buildScene();hud();renderProjects();showAgenda(null);
 {
  const sv=readSave();
  if(sv&&sv.S){const b=$('#contBtn');b.textContent=`Continue saved game (week ${sv.S.week} of ${sv.S.maxWeeks})`;b.classList.remove('hidden');$('#saveInfo').textContent=`Saved game found: week ${sv.S.week} of ${sv.S.maxWeeks}. Starting a new game replaces it.`;
-  b.onclick=()=>{restore(sv);$('#overlay').classList.add('hidden');hud();renderProjects();runGame()}}
+  b.onclick=()=>{if(LOCKED())return;restore(sv);$('#overlay').classList.add('hidden');hud();renderProjects();runGame()}}
  else $('#saveInfo').textContent='No saved game yet. The game autosaves at the start of every week.';
  applyTheme((()=>{try{return localStorage.getItem(THEME_KEY)||'classic'}catch(e){return 'classic'}})());
  openTitleExtras();
  $('#licBtn').onclick=showLicense;
- if(feature('saves')&&[1,2,3].some(readSlot)){
+ if(!LOCKED()&&feature('saves')&&[1,2,3].some(readSlot)){
   const sb=$('#slotsBtn');sb.classList.remove('hidden');
   sb.onclick=()=>{
    modal(`<h2>Saved slots</h2>${[1,2,3].map(i=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><span style="flex:1">Slot ${i}: ${slotLabel(i)}</span><button class="ctlb" data-load="${i}" ${readSlot(i)?'':'disabled'}>Load</button></div>`).join('')}<div class="btnrow"><button id="slClose">Close</button></div>`);
@@ -5452,6 +5463,7 @@ buildHud();buildScene();hud();renderProjects();showAgenda(null);
  try{if(sessionStorage.getItem('municipality-tycoon-autocontinue')&&sv&&sv.S){sessionStorage.removeItem('municipality-tycoon-autocontinue');setTimeout(()=>$('#contBtn').click(),100)}}catch(e){}
 }
 $('#startBtn').onclick=async()=>{
+ if(LOCKED()){lockTitle();return}
  const m=document.querySelector('input[name=mode]:checked');S.maxWeeks=m?+m.value:52;if(S.maxWeeks>400)S.sandbox=1;
  newGameSetup();S.sprint=S.maxWeeks<=4?1:0;
  $('#overlay').classList.add('hidden');hud();
